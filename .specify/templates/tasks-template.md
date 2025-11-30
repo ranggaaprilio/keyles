@@ -8,7 +8,7 @@ description: "Task list template for feature implementation"
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Per constitution, tests are MANDATORY. All business logic requires unit tests (≥85% coverage), and all handlers require integration tests.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -21,9 +21,12 @@ description: "Task list template for feature implementation"
 ## Path Conventions
 
 - **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
+- **Web app (Clean Architecture)**: 
+  - Backend: `backend/domain/`, `backend/usecase/`, `backend/infrastructure/`, `backend/interfaces/`
+  - Frontend: `frontend/src/components/`, `frontend/src/services/`
+  - Tests: `backend/tests/unit/`, `backend/tests/integration/`, `frontend/tests/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- Paths shown below assume web app with Clean Architecture - adjust based on plan.md structure
 
 <!-- 
   ============================================================================
@@ -63,11 +66,17 @@ description: "Task list template for feature implementation"
 Examples of foundational tasks (adjust based on your project):
 
 - [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
+- [ ] T005 [P] Define repository interfaces in Domain layer (Clean Architecture)
 - [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T007 Create base domain entities and business logic interfaces
+- [ ] T008 Implement repository concrete implementations in Infrastructure layer
+- [ ] T009 Configure error handling and logging infrastructure
+- [ ] T010 Setup environment configuration management
+
+**Clean Architecture Checkpoint**: 
+- Domain layer established with interfaces only
+- Infrastructure layer provides implementations
+- No domain-to-infrastructure dependencies
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -79,21 +88,34 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (MANDATORY per constitution) ⚠️
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **CONSTITUTION REQUIREMENT: Write these tests FIRST, ensure they FAIL before implementation**
+> **Target: ≥85% coverage for domain/business logic, integration tests for all handlers**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Unit tests for domain entities in tests/unit/domain/test_[entity]_test.go
+- [ ] T011 [P] [US1] Unit tests for use cases/business logic in tests/unit/usecase/test_[usecase]_test.go
+- [ ] T012 [P] [US1] Integration test for handler in tests/integration/test_[handler]_test.go
+- [ ] T013 [P] [US1] Contract test for API endpoint in tests/contract/test_[endpoint]_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+> **Clean Architecture Task Order**: Domain → Use Cases → Infrastructure → Interfaces (Handlers)
+
+- [ ] T014 [P] [US1] Define domain entities in backend/domain/entities/[entity].go
+- [ ] T015 [P] [US1] Define repository interfaces in backend/domain/repositories/[repository].go
+- [ ] T016 [US1] Implement use case/business logic in backend/usecase/[usecase].go (depends on T014, T015)
+- [ ] T017 [US1] Implement repository concrete class in backend/infrastructure/persistence/[repository]_impl.go
+- [ ] T018 [US1] Implement handler in backend/interfaces/http/[handler].go (outer layer)
+- [ ] T019 [US1] Add validation and error handling in domain layer
+- [ ] T020 [US1] Add logging for user story 1 operations (infrastructure concern)
+- [ ] T021 [P] [US1] Frontend: Create TypeScript components in frontend/src/components/[Component].tsx
+- [ ] T022 [US1] Frontend: Create service abstraction for API calls in frontend/src/services/[service].ts
+
+**Architecture Verification**:
+- Domain has no infrastructure imports ✓
+- Use cases depend only on domain interfaces ✓
+- Handlers depend on use cases, not domain directly ✓
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -105,17 +127,20 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 (MANDATORY per constitution) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T023 [P] [US2] Unit tests for domain entities in tests/unit/domain/test_[entity]_test.go
+- [ ] T024 [P] [US2] Unit tests for use cases in tests/unit/usecase/test_[usecase]_test.go
+- [ ] T025 [P] [US2] Integration test for handler in tests/integration/test_[handler]_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
-- [ ] T021 [US2] Implement [Service] in src/services/[service].py
-- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T026 [P] [US2] Define domain entities in backend/domain/entities/[entity].go
+- [ ] T027 [P] [US2] Define interfaces in backend/domain/repositories/[repository].go
+- [ ] T028 [US2] Implement use case in backend/usecase/[usecase].go
+- [ ] T029 [US2] Implement infrastructure in backend/infrastructure/[implementation].go
+- [ ] T030 [US2] Implement handler in backend/interfaces/http/[handler].go
+- [ ] T031 [US2] Integrate with User Story 1 components (if needed, via interfaces only)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -127,16 +152,19 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 (MANDATORY per constitution) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T032 [P] [US3] Unit tests for domain in tests/unit/domain/test_[entity]_test.go
+- [ ] T033 [P] [US3] Unit tests for use cases in tests/unit/usecase/test_[usecase]_test.go
+- [ ] T034 [P] [US3] Integration test for handler in tests/integration/test_[handler]_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
-- [ ] T027 [US3] Implement [Service] in src/services/[service].py
-- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T035 [P] [US3] Define domain entities in backend/domain/entities/[entity].go
+- [ ] T036 [P] [US3] Define interfaces in backend/domain/[interfaces].go
+- [ ] T037 [US3] Implement use case in backend/usecase/[usecase].go
+- [ ] T038 [US3] Implement infrastructure in backend/infrastructure/[implementation].go
+- [ ] T039 [US3] Implement handler in backend/interfaces/http/[handler].go
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -150,11 +178,12 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] TXXX [P] Documentation updates in docs/
-- [ ] TXXX Code cleanup and refactoring
+- [ ] TXXX [P] Documentation updates in docs/ (Effective Go compliance, component docs)
+- [ ] TXXX Code cleanup and refactoring (maintain Clean Architecture)
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Verify ≥85% test coverage for domain layer
 - [ ] TXXX Security hardening
+- [ ] TXXX Architecture compliance review (no domain-to-infrastructure dependencies)
 - [ ] TXXX Run quickstart.md validation
 
 ---

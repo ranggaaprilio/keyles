@@ -31,7 +31,31 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Clean Architecture Compliance**:
+- [ ] Domain layer has no imports from infrastructure or frameworks
+- [ ] All repository/service interfaces defined in Domain layer
+- [ ] Concrete implementations only in Infrastructure layer
+- [ ] Dependency arrows verified to point inward (toward Domain)
+
+**SOLID Principles Compliance**:
+- [ ] Each module has single, well-defined responsibility (SRP)
+- [ ] Domain depends only on abstractions/interfaces (DIP)
+- [ ] No direct database/external API calls from business logic
+- [ ] Interface segregation verified for all contracts
+
+**Testing Requirements**:
+- [ ] Unit test plan documented for all business logic (target: ≥85% coverage)
+- [ ] Integration test plan for all handlers/controllers
+- [ ] Test isolation strategy defined (mocking approach)
+- [ ] Test-first workflow feasible for this feature
+
+**Code Conventions**:
+- [ ] Backend: Follows Effective Go, lowercase packages, exported function docs
+- [ ] Frontend: TypeScript strict mode, PascalCase components, functional components only
+- [ ] Clear separation between backend (domain/usecase/infrastructure) and frontend (components/services)
+
+**Violations Requiring Justification** (fill Complexity Tracking section if any):
+- [ ] No constitution violations OR all violations documented with justification
 
 ## Project Structure
 
@@ -70,18 +94,32 @@ tests/
 
 # [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
+├── domain/              # Clean Architecture: Entities, business logic, interfaces
+│   ├── entities/
+│   ├── repositories/    # Interface definitions only
+│   └── services/        # Interface definitions only
+├── usecase/             # Application business rules
+├── infrastructure/      # Concrete implementations (DB, external APIs)
+│   ├── persistence/     # Repository implementations
+│   └── external/        # External service clients
+├── interfaces/          # Handlers, controllers (outer layer)
+│   └── http/
 └── tests/
+    ├── unit/
+    │   ├── domain/
+    │   └── usecase/
+    ├── integration/
+    └── contract/
 
 frontend/
 ├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
+│   ├── components/      # PascalCase React components
+│   ├── services/        # API client abstractions
+│   ├── types/           # TypeScript type definitions
+│   └── hooks/           # Custom React hooks
 └── tests/
+    ├── unit/
+    └── integration/
 
 # [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
 api/
