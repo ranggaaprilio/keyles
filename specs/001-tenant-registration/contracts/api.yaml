@@ -1,0 +1,872 @@
+openapi: 3.0.3
+info:
+  title: Keyles SSO - Tenant Registration API
+  description: |
+    Multi-tenant registration and email verification API for Keyles SSO platform.
+    
+    This API provides endpoints for tenant (organization) registration with email verification
+    using OTP (One-Time Password) codes sent via email.
+    
+    ## Authentication
+    - Public endpoints: `/register`, `/verify-otp`, `/resend-otp`, `/check-availability`
+    - Protected endpoints: `/login`, `/dashboard` (requires JWT token)
+    
+    ## Rate Limiting
+    - OTP requests: 3 per email per hour
+    - OTP verification: 5 attempts per OTP
+    - Login attempts: 5 per email per 15 minutes
+  version: 1.0.0
+  contact:
+    name: Keyles SSO Support
+    email: support@keyles.com
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: https://api.keyles.com/v1
+    description: Production server
+
+tags:
+  - name: Registration
+    description: Tenant registration endpoints
+  - name: Verification
+    description: Email/OTP verification endpoints
+  - name: Authentication
+    description: User authentication endpoints
+
+paths:
+  /register:
+    post:
+      tags:
+        - Registration
+      summary: Register a new tenant
+      description: |
+        Creates a new tenant (organization) with an admin user account.
+        
+        Sends an OTP code to the admin email address for verification.
+        Tenant status is set to 'pending_verification' until OTP is verified.
+        
+        **Rate Limit**: 3 requests per email per hour
+      operationId: registerTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterTenantRequest'
+            examples:
+              valid:
+                summary: Valid registration request
+                value:
+                  organizationName: "Acme Corporation"
+                  adminName: "John Doe"
+                  adminEmail: "john.doe@acme.com"
+                  password: "SecureP@ss123"
+      responses:
+        '201':
+          description: Tenant created successfully, OTP sent to email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterTenantResponse'
+              examples:
+                success:
+                  summary: Successful registration
+                  value:
+                    success: true
+                    message: "Tenant registered successfully. Please check your email for verification code."
+                    data:
+                      tenantId: "123e4567-e89b-12d3-a456-426614174000"
+                      organizationName: "Acme Corporation"
+                      adminEmail: "john.doe@acme.com"
+                      status: "pending_verification"
+                      otpExpiresAt: "2025-12-06T15:10:00Z"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_email:
+                  summary: Invalid email format
+                  value:
+                    success: false
+                    error:
+                      code: "VALIDATION_ERROR"
+                      message: "Invalid email format"
+                      details:
+                        - field: "adminEmail"
+                          message: "Must be a valid email address"
+                weak_password:
+                  summary: Weak password
+                  value:
+                    success: false
+                    error:
+                      code: "VALIDATION_ERROR"
+                      message: "Password does not meet requirements"
+                      details:
+                        - field: "password"
+                          message: "Password must be at least 8 characters and contain uppercase, lowercase, number, and special character"
+        '409':
+          description: Organization name or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicate_org:
+                  summary: Organization name taken
+                  value:
+                    success: false
+                    error:
+                      code: "CONFLICT"
+                      message: "Organization name already exists"
+                duplicate_email:
+                  summary: Email already registered
+                  value:
+                    success: false
+                    error:
+                      code: "CONFLICT"
+                      message: "Email address already registered"
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rate_limit:
+                  summary: Too many requests
+                  value:
+                    success: false
+                    error:
+                      code: "RATE_LIMIT_EXCEEDED"
+                      message: "Too many registration attempts. Please try again in 1 hour."
+                      retryAfter: 3600
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /verify-otp:
+    post:
+      tags:
+        - Verification
+      summary: Verify OTP code
+      description: |
+        Verifies the OTP code sent to the admin email.
+        
+        On successful verification, tenant status changes to 'active'.
+        
+        **Rate Limit**: 5 attempts per OTP code
+        **OTP Validity**: 10 minutes from generation
+      operationId: verifyOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPRequest'
+            examples:
+              valid:
+                summary: Valid OTP verification
+                value:
+                  tenantId: "123e4567-e89b-12d3-a456-426614174000"
+                  otpCode: "123456"
+      responses:
+        '200':
+          description: OTP verified successfully, tenant activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyOTPResponse'
+              examples:
+                success:
+                  summary: Successful verification
+                  value:
+                    success: true
+                    message: "Email verified successfully. Your tenant is now active."
+                    data:
+                      tenantId: "123e4567-e89b-12d3-a456-426614174000"
+                      status: "active"
+                      verifiedAt: "2025-12-06T15:05:00Z"
+        '400':
+          description: Invalid OTP code or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_otp:
+                  summary: Incorrect OTP code
+                  value:
+                    success: false
+                    error:
+                      code: "INVALID_OTP"
+                      message: "Invalid OTP code. Please check and try again."
+                      remainingAttempts: 3
+                expired_otp:
+                  summary: OTP expired
+                  value:
+                    success: false
+                    error:
+                      code: "OTP_EXPIRED"
+                      message: "OTP code has expired. Please request a new one."
+        '404':
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many verification attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                max_attempts:
+                  summary: Maximum attempts reached
+                  value:
+                    success: false
+                    error:
+                      code: "MAX_ATTEMPTS_EXCEEDED"
+                      message: "Maximum verification attempts exceeded. Please request a new OTP."
+
+  /resend-otp:
+    post:
+      tags:
+        - Verification
+      summary: Resend OTP code
+      description: |
+        Generates a new OTP code and sends it to the admin email.
+        
+        Invalidates the previous OTP code.
+        
+        **Rate Limit**: 3 requests per email per hour
+      operationId: resendOTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendOTPRequest'
+            examples:
+              valid:
+                summary: Resend OTP request
+                value:
+                  tenantId: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: New OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendOTPResponse'
+              examples:
+                success:
+                  summary: OTP resent
+                  value:
+                    success: true
+                    message: "New verification code sent to your email."
+                    data:
+                      tenantId: "123e4567-e89b-12d3-a456-426614174000"
+                      otpExpiresAt: "2025-12-06T15:20:00Z"
+        '404':
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rate_limit:
+                  summary: Too many OTP requests
+                  value:
+                    success: false
+                    error:
+                      code: "RATE_LIMIT_EXCEEDED"
+                      message: "Too many OTP requests. Please try again in 45 minutes."
+                      retryAfter: 2700
+
+  /check-availability:
+    get:
+      tags:
+        - Registration
+      summary: Check organization name or email availability
+      description: |
+        Checks if an organization name or email address is available for registration.
+        
+        Used for real-time validation during registration form filling.
+      operationId: checkAvailability
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [organization, email]
+          description: Type of availability check
+        - name: value
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Organization name or email to check
+          examples:
+            org_name:
+              summary: Check organization name
+              value: "Acme Corporation"
+            email:
+              summary: Check email
+              value: "john.doe@acme.com"
+      responses:
+        '200':
+          description: Availability check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+              examples:
+                available:
+                  summary: Available
+                  value:
+                    success: true
+                    data:
+                      type: "organization"
+                      value: "Acme Corporation"
+                      available: true
+                not_available:
+                  summary: Not available
+                  value:
+                    success: true
+                    data:
+                      type: "email"
+                      value: "john.doe@acme.com"
+                      available: false
+                      message: "Email address already registered"
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /login:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate admin user
+      description: |
+        Authenticates an admin user and returns a JWT token.
+        
+        Tenant must be verified (status = 'active') before login is allowed.
+        
+        **Rate Limit**: 5 attempts per email per 15 minutes
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              valid:
+                summary: Login request
+                value:
+                  email: "john.doe@acme.com"
+                  password: "SecureP@ss123"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                success:
+                  summary: Successful login
+                  value:
+                    success: true
+                    message: "Login successful"
+                    data:
+                      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      expiresIn: 86400
+                      user:
+                        id: "user-uuid"
+                        email: "john.doe@acme.com"
+                        fullName: "John Doe"
+                        role: "admin"
+                      tenant:
+                        id: "tenant-uuid"
+                        organizationName: "Acme Corporation"
+                        status: "active"
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_credentials:
+                  summary: Wrong password
+                  value:
+                    success: false
+                    error:
+                      code: "INVALID_CREDENTIALS"
+                      message: "Invalid email or password"
+        '403':
+          description: Tenant not verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_verified:
+                  summary: Email not verified
+                  value:
+                    success: false
+                    error:
+                      code: "TENANT_NOT_VERIFIED"
+                      message: "Please verify your email before logging in"
+        '429':
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dashboard:
+    get:
+      tags:
+        - Authentication
+      summary: Get tenant dashboard data
+      description: |
+        Returns tenant and user information for the authenticated admin user.
+        
+        **Authentication**: Required (JWT token)
+      operationId: getDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+              examples:
+                success:
+                  summary: Dashboard data
+                  value:
+                    success: true
+                    data:
+                      tenant:
+                        id: "tenant-uuid"
+                        organizationName: "Acme Corporation"
+                        status: "active"
+                        createdAt: "2025-12-06T15:00:00Z"
+                        verifiedAt: "2025-12-06T15:05:00Z"
+                      user:
+                        id: "user-uuid"
+                        fullName: "John Doe"
+                        email: "john.doe@acme.com"
+                        role: "admin"
+        '401':
+          description: Unauthorized - invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterTenantRequest:
+      type: object
+      required:
+        - organizationName
+        - adminName
+        - adminEmail
+        - password
+      properties:
+        organizationName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Organization/company name
+          example: "Acme Corporation"
+        adminName:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Full name of the administrator
+          example: "John Doe"
+        adminEmail:
+          type: string
+          format: email
+          maxLength: 255
+          description: Administrator email address
+          example: "john.doe@acme.com"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 100
+          format: password
+          description: |
+            Password must contain:
+            - At least 8 characters
+            - At least one uppercase letter
+            - At least one lowercase letter
+            - At least one number
+            - At least one special character (@$!%*?&)
+          example: "SecureP@ss123"
+
+    RegisterTenantResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Tenant registered successfully"
+        data:
+          type: object
+          required:
+            - tenantId
+            - organizationName
+            - adminEmail
+            - status
+            - otpExpiresAt
+          properties:
+            tenantId:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            organizationName:
+              type: string
+              example: "Acme Corporation"
+            adminEmail:
+              type: string
+              format: email
+              example: "john.doe@acme.com"
+            status:
+              type: string
+              enum: [pending_verification]
+              example: "pending_verification"
+            otpExpiresAt:
+              type: string
+              format: date-time
+              description: ISO 8601 timestamp when OTP expires
+              example: "2025-12-06T15:10:00Z"
+
+    VerifyOTPRequest:
+      type: object
+      required:
+        - tenantId
+        - otpCode
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          description: Tenant identifier
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        otpCode:
+          type: string
+          pattern: '^\d{6}$'
+          description: 6-digit OTP code
+          example: "123456"
+
+    VerifyOTPResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Email verified successfully"
+        data:
+          type: object
+          required:
+            - tenantId
+            - status
+            - verifiedAt
+          properties:
+            tenantId:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            status:
+              type: string
+              enum: [active]
+              example: "active"
+            verifiedAt:
+              type: string
+              format: date-time
+              example: "2025-12-06T15:05:00Z"
+
+    ResendOTPRequest:
+      type: object
+      required:
+        - tenantId
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          description: Tenant identifier
+          example: "123e4567-e89b-12d3-a456-426614174000"
+
+    ResendOTPResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "New verification code sent"
+        data:
+          type: object
+          required:
+            - tenantId
+            - otpExpiresAt
+          properties:
+            tenantId:
+              type: string
+              format: uuid
+              example: "123e4567-e89b-12d3-a456-426614174000"
+            otpExpiresAt:
+              type: string
+              format: date-time
+              example: "2025-12-06T15:20:00Z"
+
+    AvailabilityResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required:
+            - type
+            - value
+            - available
+          properties:
+            type:
+              type: string
+              enum: [organization, email]
+              example: "organization"
+            value:
+              type: string
+              example: "Acme Corporation"
+            available:
+              type: boolean
+              example: true
+            message:
+              type: string
+              description: Optional message when not available
+              example: "Organization name already taken"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john.doe@acme.com"
+        password:
+          type: string
+          format: password
+          example: "SecureP@ss123"
+
+    LoginResponse:
+      type: object
+      required:
+        - success
+        - message
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Login successful"
+        data:
+          type: object
+          required:
+            - token
+            - expiresIn
+            - user
+            - tenant
+          properties:
+            token:
+              type: string
+              description: JWT authentication token
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            expiresIn:
+              type: integer
+              description: Token expiration time in seconds
+              example: 86400
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                email:
+                  type: string
+                  format: email
+                fullName:
+                  type: string
+                role:
+                  type: string
+                  enum: [admin, owner]
+            tenant:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                organizationName:
+                  type: string
+                status:
+                  type: string
+                  enum: [active]
+
+    DashboardResponse:
+      type: object
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required:
+            - tenant
+            - user
+          properties:
+            tenant:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                organizationName:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, suspended]
+                createdAt:
+                  type: string
+                  format: date-time
+                verifiedAt:
+                  type: string
+                  format: date-time
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                fullName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+                  enum: [admin, owner]
+
+    ErrorResponse:
+      type: object
+      required:
+        - success
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              enum:
+                - VALIDATION_ERROR
+                - CONFLICT
+                - INVALID_OTP
+                - OTP_EXPIRED
+                - MAX_ATTEMPTS_EXCEEDED
+                - RATE_LIMIT_EXCEEDED
+                - INVALID_CREDENTIALS
+                - TENANT_NOT_VERIFIED
+                - NOT_FOUND
+                - UNAUTHORIZED
+                - INTERNAL_ERROR
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "Invalid request data"
+            details:
+              type: array
+              description: Detailed validation errors (for VALIDATION_ERROR)
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: "adminEmail"
+                  message:
+                    type: string
+                    example: "Must be a valid email address"
+            remainingAttempts:
+              type: integer
+              description: Remaining verification attempts (for OTP errors)
+              example: 3
+            retryAfter:
+              type: integer
+              description: Seconds until retry is allowed (for rate limit errors)
+              example: 3600
