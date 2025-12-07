@@ -10,17 +10,20 @@ import (
 
 // OTPRepository defines the interface for OTP persistence operations (Redis-based)
 type OTPRepository interface {
-	// Store stores an OTP verification record with TTL
-	Store(ctx context.Context, otp *entities.OTPVerification) error
+	// Create stores an OTP verification record
+	Create(ctx context.Context, otp *entities.OTPVerification) error
 
-	// FindByTenantID retrieves the active OTP for a tenant
-	FindByTenantID(ctx context.Context, tenantID uuid.UUID) (*entities.OTPVerification, error)
+	// FindByTenantIDAndPurpose retrieves the OTP for a tenant and purpose
+	FindByTenantIDAndPurpose(ctx context.Context, tenantID, purpose string) (*entities.OTPVerification, error)
 
-	// Update updates an OTP verification record (e.g., increment attempts)
+	// Update updates an OTP verification record (e.g., mark as verified)
 	Update(ctx context.Context, otp *entities.OTPVerification) error
 
 	// Delete removes an OTP verification record
-	Delete(ctx context.Context, tenantID uuid.UUID) error
+	Delete(ctx context.Context, id uuid.UUID) error
+
+	// DeleteExpired removes all expired OTP records
+	DeleteExpired(ctx context.Context) error
 
 	// IncrementRateLimitCounter increments the OTP request counter for an email
 	// Returns the current count

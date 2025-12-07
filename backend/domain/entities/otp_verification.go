@@ -2,6 +2,8 @@ package entities
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,12 +21,13 @@ const (
 // OTPVerification represents an email verification code for tenant activation
 type OTPVerification struct {
 	ID           uuid.UUID
-	TenantID     uuid.UUID
-	OTPCode      string
+	TenantID     string    // Changed to string for simpler validation
+	Code         string    // Renamed from OTPCode
+	Purpose      string    // email_verification or password_reset
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
 	VerifiedAt   *time.Time
-	Status       OTPVerificationStatus
+	Verified     bool      // Added for simpler checks
 	AttemptCount int
 	IPAddress    string
 }
@@ -42,33 +45,94 @@ var (
 	ErrOTPInvalid     = errors.New("invalid OTP code")
 	ErrOTPMaxAttempts = errors.New("maximum OTP verification attempts exceeded")
 	ErrOTPAlreadyUsed = errors.New("OTP has already been used")
+	otpCodeRegex      = regexp.MustCompile(`^\d{6}$`)
 )
 
+// Validate checks if the OTP verification has valid data
+func (o *OTPVerification) Validate() error {
+	if o.TenantID == "" {
+		return errors.New("tenant_id is required")
+	}
+
+	if o.Code == "" {
+		return errors.New("code is required")
+	}
+
+	if len(o.Code) != 6 {
+		return errors.New("code must be exactly 6 digits")
+	}
+
+	if !otpCodeRegex.MatchString(o.Code) {
+		return errors.New("code must contain only digits")
+	}
+
+	if o.Purpose == "" {
+		return errors.New("purpose is required")
+	}
+
+	if o.Purpose != "email_verification" && o.Purpose != "password_reset" {
+		return errors.New("purpose must be 'email_verification' or 'password_reset'")
+	}
+
+	if o.ExpiresAt.IsZero() {
+		return errors.New("expires_at is required")
+	}
+
+	return nil
+}
+
+// IsExpired checks if the OTP has expired
+func (o *OTPVerification) IsExpired() bool {
+	return time.Now().After(o.ExpiresAt) || time.Now().Equal(o.ExpiresAt)
+}
+
+// IsVerified checks if the OTP has been successfully verified
+func (o *OTPVerification) IsVerified() bool {
+	return o.Verified
+}
+
+// MarkAsVerified marks the OTP as verified
+func (o *OTPVerification) MarkAsVerified() {
+	now := time.Now()
+	o.Verified = true
+	o.VerifiedAt = &now
+}
+
+// CanBeVerified checks if the OTP can be verified (not expired and not already verified)
+func (o *OTPVerification) CanBeVerified() bool {
+	return !o.IsExpired() && !o.IsVerified()
+}
+
+// Invalidate invalidates the OTP by setting its expiration to the past
+func (o *OTPVerification) Invalidate() {
+	o.ExpiresAt = time.Now().Add(-1 * time.Second)
+}
+
 // NewOTPVerification creates a new OTP verification record
-func NewOTPVerification(tenantID uuid.UUID, otpCode, ipAddress string) *OTPVerification {
+func NewOTPVerification(tenantID, otpCode, purpose, ipAddress string) *OTPVerification {
 	now := time.Now()
 	return &OTPVerification{
 		ID:           uuid.New(),
 		TenantID:     tenantID,
-		OTPCode:      otpCode,
+		Code:         otpCode,
+		Purpose:      purpose,
 		CreatedAt:    now,
 		ExpiresAt:    now.Add(OTPExpirationMins * time.Minute),
-		Status:       OTPStatusPending,
+		Verified:     false,
 		AttemptCount: 0,
 		IPAddress:    ipAddress,
 	}
 }
 
-// Verify attempts to verify the OTP code
-func (o *OTPVerification) Verify(providedOTP string) error {
+// VerifyCode attempts to verify the provided OTP code
+func (o *OTPVerification) VerifyCode(providedOTP string) error {
 	// Check if already verified
-	if o.Status == OTPStatusVerified {
+	if o.IsVerified() {
 		return ErrOTPAlreadyUsed
 	}
 
 	// Check if expired
-	if time.Now().After(o.ExpiresAt) {
-		o.Status = OTPStatusExpired
+	if o.IsExpired() {
 		return ErrOTPExpired
 	}
 
@@ -77,33 +141,41 @@ func (o *OTPVerification) Verify(providedOTP string) error {
 
 	// Check max attempts
 	if o.AttemptCount > MaxOTPAttempts {
-		o.Status = OTPStatusExpired
+		o.Invalidate()
 		return ErrOTPMaxAttempts
 	}
 
 	// Verify OTP code
-	if o.OTPCode != providedOTP {
+	if o.Code != providedOTP {
 		return ErrOTPInvalid
 	}
 
 	// Success - mark as verified
-	now := time.Now()
-	o.Status = OTPStatusVerified
-	o.VerifiedAt = &now
+	o.MarkAsVerified()
 	return nil
-}
-
-// IsExpired checks if the OTP has expired
-func (o *OTPVerification) IsExpired() bool {
-	return time.Now().After(o.ExpiresAt) || o.Status == OTPStatusExpired
-}
-
-// IsVerified checks if the OTP has been successfully verified
-func (o *OTPVerification) IsVerified() bool {
-	return o.Status == OTPStatusVerified
 }
 
 // CanRetry checks if the user can still attempt verification
 func (o *OTPVerification) CanRetry() bool {
-	return !o.IsExpired() && !o.IsVerified() && o.AttemptCount < MaxOTPAttempts
+	return o.CanBeVerified() && o.AttemptCount < MaxOTPAttempts
+}
+
+// RemainingAttempts returns the number of remaining verification attempts
+func (o *OTPVerification) RemainingAttempts() int {
+	remaining := MaxOTPAttempts - o.AttemptCount
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
+// TimeUntilExpiration returns the duration until the OTP expires
+func (o *OTPVerification) TimeUntilExpiration() time.Duration {
+	return time.Until(o.ExpiresAt)
+}
+
+// String returns a string representation of the OTP (for logging - masked)
+func (o *OTPVerification) String() string {
+	return fmt.Sprintf("OTP{TenantID: %s, Purpose: %s, Verified: %v, Expired: %v}", 
+		o.TenantID, o.Purpose, o.Verified, o.IsExpired())
 }

@@ -144,23 +144,23 @@
 
 ### Tests for User Story 2 (MANDATORY per constitution) ⚠️
 
-- [ ] T063 [P] [US2] Unit test for OTPVerification entity in backend/tests/unit/domain/otp_verification_test.go
-- [ ] T064 [P] [US2] Unit test for VerifyTenant use case in backend/tests/unit/usecase/verify_tenant_test.go
-- [ ] T065 [P] [US2] Unit test for ResendOTP use case in backend/tests/unit/usecase/resend_otp_test.go
-- [ ] T066 [P] [US2] Integration test for OTP verification handler in backend/tests/integration/verification_test.go
-- [ ] T067 [P] [US2] Integration test for resend OTP handler in backend/tests/integration/resend_otp_test.go
-- [ ] T068 [P] [US2] Integration test for email sending (mock Brevo) in backend/tests/integration/email_test.go
+- [X] T063 [P] [US2] Unit test for OTPVerification entity in backend/tests/unit/domain/otp_verification_test.go
+- [X] T064 [P] [US2] Unit test for VerifyTenant use case in backend/tests/unit/usecase/verify_tenant_test.go
+- [X] T065 [P] [US2] Unit test for ResendOTP use case in backend/tests/unit/usecase/resend_otp_test.go
+- [X] T066 [P] [US2] Integration test for OTP verification handler in backend/tests/integration/verification_test.go
+- [X] T067 [P] [US2] Integration test for resend OTP handler in backend/tests/integration/resend_otp_test.go
+- [X] T068 [P] [US2] Integration test for email sending (mock Brevo) in backend/tests/integration/email_test.go
 
 ### Implementation for User Story 2
 
-- [ ] T069 [P] [US2] Create OTP email template using React Email in frontend/emails/templates/OTPVerificationEmail.tsx
-- [ ] T070 [P] [US2] Create email layout component in frontend/emails/components/EmailLayout.tsx
-- [ ] T071 [P] [US2] Build and export email templates to HTML in frontend/emails/build/
-- [ ] T072 [US2] Implement VerifyTenant use case in backend/usecase/tenant/verify_tenant.go (validates OTP, updates tenant status, logs audit)
-- [ ] T073 [US2] Implement ResendOTP use case in backend/usecase/tenant/resend_otp.go (invalidates old OTP, generates new, sends email)
-- [ ] T074 [US2] Implement verification handler POST /api/v1/verify-otp in backend/interfaces/http/handlers/verification_handler.go
-- [ ] T075 [US2] Implement resend OTP handler POST /api/v1/resend-otp in backend/interfaces/http/handlers/resend_otp_handler.go
-- [ ] T076 [US2] Wire up verification and resend routes in backend/interfaces/http/router.go
+- [X] T069 [P] [US2] Create OTP email template using React Email in frontend/emails/templates/OTPVerificationEmail.tsx
+- [X] T070 [P] [US2] Create email layout component in frontend/emails/components/EmailLayout.tsx
+- [X] T071 [P] [US2] Build and export email templates to HTML in frontend/emails/build/
+- [X] T072 [US2] Implement VerifyTenant use case in backend/usecase/tenant/verify_tenant.go (validates OTP, updates tenant status, logs audit)
+- [X] T073 [US2] Implement ResendOTP use case in backend/usecase/tenant/resend_otp.go (invalidates old OTP, generates new, sends email)
+- [X] T074 [US2] Implement verification handler POST /api/v1/verify-otp in backend/interfaces/http/handlers/verification_handler.go
+- [X] T075 [US2] Implement resend OTP handler POST /api/v1/resend-otp in backend/interfaces/http/handlers/resend_otp_handler.go
+- [X] T076 [US2] Wire up verification and resend routes in backend/interfaces/http/router.go
 - [ ] T077 [P] [US2] Create OTPVerificationForm component in frontend/src/components/verification/OTPVerificationForm.tsx
 - [ ] T078 [P] [US2] Create ResendOTPButton component in frontend/src/components/verification/ResendOTPButton.tsx
 - [ ] T079 [US2] Create VerifyOTPPage in frontend/src/pages/VerifyOTPPage.tsx

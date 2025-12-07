@@ -12,6 +12,8 @@ type Router struct {
 	rateLimiter          *middleware.RateLimiter
 	registrationHandler  *handlers.RegistrationHandler
 	availabilityHandler  *handlers.AvailabilityHandler
+	verificationHandler  *handlers.VerificationHandler
+	resendOTPHandler     *handlers.ResendOTPHandler
 }
 
 // NewRouter creates a new HTTP router
@@ -19,6 +21,8 @@ func NewRouter(
 	rateLimiter *middleware.RateLimiter,
 	registrationHandler *handlers.RegistrationHandler,
 	availabilityHandler *handlers.AvailabilityHandler,
+	verificationHandler *handlers.VerificationHandler,
+	resendOTPHandler *handlers.ResendOTPHandler,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
 	engine := gin.New()
@@ -34,6 +38,8 @@ func NewRouter(
 		rateLimiter:         rateLimiter,
 		registrationHandler: registrationHandler,
 		availabilityHandler: availabilityHandler,
+		verificationHandler: verificationHandler,
+		resendOTPHandler:    resendOTPHandler,
 	}
 }
 
@@ -50,9 +56,10 @@ func (r *Router) Setup() {
 		{
 			registration.POST("/register", r.registrationHandler.Register)
 			registration.GET("/check-availability", r.availabilityHandler.CheckAvailability)
-			// TODO: Phase 4 - OTP verification
-			// registration.POST("/verify-otp", handlers.VerifyOTP)
-			// registration.POST("/resend-otp", handlers.ResendOTP)
+			
+			// OTP verification routes (Phase 4)
+			registration.POST("/verify-otp", r.verificationHandler.VerifyOTP)
+			registration.POST("/resend-otp", r.resendOTPHandler.ResendOTP)
 		}
 
 		// Auth routes (public)
