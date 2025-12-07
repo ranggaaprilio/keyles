@@ -161,13 +161,13 @@
 - [X] T074 [US2] Implement verification handler POST /api/v1/verify-otp in backend/interfaces/http/handlers/verification_handler.go
 - [X] T075 [US2] Implement resend OTP handler POST /api/v1/resend-otp in backend/interfaces/http/handlers/resend_otp_handler.go
 - [X] T076 [US2] Wire up verification and resend routes in backend/interfaces/http/router.go
-- [ ] T077 [P] [US2] Create OTPVerificationForm component in frontend/src/components/verification/OTPVerificationForm.tsx
-- [ ] T078 [P] [US2] Create ResendOTPButton component in frontend/src/components/verification/ResendOTPButton.tsx
-- [ ] T079 [US2] Create VerifyOTPPage in frontend/src/pages/VerifyOTPPage.tsx
-- [ ] T080 [P] [US2] Create useOTPVerification hook in frontend/src/hooks/useOTPVerification.ts
-- [ ] T081 [P] [US2] Add OTP verification to API client in frontend/src/services/api/tenant.ts
-- [ ] T082 [P] [US2] Create Toast notification component in frontend/src/components/ui/toast.tsx
-- [ ] T083 [P] [US2] Create frontend unit tests for OTPVerificationForm in frontend/tests/unit/components/OTPVerificationForm.test.tsx
+- [X] T077 [P] [US2] Create OTPVerificationForm component in frontend/src/components/verification/OTPVerificationForm.tsx
+- [X] T078 [P] [US2] Create ResendOTPButton component in frontend/src/components/verification/ResendOTPButton.tsx
+- [X] T079 [US2] Create VerifyOTPPage in frontend/src/pages/VerifyOTPPage.tsx
+- [X] T080 [P] [US2] Create useOTPVerification hook in frontend/src/hooks/useOTPVerification.ts
+- [X] T081 [P] [US2] Add OTP verification to API client in frontend/src/services/api/tenant.ts
+- [X] T082 [P] [US2] Create Toast notification component in frontend/src/components/ui/toast.tsx
+- [X] T083 [P] [US2] Create frontend unit tests for OTPVerificationForm in frontend/tests/unit/components/OTPVerificationForm.test.tsx
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently (registration + verification flow complete)
 

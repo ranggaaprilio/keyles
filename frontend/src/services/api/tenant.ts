@@ -8,6 +8,10 @@ import {
   RegisterTenantResponse,
   CheckAvailabilityRequest,
   CheckAvailabilityResponse,
+  VerifyOTPRequest,
+  VerifyOTPResponse,
+  ResendOTPRequest,
+  ResendOTPResponse,
 } from '../../types/tenant';
 import { ApiException } from '../../types/api';
 
@@ -66,6 +70,50 @@ export async function checkAvailability(
       throw new ApiException(
         axiosError.response?.status || 500,
         axiosError.response?.data?.error || 'Failed to check availability',
+        axiosError.code
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Verify OTP code for tenant email verification
+ */
+export async function verifyOTP(
+  data: VerifyOTPRequest
+): Promise<VerifyOTPResponse> {
+  try {
+    const response = await apiClient.post<VerifyOTPResponse>('/verify-otp', data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<{ error: string }>;
+      throw new ApiException(
+        axiosError.response?.status || 500,
+        axiosError.response?.data?.error || 'Failed to verify OTP',
+        axiosError.code
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Resend OTP code to tenant email
+ */
+export async function resendOTP(
+  data: ResendOTPRequest
+): Promise<ResendOTPResponse> {
+  try {
+    const response = await apiClient.post<ResendOTPResponse>('/resend-otp', data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<{ error: string }>;
+      throw new ApiException(
+        axiosError.response?.status || 500,
+        axiosError.response?.data?.error || 'Failed to resend OTP',
         axiosError.code
       );
     }

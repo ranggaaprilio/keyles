@@ -48,3 +48,23 @@ export interface CheckAvailabilityResponse {
   organization_name_available: boolean;
   email_available: boolean;
 }
+
+export interface VerifyOTPRequest {
+  tenant_id: string;
+  otp_code: string;
+}
+
+export interface VerifyOTPResponse {
+  tenant_id: string;
+  status: TenantStatus;
+  message: string;
+}
+
+export interface ResendOTPRequest {
+  tenant_id: string;
+}
+
+export interface ResendOTPResponse {
+  tenant_id: string;
+  message: string;
+}
