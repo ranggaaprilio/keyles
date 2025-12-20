@@ -59,11 +59,11 @@ describe('OTPVerificationForm', () => {
 
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
-    fireEvent.change(inputs[0], { target: { value: '1' } });
-    expect(inputs[0].value).toBe('1');
+    fireEvent.change(inputs[0]!, { target: { value: '1' } });
+    expect(inputs[0]!.value).toBe('1');
 
-    fireEvent.change(inputs[0], { target: { value: '12' } });
-    expect(inputs[0].value).toBe('2'); // Only last digit
+    fireEvent.change(inputs[0]!, { target: { value: '12' } });
+    expect(inputs[0]!.value).toBe('2'); // Only last digit
   });
 
   it('auto-focuses next input after entering digit', async () => {
@@ -78,7 +78,7 @@ describe('OTPVerificationForm', () => {
 
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
-    fireEvent.change(inputs[0], { target: { value: '1' } });
+    fireEvent.change(inputs[0]!, { target: { value: '1' } });
     
     await waitFor(() => {
       expect(inputs[1]).toHaveFocus();
@@ -98,10 +98,10 @@ describe('OTPVerificationForm', () => {
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
     // Enter digit in first input
-    fireEvent.change(inputs[0], { target: { value: '1' } });
+    fireEvent.change(inputs[0]!, { target: { value: '1' } });
     
     // Focus second input and press backspace (empty)
-    fireEvent.keyDown(inputs[1], { key: 'Backspace' });
+    fireEvent.keyDown(inputs[1]!, { key: 'Backspace' });
     
     expect(inputs[0]).toHaveFocus();
   });
@@ -122,14 +122,14 @@ describe('OTPVerificationForm', () => {
       getData: vi.fn(() => '123456'),
     };
 
-    fireEvent.paste(inputs[0], { clipboardData } as any);
+    fireEvent.paste(inputs[0]!, { clipboardData } as any);
 
-    expect(inputs[0].value).toBe('1');
-    expect(inputs[1].value).toBe('2');
-    expect(inputs[2].value).toBe('3');
-    expect(inputs[3].value).toBe('4');
-    expect(inputs[4].value).toBe('5');
-    expect(inputs[5].value).toBe('6');
+    expect(inputs[0]!.value).toBe('1');
+    expect(inputs[1]!.value).toBe('2');
+    expect(inputs[2]!.value).toBe('3');
+    expect(inputs[3]!.value).toBe('4');
+    expect(inputs[4]!.value).toBe('5');
+    expect(inputs[5]!.value).toBe('6');
   });
 
   it('disables submit button when OTP is incomplete', () => {
@@ -160,7 +160,7 @@ describe('OTPVerificationForm', () => {
     
     // Enter complete OTP
     '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } });
+      fireEvent.change(inputs[index]!, { target: { value: digit } });
     });
 
     const submitButton = screen.getByRole('button', { name: /verify email/i });
@@ -187,7 +187,7 @@ describe('OTPVerificationForm', () => {
     
     // Enter complete OTP
     '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } });
+      fireEvent.change(inputs[index]!, { target: { value: digit } });
     });
 
     const submitButton = screen.getByRole('button', { name: /verify email/i });
@@ -220,7 +220,7 @@ describe('OTPVerificationForm', () => {
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
     '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } });
+      fireEvent.change(inputs[index]!, { target: { value: digit } });
     });
 
     const submitButton = screen.getByRole('button', { name: /verify email/i });
@@ -247,7 +247,7 @@ describe('OTPVerificationForm', () => {
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
     '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } });
+      fireEvent.change(inputs[index]!, { target: { value: digit } });
     });
 
     const submitButton = screen.getByRole('button', { name: /verify email/i });
@@ -275,7 +275,7 @@ describe('OTPVerificationForm', () => {
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
     '123456'.split('').forEach((digit, index) => {
-      fireEvent.change(inputs[index], { target: { value: digit } });
+      fireEvent.change(inputs[index]!, { target: { value: digit } });
     });
 
     const submitButton = screen.getByRole('button', { name: /verify email/i });
@@ -296,7 +296,7 @@ describe('OTPVerificationForm', () => {
 
     const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
     
-    fireEvent.change(inputs[0], { target: { value: 'a' } });
-    expect(inputs[0].value).toBe('');
+    fireEvent.change(inputs[0]!, { target: { value: 'a' } });
+    expect(inputs[0]!.value).toBe('');
   });
 });

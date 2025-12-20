@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
@@ -365,7 +365,7 @@ describe('RegistrationForm', () => {
       const user = userEvent.setup();
       const registerTenantMock = vi.mocked(tenantApi.registerTenant);
       registerTenantMock.mockRejectedValue(
-        new ApiException('organization name already exists', 409)
+        new ApiException(409, 'organization name already exists')
       );
 
       renderForm();
@@ -388,7 +388,7 @@ describe('RegistrationForm', () => {
       const user = userEvent.setup();
       const registerTenantMock = vi.mocked(tenantApi.registerTenant);
       registerTenantMock.mockRejectedValue(
-        new ApiException('email already registered', 409)
+        new ApiException(409, 'email already registered')
       );
 
       renderForm();
@@ -411,7 +411,7 @@ describe('RegistrationForm', () => {
       const user = userEvent.setup();
       const registerTenantMock = vi.mocked(tenantApi.registerTenant);
       registerTenantMock.mockRejectedValue(
-        new ApiException('Internal server error', 500)
+        new ApiException(500, 'Internal server error')
       );
 
       renderForm();

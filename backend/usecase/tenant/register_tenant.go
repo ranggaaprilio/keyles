@@ -134,10 +134,10 @@ func (uc *RegisterTenantUseCase) Execute(
 	}
 
 	// Step 9: Create OTP verification entity
-	otpVerification := entities.NewOTPVerification(tenant.ID, otpCode, "")
+	otpVerification := entities.NewOTPVerification(tenant.ID.String(), otpCode, "email_verification", "")
 
 	// Step 10: Store OTP
-	if err := uc.otpRepo.Store(ctx, otpVerification); err != nil {
+	if err := uc.otpRepo.Create(ctx, otpVerification); err != nil {
 		return nil, fmt.Errorf("failed to store OTP: %w", err)
 	}
 

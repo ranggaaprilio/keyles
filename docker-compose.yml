@@ -44,9 +44,9 @@ services:
       - DB_PASSWORD=keyles_dev_password
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_API_KEY=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
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
-      - GIN_MODE=debug
+      - GIN_MODE=release
     ports:
       - "8080:8080"
     depends_on:
@@ -54,25 +54,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: keyles-frontend
     environment:
       - VITE_API_URL=http://localhost:8080
       - VITE_APP_NAME=Keyles SSO
     ports:
-      - "5173:5173"
+      - "3000:3000"
     depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
 
 volumes:

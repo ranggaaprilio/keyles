@@ -21,6 +21,7 @@ import (
 	httpServer "github.com/ranggaaprilio/keyles/interfaces/http"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
+	"github.com/ranggaaprilio/keyles/usecase/auth"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 )
 
@@ -58,7 +59,9 @@ func main() {
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
 	otpService := infraServices.NewCryptoOTPService()
-	passwordService := infraServices.NewBcryptPasswordService()
+	passwordService := infraServices.NewBcryptPasswordService() // Returns concrete type now
+	jwtService := infraServices.NewJWTService(cfg.JWTSecret, cfg.JWTExpirationHours)
+	authJWTService := infraServices.NewAuthJWTServiceAdapter(jwtService)
 
 	// Initialize use cases
 	registerTenantUseCase := tenant.NewRegisterTenantUseCase(
@@ -66,10 +69,18 @@ func main() {
 		emailService, otpService, passwordService,
 	)
 	checkAvailabilityUseCase := tenant.NewCheckAvailabilityUseCase(tenantRepo, userRepo)
+	verifyTenantUseCase := tenant.NewVerifyTenantUseCase(otpRepo, tenantRepo, auditRepo)
+	resendOTPUseCase := tenant.NewResendOTPUseCase(otpRepo, tenantRepo, userRepo, emailService, otpService, auditRepo)
+	authenticateAdminUseCase := auth.NewAuthenticateAdminUseCase(userRepo, tenantRepo, passwordService, authJWTService)
 
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
 	availabilityHandler := handlers.NewAvailabilityHandler(checkAvailabilityUseCase)
+	verificationHandler := handlers.NewVerificationHandler(verifyTenantUseCase)
+	resendOTPHandler := handlers.NewResendOTPHandler(resendOTPUseCase)
+	authHandler := handlers.NewAuthHandler(authenticateAdminUseCase)
+	dashboardHandler := handlers.NewDashboardHandler(userRepo, tenantRepo)
+	healthHandler := handlers.NewHealthHandler(tenantRepo, redisClient)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -79,6 +90,12 @@ func main() {
 		rateLimiter,
 		registrationHandler,
 		availabilityHandler,
+		verificationHandler,
+		resendOTPHandler,
+		authHandler,
+		dashboardHandler,
+		healthHandler,
+		jwtService,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,
 		cfg.CORSAllowedHeaders,

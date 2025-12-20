@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 
-	"github.com/ranggaaprilio/keyles/domain/services"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -13,7 +12,7 @@ type BcryptPasswordService struct {
 }
 
 // NewBcryptPasswordService creates a new bcrypt password service with cost factor 12
-func NewBcryptPasswordService() services.PasswordService {
+func NewBcryptPasswordService() *BcryptPasswordService {
 	return &BcryptPasswordService{
 		cost: 12, // Cost factor 12 as per FR-018 and constitution
 	}
@@ -35,4 +34,9 @@ func (s *BcryptPasswordService) Verify(password, hash string) error {
 		return fmt.Errorf("password verification failed: %w", err)
 	}
 	return nil
+}
+
+// Compare is an alias for Verify to satisfy different interface contracts
+func (s *BcryptPasswordService) Compare(hashedPassword, password string) error {
+	return s.Verify(password, hashedPassword)
 }

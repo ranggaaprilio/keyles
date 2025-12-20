@@ -181,27 +181,27 @@
 
 ### Tests for User Story 3 (MANDATORY per constitution) ⚠️
 
-- [ ] T084 [P] [US3] Unit test for AuthenticateAdmin use case in backend/tests/unit/usecase/authenticate_admin_test.go
-- [ ] T085 [P] [US3] Integration test for login handler in backend/tests/integration/auth_test.go
-- [ ] T086 [P] [US3] Integration test for dashboard handler (JWT protected) in backend/tests/integration/dashboard_test.go
+- [X] T084 [P] [US3] Unit test for AuthenticateAdmin use case in backend/tests/unit/usecase/authenticate_admin_test.go
+- [X] T085 [P] [US3] Integration test for login handler in backend/tests/integration/auth_test.go
+- [X] T086 [P] [US3] Integration test for dashboard handler (JWT protected) in backend/tests/integration/dashboard_test.go
 
 ### Implementation for User Story 3
 
-- [ ] T087 [P] [US3] Create JWT token generation utility in backend/infrastructure/services/jwt_service.go
-- [ ] T088 [US3] Implement AuthenticateAdmin use case in backend/usecase/auth/authenticate_admin.go (validates credentials, checks tenant status, generates JWT)
-- [ ] T089 [US3] Implement auth middleware in backend/interfaces/http/middleware/auth.go (JWT validation)
-- [ ] T090 [US3] Implement login handler POST /api/v1/login in backend/interfaces/http/handlers/auth_handler.go
-- [ ] T091 [US3] Implement dashboard handler GET /api/v1/dashboard in backend/interfaces/http/handlers/dashboard_handler.go
-- [ ] T092 [US3] Wire up auth and dashboard routes in backend/interfaces/http/router.go (dashboard requires auth middleware)
-- [ ] T093 [P] [US3] Create LoginPage in frontend/src/pages/LoginPage.tsx
-- [ ] T094 [P] [US3] Create DashboardPage in frontend/src/pages/DashboardPage.tsx
-- [ ] T095 [P] [US3] Create TenantDashboard component in frontend/src/components/dashboard/TenantDashboard.tsx
-- [ ] T096 [P] [US3] Create TenantInfo component in frontend/src/components/dashboard/TenantInfo.tsx
-- [ ] T097 [P] [US3] Create auth API client in frontend/src/services/api/auth.ts
-- [ ] T098 [P] [US3] Create useAuth hook in frontend/src/hooks/useAuth.ts (login, logout, token management)
-- [ ] T099 [P] [US3] Setup React Router in frontend/src/App.tsx with routes (/, /register, /verify-otp, /login, /dashboard)
-- [ ] T100 [P] [US3] Create protected route wrapper for dashboard in frontend/src/components/ProtectedRoute.tsx
-- [ ] T101 [P] [US3] Create frontend unit tests for login and dashboard in frontend/tests/unit/
+- [X] T087 [P] [US3] Create JWT token generation utility in backend/infrastructure/services/jwt_service.go
+- [X] T088 [US3] Implement AuthenticateAdmin use case in backend/usecase/auth/authenticate_admin.go (validates credentials, checks tenant status, generates JWT)
+- [X] T089 [US3] Implement auth middleware in backend/interfaces/http/middleware/auth.go (JWT validation)
+- [X] T090 [US3] Implement login handler POST /api/v1/login in backend/interfaces/http/handlers/auth_handler.go
+- [X] T091 [US3] Implement dashboard handler GET /api/v1/dashboard in backend/interfaces/http/handlers/dashboard_handler.go
+- [X] T092 [US3] Wire up auth and dashboard routes in backend/interfaces/http/router.go (dashboard requires auth middleware)
+- [X] T093 [P] [US3] Create LoginPage in frontend/src/pages/LoginPage.tsx
+- [X] T094 [P] [US3] Create DashboardPage in frontend/src/pages/DashboardPage.tsx
+- [X] T095 [P] [US3] Create TenantDashboard component in frontend/src/components/dashboard/TenantDashboard.tsx
+- [X] T096 [P] [US3] Create TenantInfo component in frontend/src/components/dashboard/TenantInfo.tsx
+- [X] T097 [P] [US3] Create auth API client in frontend/src/services/api/auth.ts
+- [X] T098 [P] [US3] Create useAuth hook in frontend/src/hooks/useAuth.ts (login, logout, token management)
+- [X] T099 [P] [US3] Setup React Router in frontend/src/App.tsx with routes (/, /register, /verify-otp, /login, /dashboard)
+- [X] T100 [P] [US3] Create protected route wrapper for dashboard in frontend/src/components/ProtectedRoute.tsx
+- [X] T101 [P] [US3] Create frontend unit tests for login and dashboard in frontend/tests/unit/
 
 **Checkpoint**: All user stories should now be independently functional (complete registration → verification → login → dashboard flow)
 
@@ -212,21 +212,21 @@
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] T102 [P] Add comprehensive logging to all use cases using structured logging (logrus or zap)
-- [ ] T103 [P] Add health check endpoints in backend/interfaces/http/handlers/health_handler.go (/health, /health/db, /health/redis)
+- [X] T103 [P] Add health check endpoints in backend/interfaces/http/handlers/health_handler.go (/health, /health/db, /health/redis)
 - [ ] T104 [P] Create API documentation using Swagger/OpenAPI annotations in handlers
-- [ ] T105 [P] Add frontend error boundary component in frontend/src/components/ErrorBoundary.tsx
-- [ ] T106 [P] Implement loading states and skeletons in frontend components
-- [ ] T107 [P] Add frontend form accessibility (ARIA labels, keyboard navigation)
+- [X] T105 [P] Add frontend error boundary component in frontend/src/components/ErrorBoundary.tsx
+- [X] T106 [P] Implement loading states and skeletons in frontend components
+- [X] T107 [P] Add frontend form accessibility (ARIA labels, keyboard navigation)
 - [ ] T108 Verify ≥85% test coverage for backend domain and usecase layers (run go test -cover)
 - [ ] T109 Verify all 6 handlers have integration tests passing
-- [ ] T110 [P] Create Dockerfile for backend with multi-stage build
-- [ ] T111 [P] Create Dockerfile for frontend (nginx serving static build)
-- [ ] T112 Update docker-compose.yml with built images and health checks
-- [ ] T113 [P] Add CI/CD workflow in .github/workflows/backend-ci.yml (test, lint, build)
-- [ ] T114 [P] Add CI/CD workflow in .github/workflows/frontend-ci.yml (test, lint, build)
+- [X] T110 [P] Create Dockerfile for backend with multi-stage build
+- [X] T111 [P] Create Dockerfile for frontend (nginx serving static build)
+- [X] T112 Update docker-compose.yml with built images and health checks
+- [X] T113 [P] Add CI/CD workflow in .github/workflows/backend-ci.yml (test, lint, build)
+- [X] T114 [P] Add CI/CD workflow in .github/workflows/frontend-ci.yml (test, lint, build)
 - [ ] T115 Architecture compliance review - verify no domain-to-infrastructure dependencies
 - [ ] T116 Security review - verify bcrypt hashing, JWT secrets, rate limiting, CORS
-- [ ] T117 [P] Create comprehensive README.md with setup instructions
+- [X] T117 [P] Create comprehensive README.md with setup instructions
 - [ ] T118 Run all manual test scenarios from quickstart.md
 - [ ] T119 Performance testing - verify <200ms p95 for registration, <100ms for verification
 - [ ] T120 Database indexing review - ensure all indexes from data-model.md are created

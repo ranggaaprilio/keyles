@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
@@ -61,7 +62,11 @@ func (uc *VerifyTenantUseCase) Execute(tenantID, otpCode string) error {
 	}
 
 	// Step 6: Find the tenant
-	tenant, err := uc.tenantRepo.FindByID(tenantID)
+	tenantUUID, err := uuid.Parse(tenantID)
+	if err != nil {
+		return fmt.Errorf("invalid tenant ID: %w", err)
+	}
+	tenant, err := uc.tenantRepo.FindByID(ctx, tenantUUID)
 	if err != nil {
 		return fmt.Errorf("tenant not found: %w", err)
 	}
@@ -77,15 +82,15 @@ func (uc *VerifyTenantUseCase) Execute(tenantID, otpCode string) error {
 	}
 
 	// Step 9: Update tenant in database
-	if err := uc.tenantRepo.Update(tenant); err != nil {
+	if err := uc.tenantRepo.Update(ctx, tenant); err != nil {
 		return fmt.Errorf("failed to update tenant: %w", err)
 	}
 
 	// Step 10: Create audit log (non-blocking - failure doesn't affect verification)
 	auditLog := &entities.AuditLog{
-		TenantID:  tenantID,
-		EventType: "tenant.verified",
-		Details:   map[string]interface{}{"organization_name": tenant.OrganizationName},
+		TenantID:  &tenantUUID,
+		EventType: entities.EventTenantActivated,
+		EventData: map[string]interface{}{"organization_name": tenant.OrganizationName},
 	}
 	_ = uc.auditRepo.Create(ctx, auditLog) // Ignore error to not block verification
 

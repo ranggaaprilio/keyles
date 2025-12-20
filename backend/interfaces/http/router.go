@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 )
@@ -14,6 +15,10 @@ type Router struct {
 	availabilityHandler  *handlers.AvailabilityHandler
 	verificationHandler  *handlers.VerificationHandler
 	resendOTPHandler     *handlers.ResendOTPHandler
+	authHandler          *handlers.AuthHandler
+	dashboardHandler     *handlers.DashboardHandler
+	healthHandler        *handlers.HealthHandler
+	jwtService           *services.JWTService
 }
 
 // NewRouter creates a new HTTP router
@@ -23,6 +28,10 @@ func NewRouter(
 	availabilityHandler *handlers.AvailabilityHandler,
 	verificationHandler *handlers.VerificationHandler,
 	resendOTPHandler *handlers.ResendOTPHandler,
+	authHandler *handlers.AuthHandler,
+	dashboardHandler *handlers.DashboardHandler,
+	healthHandler *handlers.HealthHandler,
+	jwtService *services.JWTService,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
 	engine := gin.New()
@@ -40,16 +49,23 @@ func NewRouter(
 		availabilityHandler: availabilityHandler,
 		verificationHandler: verificationHandler,
 		resendOTPHandler:    resendOTPHandler,
+		authHandler:         authHandler,
+		dashboardHandler:    dashboardHandler,
+		healthHandler:       healthHandler,
+		jwtService:          jwtService,
 	}
 }
-
 // Setup configures all routes
 func (r *Router) Setup() {
+	// Root health check
+	r.engine.GET("/health", r.healthHandler.Health)
+	r.engine.GET("/health/db", r.healthHandler.HealthDB)
+	r.engine.GET("/health/redis", r.healthHandler.HealthRedis)
+
 	// API v1 routes
 	v1 := r.engine.Group("/api/v1")
 	{
-		// Health check (public)
-		v1.GET("/health", r.healthCheck)
+		v1.GET("/health", r.healthHandler.Health)
 
 		// Registration routes (public)
 		registration := v1.Group("/")
@@ -62,30 +78,16 @@ func (r *Router) Setup() {
 			registration.POST("/resend-otp", r.resendOTPHandler.ResendOTP)
 		}
 
-		// Auth routes (public)
-		// TODO: Wire up auth handlers in Phase 5
-		// auth := v1.Group("/")
-		// {
-		// 	auth.POST("/login", handlers.Login)
-		// }
+		// Auth routes (public) - Phase 5
+		v1.POST("/login", r.authHandler.Login)
 
-		// Protected routes (require JWT)
-		// TODO: Wire up protected routes in Phase 5
-		// protected := v1.Group("/")
-		// protected.Use(middleware.Auth())
-		// {
-		// 	protected.GET("/dashboard", handlers.Dashboard)
-		// }
+		// Protected routes (require JWT) - Phase 5
+		protected := v1.Group("/")
+		protected.Use(middleware.AuthMiddleware(r.jwtService))
+		{
+			protected.GET("/dashboard", r.dashboardHandler.GetDashboard)
+		}
 	}
-}
-
-// healthCheck is a simple health check endpoint
-func (r *Router) healthCheck(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status":  "healthy",
-		"service": "keyles-sso",
-		"version": "1.0.0",
-	})
 }
 
 // GetEngine returns the Gin engine
