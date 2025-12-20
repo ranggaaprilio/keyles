@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
@@ -18,7 +19,7 @@ type AuditLogModel struct {
 	EventData map[string]interface{} `gorm:"type:jsonb"`
 	IPAddress string                 `gorm:"type:varchar(45)"`
 	UserAgent string                 `gorm:"type:text"`
-	CreatedAt int64                  `gorm:"autoCreateTime:milli;index"`
+	CreatedAt time.Time              `gorm:"type:timestamp;not null;default:now();index"`
 }
 
 func (AuditLogModel) TableName() string {
@@ -45,7 +46,7 @@ func (r *PostgresAuditRepository) Create(ctx context.Context, log *entities.Audi
 		EventData: log.EventData,
 		IPAddress: log.IPAddress,
 		UserAgent: log.UserAgent,
-		CreatedAt: log.CreatedAt.UnixMilli(),
+		CreatedAt: log.CreatedAt,
 	}
 
 	return r.db.WithContext(ctx).Create(model).Error
@@ -116,6 +117,6 @@ func (r *PostgresAuditRepository) toEntity(model *AuditLogModel) *entities.Audit
 		EventData: model.EventData,
 		IPAddress: model.IPAddress,
 		UserAgent: model.UserAgent,
-		CreatedAt: timeFromUnixMilli(model.CreatedAt),
+		CreatedAt: model.CreatedAt,
 	}
 }

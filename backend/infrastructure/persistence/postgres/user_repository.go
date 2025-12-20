@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
@@ -19,8 +20,8 @@ type UserModel struct {
 	Email        string    `gorm:"type:varchar(255);not null;uniqueIndex:idx_users_email"`
 	PasswordHash string    `gorm:"type:varchar(255);not null"`
 	Role         string    `gorm:"type:varchar(20);not null;default:'admin'"`
-	CreatedAt    int64     `gorm:"autoCreateTime:milli"`
-	UpdatedAt    int64     `gorm:"autoUpdateTime:milli"`
+	CreatedAt    time.Time `gorm:"type:timestamp;not null;default:now()"`
+	UpdatedAt    time.Time `gorm:"type:timestamp;not null;default:now()"`
 }
 
 func (UserModel) TableName() string {
@@ -46,8 +47,8 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *entities.Admi
 		Email:        user.Email,
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
-		CreatedAt:    user.CreatedAt.UnixMilli(),
-		UpdatedAt:    user.UpdatedAt.UnixMilli(),
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
 	}
 
 	return r.db.WithContext(ctx).Create(model).Error
@@ -110,7 +111,7 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *entities.Admi
 		Email:        user.Email,
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
-		UpdatedAt:    user.UpdatedAt.UnixMilli(),
+		UpdatedAt:    user.UpdatedAt,
 	}
 
 	return r.db.WithContext(ctx).
@@ -146,7 +147,7 @@ func (r *PostgresUserRepository) toEntity(model *UserModel) *entities.AdminUser 
 		Email:        model.Email,
 		PasswordHash: model.PasswordHash,
 		Role:         entities.UserRole(model.Role),
-		CreatedAt:    timeFromUnixMilli(model.CreatedAt),
-		UpdatedAt:    timeFromUnixMilli(model.UpdatedAt),
+		CreatedAt:    model.CreatedAt,
+		UpdatedAt:    model.UpdatedAt,
 	}
 }

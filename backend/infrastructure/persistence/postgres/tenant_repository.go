@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
@@ -13,12 +14,12 @@ import (
 
 // TenantModel is the GORM model for tenants table
 type TenantModel struct {
-	ID               uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
-	OrganizationName string    `gorm:"type:varchar(100);not null"`
-	Status           string    `gorm:"type:varchar(20);not null;default:'pending_verification'"`
-	CreatedAt        int64     `gorm:"autoCreateTime:milli"`
-	VerifiedAt       *int64    `gorm:"default:null"`
-	UpdatedAt        int64     `gorm:"autoUpdateTime:milli"`
+	ID               uuid.UUID  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
+	OrganizationName string     `gorm:"type:varchar(100);not null"`
+	Status           string     `gorm:"type:varchar(20);not null;default:'pending_verification'"`
+	CreatedAt        time.Time  `gorm:"type:timestamp;not null;default:now()"`
+	VerifiedAt       *time.Time `gorm:"type:timestamp;default:null"`
+	UpdatedAt        time.Time  `gorm:"type:timestamp;not null;default:now()"`
 }
 
 func (TenantModel) TableName() string {
@@ -41,13 +42,12 @@ func (r *PostgresTenantRepository) Create(ctx context.Context, tenant *entities.
 		ID:               tenant.ID,
 		OrganizationName: tenant.OrganizationName,
 		Status:           string(tenant.Status),
-		CreatedAt:        tenant.CreatedAt.UnixMilli(),
-		UpdatedAt:        tenant.UpdatedAt.UnixMilli(),
+		CreatedAt:        tenant.CreatedAt,
+		UpdatedAt:        tenant.UpdatedAt,
 	}
 	
 	if tenant.VerifiedAt != nil {
-		verifiedAt := tenant.VerifiedAt.UnixMilli()
-		model.VerifiedAt = &verifiedAt
+		model.VerifiedAt = tenant.VerifiedAt
 	}
 
 	return r.db.WithContext(ctx).Create(model).Error
@@ -89,12 +89,11 @@ func (r *PostgresTenantRepository) Update(ctx context.Context, tenant *entities.
 		ID:               tenant.ID,
 		OrganizationName: tenant.OrganizationName,
 		Status:           string(tenant.Status),
-		UpdatedAt:        tenant.UpdatedAt.UnixMilli(),
+		UpdatedAt:        tenant.UpdatedAt,
 	}
 
 	if tenant.VerifiedAt != nil {
-		verifiedAt := tenant.VerifiedAt.UnixMilli()
-		model.VerifiedAt = &verifiedAt
+		model.VerifiedAt = tenant.VerifiedAt
 	}
 
 	return r.db.WithContext(ctx).
@@ -128,13 +127,12 @@ func (r *PostgresTenantRepository) toEntity(model *TenantModel) *entities.Tenant
 		ID:               model.ID,
 		OrganizationName: model.OrganizationName,
 		Status:           entities.TenantStatus(model.Status),
-		CreatedAt:        timeFromUnixMilli(model.CreatedAt),
-		UpdatedAt:        timeFromUnixMilli(model.UpdatedAt),
+		CreatedAt:        model.CreatedAt,
+		UpdatedAt:        model.UpdatedAt,
 	}
 
 	if model.VerifiedAt != nil {
-		verifiedAt := timeFromUnixMilli(*model.VerifiedAt)
-		tenant.VerifiedAt = &verifiedAt
+		tenant.VerifiedAt = model.VerifiedAt
 	}
 
 	return tenant

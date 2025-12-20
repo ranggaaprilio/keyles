@@ -16,21 +16,27 @@ func CORS(allowedOrigins, allowedMethods, allowedHeaders string) gin.HandlerFunc
 		origin := c.Request.Header.Get("Origin")
 
 		// Check if origin is allowed
-		allowed := false
+		allowedOrigin := ""
 		for _, o := range origins {
-			if strings.TrimSpace(o) == origin || strings.TrimSpace(o) == "*" {
-				allowed = true
+			trimmedOrigin := strings.TrimSpace(o)
+			if trimmedOrigin == "*" {
+				allowedOrigin = "*"
+				break
+			}
+			if trimmedOrigin == origin {
+				allowedOrigin = origin
 				break
 			}
 		}
 
-		if allowed {
-			c.Header("Access-Control-Allow-Origin", origin)
+		// Set CORS headers
+		if allowedOrigin != "" {
+			c.Header("Access-Control-Allow-Origin", allowedOrigin)
+			c.Header("Access-Control-Allow-Credentials", "true")
 		}
 
 		c.Header("Access-Control-Allow-Methods", strings.Join(methods, ", "))
 		c.Header("Access-Control-Allow-Headers", strings.Join(headers, ", "))
-		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Max-Age", "86400")
 
 		// Handle preflight requests
