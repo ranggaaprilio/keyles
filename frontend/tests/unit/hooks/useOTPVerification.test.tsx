@@ -2,15 +2,21 @@
  * Tests for useOTPVerification Hook
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useOTPVerification } from '../../../src/hooks/useOTPVerification';
-import * as tenantApi from '../../../src/services/api/tenant';
-import { ApiException } from '../../../src/types/api';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useOTPVerification } from "../../../src/hooks/useOTPVerification";
+import { ApiException } from "../../../src/types/api";
+
+// Mock functions
+const mockVerifyOTP = vi.fn();
+const mockResendOTP = vi.fn();
 
 // Mock the API
-vi.mock('../../../src/services/api/tenant');
+vi.mock("../../../src/services/api/tenant", () => ({
+  verifyOTP: (...args: any[]) => mockVerifyOTP(...args),
+  resendOTP: (...args: any[]) => mockResendOTP(...args),
+}));
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -25,17 +31,17 @@ const createWrapper = () => {
   );
 };
 
-describe('useOTPVerification', () => {
+describe("useOTPVerification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('verifyMutation', () => {
-    it('calls verifyOTP API with correct data', async () => {
-      const mockVerifyOTP = vi.spyOn(tenantApi, 'verifyOTP').mockResolvedValue({
-        tenant_id: 'test-id',
-        status: 'active',
-        message: 'Success',
+  describe("verifyMutation", () => {
+    it("calls verifyOTP API with correct data", async () => {
+      mockVerifyOTP.mockResolvedValue({
+        tenant_id: "test-id",
+        status: "active",
+        message: "Success",
       });
 
       const { result } = renderHook(() => useOTPVerification(), {
@@ -43,68 +49,89 @@ describe('useOTPVerification', () => {
       });
 
       result.current.verifyMutation.mutate({
-        tenant_id: 'test-id',
-        otp_code: '123456',
+        tenant_id: "test-id",
+        otp_code: "123456",
       });
 
       await waitFor(() => {
-        expect(mockVerifyOTP).toHaveBeenCalledWith({
-          tenant_id: 'test-id',
-          otp_code: '123456',
-        });
+        expect(mockVerifyOTP).toHaveBeenCalled();
+      });
+
+      // Check the first argument is the request data
+      expect(mockVerifyOTP.mock.calls[0][0]).toEqual({
+        tenant_id: "test-id",
+        otp_code: "123456",
       });
     });
 
-    it('calls onVerifySuccess callback on success', async () => {
-      vi.spyOn(tenantApi, 'verifyOTP').mockResolvedValue({
-        tenant_id: 'test-id',
-        status: 'active',
-        message: 'Success',
-      });
+    it("calls onVerifySuccess callback on success", async () => {
+      const responseData = {
+        tenant_id: "test-id",
+        status: "active",
+        message: "Success",
+      };
+      mockVerifyOTP.mockResolvedValue(responseData);
 
       const onVerifySuccess = vi.fn();
 
-      const { result } = renderHook(() => useOTPVerification({ onVerifySuccess }), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useOTPVerification({ onVerifySuccess }),
+        {
+          wrapper: createWrapper(),
+        }
+      );
 
       result.current.verifyMutation.mutate({
-        tenant_id: 'test-id',
-        otp_code: '123456',
+        tenant_id: "test-id",
+        otp_code: "123456",
       });
 
       await waitFor(() => {
-        expect(onVerifySuccess).toHaveBeenCalledWith({
-          tenant_id: 'test-id',
-          status: 'active',
-          message: 'Success',
-        });
+        expect(onVerifySuccess).toHaveBeenCalled();
       });
+
+      // React Query calls onSuccess with (data, variables, context)
+      expect(onVerifySuccess.mock.calls[0][0]).toEqual(responseData);
     });
 
-    it('calls onVerifyError callback on error', async () => {
-      const error = new ApiException(401, 'Invalid OTP');
-      vi.spyOn(tenantApi, 'verifyOTP').mockRejectedValue(error);
+    it("calls onVerifyError callback on error", async () => {
+      const error = new ApiException(401, "Invalid OTP");
+      mockVerifyOTP.mockRejectedValue(error);
 
       const onVerifyError = vi.fn();
 
-      const { result } = renderHook(() => useOTPVerification({ onVerifyError }), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useOTPVerification({ onVerifyError }),
+        {
+          wrapper: createWrapper(),
+        }
+      );
 
       result.current.verifyMutation.mutate({
-        tenant_id: 'test-id',
-        otp_code: '123456',
+        tenant_id: "test-id",
+        otp_code: "123456",
       });
 
       await waitFor(() => {
-        expect(onVerifyError).toHaveBeenCalledWith(error);
+        expect(onVerifyError).toHaveBeenCalled();
       });
+
+      // React Query calls onError with (error, variables, context)
+      expect(onVerifyError.mock.calls[0][0]).toBe(error);
     });
 
-    it('sets isVerifying to true during mutation', async () => {
-      vi.spyOn(tenantApi, 'verifyOTP').mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
+    it("sets isVerifying to true during mutation", async () => {
+      let resolvePromise: () => void;
+      mockVerifyOTP.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = () =>
+              resolve({
+                tenant_id: "test-id",
+                status: "active",
+                message: "Success",
+              });
+          })
       );
 
       const { result } = renderHook(() => useOTPVerification(), {
@@ -114,19 +141,23 @@ describe('useOTPVerification', () => {
       expect(result.current.isVerifying).toBe(false);
 
       result.current.verifyMutation.mutate({
-        tenant_id: 'test-id',
-        otp_code: '123456',
+        tenant_id: "test-id",
+        otp_code: "123456",
       });
 
-      expect(result.current.isVerifying).toBe(true);
+      await waitFor(() => {
+        expect(result.current.isVerifying).toBe(true);
+      });
+
+      resolvePromise!();
     });
   });
 
-  describe('resendMutation', () => {
-    it('calls resendOTP API with correct data', async () => {
-      const mockResendOTP = vi.spyOn(tenantApi, 'resendOTP').mockResolvedValue({
-        tenant_id: 'test-id',
-        message: 'OTP resent successfully',
+  describe("resendMutation", () => {
+    it("calls resendOTP API with correct data", async () => {
+      mockResendOTP.mockResolvedValue({
+        tenant_id: "test-id",
+        message: "OTP resent successfully",
       });
 
       const { result } = renderHook(() => useOTPVerification(), {
@@ -134,62 +165,80 @@ describe('useOTPVerification', () => {
       });
 
       result.current.resendMutation.mutate({
-        tenant_id: 'test-id',
+        tenant_id: "test-id",
       });
 
       await waitFor(() => {
-        expect(mockResendOTP).toHaveBeenCalledWith({
-          tenant_id: 'test-id',
-        });
+        expect(mockResendOTP).toHaveBeenCalled();
+      });
+
+      // Check the first argument is the request data
+      expect(mockResendOTP.mock.calls[0][0]).toEqual({
+        tenant_id: "test-id",
       });
     });
 
-    it('calls onResendSuccess callback on success', async () => {
-      vi.spyOn(tenantApi, 'resendOTP').mockResolvedValue({
-        tenant_id: 'test-id',
-        message: 'OTP resent successfully',
-      });
+    it("calls onResendSuccess callback on success", async () => {
+      const responseData = {
+        tenant_id: "test-id",
+        message: "OTP resent successfully",
+      };
+      mockResendOTP.mockResolvedValue(responseData);
 
       const onResendSuccess = vi.fn();
 
-      const { result } = renderHook(() => useOTPVerification({ onResendSuccess }), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useOTPVerification({ onResendSuccess }),
+        {
+          wrapper: createWrapper(),
+        }
+      );
 
       result.current.resendMutation.mutate({
-        tenant_id: 'test-id',
+        tenant_id: "test-id",
       });
 
       await waitFor(() => {
-        expect(onResendSuccess).toHaveBeenCalledWith({
-          tenant_id: 'test-id',
-          message: 'OTP resent successfully',
-        });
+        expect(onResendSuccess).toHaveBeenCalled();
       });
+
+      // React Query calls onSuccess with (data, variables, context)
+      expect(onResendSuccess.mock.calls[0][0]).toEqual(responseData);
     });
 
-    it('calls onResendError callback on error', async () => {
-      const error = new ApiException(429, 'Rate limit exceeded');
-      vi.spyOn(tenantApi, 'resendOTP').mockRejectedValue(error);
+    it("calls onResendError callback on error", async () => {
+      const error = new ApiException(429, "Rate limit exceeded");
+      mockResendOTP.mockRejectedValue(error);
 
       const onResendError = vi.fn();
 
-      const { result } = renderHook(() => useOTPVerification({ onResendError }), {
-        wrapper: createWrapper(),
-      });
+      const { result } = renderHook(
+        () => useOTPVerification({ onResendError }),
+        {
+          wrapper: createWrapper(),
+        }
+      );
 
       result.current.resendMutation.mutate({
-        tenant_id: 'test-id',
+        tenant_id: "test-id",
       });
 
       await waitFor(() => {
-        expect(onResendError).toHaveBeenCalledWith(error);
+        expect(onResendError).toHaveBeenCalled();
       });
+
+      // React Query calls onError with (error, variables, context)
+      expect(onResendError.mock.calls[0][0]).toBe(error);
     });
 
-    it('sets isResending to true during mutation', async () => {
-      vi.spyOn(tenantApi, 'resendOTP').mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
+    it("sets isResending to true during mutation", async () => {
+      let resolvePromise: () => void;
+      mockResendOTP.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvePromise = () =>
+              resolve({ tenant_id: "test-id", message: "OTP resent" });
+          })
       );
 
       const { result } = renderHook(() => useOTPVerification(), {
@@ -199,18 +248,22 @@ describe('useOTPVerification', () => {
       expect(result.current.isResending).toBe(false);
 
       result.current.resendMutation.mutate({
-        tenant_id: 'test-id',
+        tenant_id: "test-id",
       });
 
-      expect(result.current.isResending).toBe(true);
+      await waitFor(() => {
+        expect(result.current.isResending).toBe(true);
+      });
+
+      resolvePromise!();
     });
   });
 
-  it('works without callbacks', async () => {
-    vi.spyOn(tenantApi, 'verifyOTP').mockResolvedValue({
-      tenant_id: 'test-id',
-      status: 'active',
-      message: 'Success',
+  it("works without callbacks", async () => {
+    mockVerifyOTP.mockResolvedValue({
+      tenant_id: "test-id",
+      status: "active",
+      message: "Success",
     });
 
     const { result } = renderHook(() => useOTPVerification(), {
@@ -218,8 +271,8 @@ describe('useOTPVerification', () => {
     });
 
     result.current.verifyMutation.mutate({
-      tenant_id: 'test-id',
-      otp_code: '123456',
+      tenant_id: "test-id",
+      otp_code: "123456",
     });
 
     await waitFor(() => {

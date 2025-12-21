@@ -2,15 +2,16 @@
  * Main Application Component
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { RegisterPage } from './pages/RegisterPage';
-import { VerifyOTPPage } from './pages/VerifyOTPPage';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { isAuthenticated } from './services/api/auth';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { RegisterPage } from "./pages/RegisterPage";
+import { VerifyOTPPage } from "./pages/VerifyOTPPage";
+import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import LandingPage from "./pages/LandingPage";
+import ScrollToHashElement from "./components/landing/ScrollToHashElement";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -21,15 +22,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-// Home redirect component
-function HomeRedirect() {
-  return isAuthenticated() ? (
-    <Navigate to="/dashboard" replace />
-  ) : (
-    <Navigate to="/login" replace />
-  );
-}
 
 // 404 Page
 function NotFoundPage() {
@@ -54,9 +46,10 @@ export function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
+          <ScrollToHashElement />
           <Routes>
-            {/* Home - redirect based on auth status */}
-            <Route path="/" element={<HomeRedirect />} />
+            {/* Landing Page at root */}
+            <Route path="/" element={<LandingPage />} />
 
             {/* Public routes */}
             <Route path="/register" element={<RegisterPage />} />

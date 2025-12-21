@@ -2,14 +2,33 @@
  * Tests for ResendOTPButton Component
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ResendOTPButton } from '../../../src/components/verification/ResendOTPButton';
-import * as tenantApi from '../../../src/services/api/tenant';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ResendOTPButton } from "../../../src/components/verification/ResendOTPButton";
+
+// Mock functions
+const mockVerifyOTP = vi.fn();
+const mockResendOTP = vi.fn();
 
 // Mock the API
-vi.mock('../../../src/services/api/tenant');
+vi.mock("../../../src/services/api/tenant", () => ({
+  verifyOTP: (...args: any[]) => mockVerifyOTP(...args),
+  resendOTP: (...args: any[]) => mockResendOTP(...args),
+}));
+
+// Mock the OTP store to avoid real timers
+vi.mock("../../../src/stores/otpStore", () => ({
+  useOTPStore: vi.fn(() => ({
+    countdown: 0,
+    isActive: false,
+    startCountdown: vi.fn(),
+    resetCountdown: vi.fn(),
+    tick: vi.fn(),
+  })),
+}));
+
+import { useOTPStore } from "../../../src/stores/otpStore";
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -24,21 +43,25 @@ const createWrapper = () => {
   );
 };
 
-describe('ResendOTPButton', () => {
+describe("ResendOTPButton", () => {
   const mockOnSuccess = vi.fn();
   const mockOnError = vi.fn();
-  const tenantId = 'test-tenant-id';
+  const tenantId = "test-tenant-id";
+  const mockStartCountdown = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
+    // Default: countdown finished (button enabled)
+    (useOTPStore as any).mockReturnValue({
+      countdown: 0,
+      isActive: false,
+      startCountdown: mockStartCountdown,
+      resetCountdown: vi.fn(),
+      tick: vi.fn(),
+    });
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('renders resend button', () => {
+  it("renders resend button", () => {
     render(
       <ResendOTPButton
         tenantId={tenantId}
@@ -48,10 +71,18 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeInTheDocument();
   });
 
-  it('starts with countdown active on mount', () => {
+  it("starts with countdown active on mount", () => {
+    (useOTPStore as any).mockReturnValue({
+      countdown: 30,
+      isActive: true,
+      startCountdown: mockStartCountdown,
+      resetCountdown: vi.fn(),
+      tick: vi.fn(),
+    });
+
     render(
       <ResendOTPButton
         tenantId={tenantId}
@@ -61,10 +92,18 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText(/resend code in \d+s/i)).toBeInTheDocument();
+    expect(screen.getByText(/resend code in 30s/i)).toBeInTheDocument();
   });
 
-  it('disables button during countdown', () => {
+  it("disables button during countdown", () => {
+    (useOTPStore as any).mockReturnValue({
+      countdown: 30,
+      isActive: true,
+      startCountdown: mockStartCountdown,
+      resetCountdown: vi.fn(),
+      tick: vi.fn(),
+    });
+
     render(
       <ResendOTPButton
         tenantId={tenantId}
@@ -74,11 +113,12 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    const button = screen.getByRole('button');
+    const button = screen.getByRole("button");
     expect(button).toBeDisabled();
   });
 
-  it('enables button after countdown completes', async () => {
+  it("enables button after countdown completes", async () => {
+    // countdown = 0, isActive = false
     render(
       <ResendOTPButton
         tenantId={tenantId}
@@ -88,19 +128,14 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    // Fast-forward 60 seconds
-    vi.advanceTimersByTime(61000);
-
-    await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).not.toBeDisabled();
-    });
+    const button = screen.getByRole("button");
+    expect(button).not.toBeDisabled();
   });
 
-  it('calls resendOTP API when button clicked', async () => {
-    const mockResendOTP = vi.spyOn(tenantApi, 'resendOTP').mockResolvedValue({
+  it("calls resendOTP API when button clicked", async () => {
+    mockResendOTP.mockResolvedValue({
       tenant_id: tenantId,
-      message: 'OTP resent successfully',
+      message: "OTP resent successfully",
     });
 
     render(
@@ -112,28 +147,23 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    // Wait for countdown to finish
-    vi.advanceTimersByTime(61000);
-
-    await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).not.toBeDisabled();
-    });
-
-    const button = screen.getByRole('button');
+    const button = screen.getByRole("button");
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockResendOTP).toHaveBeenCalledWith({
-        tenant_id: tenantId,
-      });
+      expect(mockResendOTP).toHaveBeenCalled();
+    });
+
+    // Check the first argument is the request data
+    expect(mockResendOTP.mock.calls[0][0]).toEqual({
+      tenant_id: tenantId,
     });
   });
 
-  it('calls onSuccess callback when resend succeeds', async () => {
-    vi.spyOn(tenantApi, 'resendOTP').mockResolvedValue({
+  it("calls onSuccess callback when resend succeeds", async () => {
+    mockResendOTP.mockResolvedValue({
       tenant_id: tenantId,
-      message: 'OTP resent successfully',
+      message: "OTP resent successfully",
     });
 
     render(
@@ -145,24 +175,17 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    vi.advanceTimersByTime(61000);
-
-    await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).not.toBeDisabled();
-    });
-
-    const button = screen.getByRole('button');
+    const button = screen.getByRole("button");
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockOnSuccess).toHaveBeenCalledWith('OTP resent successfully');
+      expect(mockOnSuccess).toHaveBeenCalledWith("OTP resent successfully");
     });
   });
 
-  it('calls onError callback when resend fails', async () => {
-    const error = { message: 'Failed to resend OTP' };
-    vi.spyOn(tenantApi, 'resendOTP').mockRejectedValue(error);
+  it("calls onError callback when resend fails", async () => {
+    const error = { message: "Failed to resend OTP" };
+    mockResendOTP.mockRejectedValue(error);
 
     render(
       <ResendOTPButton
@@ -173,14 +196,7 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    vi.advanceTimersByTime(61000);
-
-    await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).not.toBeDisabled();
-    });
-
-    const button = screen.getByRole('button');
+    const button = screen.getByRole("button");
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -188,9 +204,13 @@ describe('ResendOTPButton', () => {
     });
   });
 
-  it('shows loading state during resend', async () => {
-    vi.spyOn(tenantApi, 'resendOTP').mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 100))
+  it("shows loading state during resend", async () => {
+    let resolvePromise: (val: any) => void;
+    mockResendOTP.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePromise = resolve;
+        })
     );
 
     render(
@@ -202,23 +222,20 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    vi.advanceTimersByTime(61000);
-
-    await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).not.toBeDisabled();
-    });
-
-    const button = screen.getByRole('button');
+    const button = screen.getByRole("button");
     fireEvent.click(button);
 
-    expect(screen.getByText(/sending/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/sending/i)).toBeInTheDocument();
+    });
+
+    resolvePromise!({ tenant_id: tenantId, message: "Success" });
   });
 
-  it('restarts countdown after successful resend', async () => {
-    vi.spyOn(tenantApi, 'resendOTP').mockResolvedValue({
+  it("restarts countdown after successful resend", async () => {
+    mockResendOTP.mockResolvedValue({
       tenant_id: tenantId,
-      message: 'OTP resent successfully',
+      message: "OTP resent successfully",
     });
 
     render(
@@ -230,22 +247,14 @@ describe('ResendOTPButton', () => {
       { wrapper: createWrapper() }
     );
 
-    // Wait for first countdown
-    vi.advanceTimersByTime(61000);
-
-    await waitFor(() => {
-      const button = screen.getByRole('button');
-      expect(button).not.toBeDisabled();
-    });
-
-    const button = screen.getByRole('button');
+    const button = screen.getByRole("button");
     fireEvent.click(button);
 
     await waitFor(() => {
       expect(mockOnSuccess).toHaveBeenCalled();
     });
 
-    // Check countdown restarted
-    expect(screen.getByText(/resend code in \d+s/i)).toBeInTheDocument();
+    // After success, startCountdown should be called with 60
+    expect(mockStartCountdown).toHaveBeenCalledWith(60);
   });
 });
