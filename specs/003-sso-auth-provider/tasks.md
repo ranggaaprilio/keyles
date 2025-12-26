@@ -122,30 +122,30 @@
 
 > **CONSTITUTION REQUIREMENT: Write these tests FIRST, ensure they FAIL before implementation** > **Target: ≥85% coverage for domain/business logic, integration tests for all handlers**
 
-- [ ] T045 [P] [US1] Unit test for Client entity validation in backend/tests/unit/domain/client_test.go (test ValidateRedirectURI, IsURIAllowed, HTTPS validation)
-- [ ] T046 [P] [US1] Unit test for CreateClient use case in backend/tests/unit/usecase/create_client_test.go (mock ClientRepository, test tenant isolation, duplicate client_id handling)
-- [ ] T047 [P] [US1] Unit test for GetClient use case in backend/tests/unit/usecase/get_client_test.go (mock ClientRepository, test not found scenarios)
-- [ ] T048 [P] [US1] Unit test for UpdateClient use case in backend/tests/unit/usecase/update_client_test.go (mock ClientRepository, test redirect URI updates)
-- [ ] T049 [P] [US1] Unit test for DeleteClient use case in backend/tests/unit/usecase/delete_client_test.go (mock ClientRepository, test soft delete)
-- [ ] T050 [US1] Integration test for client registration in backend/tests/integration/client_management_test.go (real PostgreSQL via testcontainers, test POST /api/admin/clients, verify DB state, test redirect URI validation, test tenant isolation)
-- [ ] T051 [US1] Frontend unit test for ClientManagement component in frontend/tests/unit/components/ClientManagement.test.tsx (test form submission, validation, client list rendering)
+- [x] T045 [P] [US1] Unit test for Client entity validation in backend/tests/unit/domain/client_test.go (test ValidateRedirectURI, IsURIAllowed, HTTPS validation)
+- [x] T046 [P] [US1] Unit test for CreateClient use case in backend/tests/unit/usecase/create_client_test.go (mock ClientRepository, test tenant isolation, duplicate client_id handling)
+- [x] T047 [P] [US1] Unit test for GetClient use case in backend/tests/unit/usecase/get_client_test.go (mock ClientRepository, test not found scenarios)
+- [x] T048 [P] [US1] Unit test for UpdateClient use case in backend/tests/unit/usecase/update_client_test.go (mock ClientRepository, test redirect URI updates)
+- [x] T049 [P] [US1] Unit test for DeleteClient use case in backend/tests/unit/usecase/delete_client_test.go (mock ClientRepository, test soft delete)
+- [x] T050 [US1] Integration test for client registration in backend/tests/integration/client_management_test.go (real PostgreSQL via testcontainers, test POST /api/admin/clients, verify DB state, test redirect URI validation, test tenant isolation)
+- [x] T051 [US1] Frontend unit test for ClientManagement component in frontend/tests/unit/components/ClientManagement.test.tsx (test form submission, validation, client list rendering)
 
 ### Implementation for User Story 1
 
 > **Clean Architecture Task Order**: Domain → Use Cases → Infrastructure → Interfaces (Handlers)
 
-- [ ] T052 [US1] Implement CreateClient use case in backend/usecase/client/create_client.go (depends on T019, T024, accepts ClientRepository interface, generates client_id/client_secret, hashes secret with bcrypt, validates redirect URIs, enforces tenant isolation per FR-006)
-- [ ] T053 [US1] Implement GetClient use case in backend/usecase/client/get_client.go (depends on T024, fetches by client_id, enforces tenant context)
-- [ ] T054 [US1] Implement UpdateClient use case in backend/usecase/client/update_client.go (depends on T024, allows updating name and redirect URIs, prevents changing client_id)
-- [ ] T055 [US1] Implement DeleteClient use case in backend/usecase/client/delete_client.go (depends on T024, soft delete by setting is_active=false)
-- [ ] T056 [US1] Implement ListClients use case in backend/usecase/client/list_clients.go (depends on T024, lists all clients for tenant with pagination)
-- [ ] T057 [US1] Implement RotateSecret use case in backend/usecase/client/rotate_secret.go (depends on T024, generates new client_secret, invalidates old one)
-- [ ] T058 [US1] Implement ClientHandler in backend/interfaces/http/handlers/client_handler.go with routes: POST /api/admin/clients (create), GET /api/admin/clients (list), GET /api/admin/clients/:id (get), PUT /api/admin/clients/:id (update), DELETE /api/admin/clients/:id (delete), POST /api/admin/clients/:id/rotate-secret (rotate), requires admin authentication, extracts tenant from JWT
-- [ ] T059 [US1] Add client management routes to backend/interfaces/http/router.go in /api/admin/\* group with auth middleware
-- [ ] T060 [P] [US1] Create ClientManagement component in frontend/src/components/admin/ClientManagement.tsx (table view of clients, create/edit/delete buttons)
-- [ ] T061 [P] [US1] Create ClientForm component in frontend/src/components/admin/ClientForm.tsx (form for name, redirect URIs with validation, displays generated credentials)
-- [ ] T062 [US1] Create clientService API client in frontend/src/services/clientService.ts (axios wrapper for client CRUD endpoints)
-- [ ] T063 [P] [US1] Create Client types in frontend/src/types/client.ts (TypeScript interfaces for Client, CreateClientRequest, UpdateClientRequest)
+- [x] T052 [US1] Implement CreateClient use case in backend/usecase/client/create_client.go (depends on T019, T024, accepts ClientRepository interface, generates client_id/client_secret, hashes secret with bcrypt, validates redirect URIs, enforces tenant isolation per FR-006)
+- [x] T053 [US1] Implement GetClient use case in backend/usecase/client/get_client.go (depends on T024, fetches by client_id, enforces tenant context)
+- [x] T054 [US1] Implement UpdateClient use case in backend/usecase/client/update_client.go (depends on T024, allows updating name and redirect URIs, prevents changing client_id)
+- [x] T055 [US1] Implement DeleteClient use case in backend/usecase/client/delete_client.go (depends on T024, soft delete by setting is_active=false)
+- [x] T056 [US1] Implement ListClients use case in backend/usecase/client/list_clients.go (depends on T024, lists all clients for tenant with pagination)
+- [x] T057 [US1] Implement RotateSecret use case in backend/usecase/client/rotate_secret.go (depends on T024, generates new client_secret, invalidates old one)
+- [x] T058 [US1] Implement ClientHandler in backend/interfaces/http/handlers/client_handler.go with routes: POST /api/admin/clients (create), GET /api/admin/clients (list), GET /api/admin/clients/:id (get), PUT /api/admin/clients/:id (update), DELETE /api/admin/clients/:id (delete), POST /api/admin/clients/:id/rotate-secret (rotate), requires admin authentication, extracts tenant from JWT
+- [x] T059 [US1] Add client management routes to backend/interfaces/http/router.go in /api/admin/\* group with auth middleware
+- [x] T060 [P] [US1] Create ClientManagement component in frontend/src/components/admin/ClientManagement.tsx (table view of clients, create/edit/delete buttons)
+- [x] T061 [P] [US1] Create ClientForm component in frontend/src/components/admin/ClientForm.tsx (form for name, redirect URIs with validation, displays generated credentials)
+- [x] T062 [US1] Create clientService API client in frontend/src/services/clientService.ts (axios wrapper for client CRUD endpoints)
+- [x] T063 [P] [US1] Create Client types in frontend/src/types/client.ts (TypeScript interfaces for Client, CreateClientRequest, UpdateClientRequest)
 
 **Architecture Verification**:
 

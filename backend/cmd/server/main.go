@@ -23,6 +23,7 @@ import (
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
+	"github.com/ranggaaprilio/keyles/usecase/client"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 )
 
@@ -59,6 +60,7 @@ func main() {
 	userRepo := postgresRepo.NewPostgresUserRepository(db)
 	auditRepo := postgresRepo.NewPostgresAuditRepository(db)
 	otpRepo := redisRepo.NewRedisOTPRepository(redisClient)
+	clientRepo := postgresRepo.NewPostgresClientRepository(db)
 
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
@@ -77,6 +79,14 @@ func main() {
 	resendOTPUseCase := tenant.NewResendOTPUseCase(otpRepo, tenantRepo, userRepo, emailService, otpService, auditRepo)
 	authenticateAdminUseCase := auth.NewAuthenticateAdminUseCase(userRepo, tenantRepo, passwordService, authJWTService)
 
+	// Initialize client management use cases
+	createClientUseCase := client.NewCreateClientUseCase(clientRepo, passwordService)
+	getClientUseCase := client.NewGetClientUseCase(clientRepo)
+	updateClientUseCase := client.NewUpdateClientUseCase(clientRepo)
+	deleteClientUseCase := client.NewDeleteClientUseCase(clientRepo)
+	listClientsUseCase := client.NewListClientsUseCase(clientRepo)
+	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService)
+
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
 	availabilityHandler := handlers.NewAvailabilityHandler(checkAvailabilityUseCase)
@@ -85,6 +95,14 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authenticateAdminUseCase)
 	dashboardHandler := handlers.NewDashboardHandler(userRepo, tenantRepo)
 	healthHandler := handlers.NewHealthHandler(tenantRepo, redisClient)
+	clientHandler := handlers.NewClientHandler(
+		createClientUseCase,
+		getClientUseCase,
+		updateClientUseCase,
+		deleteClientUseCase,
+		listClientsUseCase,
+		rotateSecretUseCase,
+	)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -99,6 +117,7 @@ func main() {
 		authHandler,
 		dashboardHandler,
 		healthHandler,
+		clientHandler,
 		jwtService,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,

@@ -18,6 +18,7 @@ type Router struct {
 	authHandler          *handlers.AuthHandler
 	dashboardHandler     *handlers.DashboardHandler
 	healthHandler        *handlers.HealthHandler
+	clientHandler        *handlers.ClientHandler
 	jwtService           *services.JWTService
 }
 
@@ -31,6 +32,7 @@ func NewRouter(
 	authHandler *handlers.AuthHandler,
 	dashboardHandler *handlers.DashboardHandler,
 	healthHandler *handlers.HealthHandler,
+	clientHandler *handlers.ClientHandler,
 	jwtService *services.JWTService,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
@@ -52,6 +54,7 @@ func NewRouter(
 		authHandler:         authHandler,
 		dashboardHandler:    dashboardHandler,
 		healthHandler:       healthHandler,
+		clientHandler:       clientHandler,
 		jwtService:          jwtService,
 	}
 }
@@ -86,6 +89,22 @@ func (r *Router) Setup() {
 		protected.Use(middleware.AuthMiddleware(r.jwtService))
 		{
 			protected.GET("/dashboard", r.dashboardHandler.GetDashboard)
+		}
+
+		// Admin routes (require JWT) - Client Management
+		admin := v1.Group("/admin")
+		admin.Use(middleware.AuthMiddleware(r.jwtService))
+		{
+			// Client management routes
+			clients := admin.Group("/clients")
+			{
+				clients.POST("", r.clientHandler.Create)
+				clients.GET("", r.clientHandler.List)
+				clients.GET("/:clientId", r.clientHandler.Get)
+				clients.PUT("/:clientId", r.clientHandler.Update)
+				clients.DELETE("/:clientId", r.clientHandler.Delete)
+				clients.POST("/:clientId/rotate-secret", r.clientHandler.RotateSecret)
+			}
 		}
 	}
 }

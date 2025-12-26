@@ -5,223 +5,160 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
-// PostgresClientRepository implements ClientRepository using pgx
+// ClientModel is the GORM model for clients table
+type ClientModel struct {
+	ClientID         string         `gorm:"column:client_id;primaryKey"`
+	TenantID         string         `gorm:"column:tenant_id;not null;index"`
+	ClientName       string         `gorm:"column:client_name;not null"`
+	ClientSecretHash string         `gorm:"column:client_secret;not null"`
+	RedirectURIs     pq.StringArray `gorm:"column:redirect_uris;type:text[]"`
+	IsActive         bool           `gorm:"column:is_active;not null;default:true"`
+	CreatedAt        time.Time      `gorm:"column:created_at;not null"`
+	UpdatedAt        time.Time      `gorm:"column:updated_at;not null"`
+}
+
+func (ClientModel) TableName() string {
+	return "clients"
+}
+
+// PostgresClientRepository implements ClientRepository using GORM
 type PostgresClientRepository struct {
-	pool *pgxpool.Pool
+	db *gorm.DB
 }
 
 // NewPostgresClientRepository creates a new PostgreSQL client repository
-func NewPostgresClientRepository(pool *pgxpool.Pool) repositories.ClientRepository {
-	return &PostgresClientRepository{pool: pool}
+func NewPostgresClientRepository(db *gorm.DB) repositories.ClientRepository {
+	return &PostgresClientRepository{db: db}
 }
 
 // Create creates a new OAuth client
 func (r *PostgresClientRepository) Create(ctx context.Context, client *entities.Client) error {
-	query := `
-		INSERT INTO clients (client_id, tenant_id, client_name, client_secret, redirect_uris, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`
+	model := &ClientModel{
+		ClientID:         client.ClientID,
+		TenantID:         client.TenantID,
+		ClientName:       client.ClientName,
+		ClientSecretHash: client.ClientSecretHash,
+		RedirectURIs:     client.AllowedRedirectURIs,
+		IsActive:         client.IsActive,
+		CreatedAt:        client.CreatedAt,
+		UpdatedAt:        client.UpdatedAt,
+	}
 
-	_, err := r.pool.Exec(ctx, query,
-		client.ClientID,
-		client.TenantID,
-		client.ClientName,
-		client.ClientSecretHash,
-		pq.Array(client.AllowedRedirectURIs),
-		client.IsActive,
-		client.CreatedAt,
-		client.UpdatedAt,
-	)
-
-	return err
+	return r.db.WithContext(ctx).Create(model).Error
 }
 
 // GetByID retrieves a client by client_id (primary key)
 func (r *PostgresClientRepository) GetByID(ctx context.Context, clientID string) (*entities.Client, error) {
-	query := `
-		SELECT client_id, tenant_id, client_name, client_secret, redirect_uris, is_active, created_at, updated_at
-		FROM clients
-		WHERE client_id = $1
-	`
-
-	var client entities.Client
-	var redirectURIs pq.StringArray
-
-	err := r.pool.QueryRow(ctx, query, clientID).Scan(
-		&client.ClientID,
-		&client.TenantID,
-		&client.ClientName,
-		&client.ClientSecretHash,
-		&redirectURIs,
-		&client.IsActive,
-		&client.CreatedAt,
-		&client.UpdatedAt,
-	)
-
+	var model ClientModel
+	err := r.db.WithContext(ctx).Where("client_id = ?", clientID).First(&model).Error
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("client not found")
 		}
 		return nil, err
 	}
 
-	client.AllowedRedirectURIs = redirectURIs
-	return &client, nil
+	return modelToEntity(&model), nil
 }
 
 // GetByClientID retrieves a client by client_id and tenant_id
 func (r *PostgresClientRepository) GetByClientID(ctx context.Context, clientID string, tenantID string) (*entities.Client, error) {
-	query := `
-		SELECT client_id, tenant_id, client_name, client_secret, redirect_uris, is_active, created_at, updated_at
-		FROM clients
-		WHERE client_id = $1 AND tenant_id = $2
-	`
-
-	var client entities.Client
-	var redirectURIs pq.StringArray
-
-	err := r.pool.QueryRow(ctx, query, clientID, tenantID).Scan(
-		&client.ClientID,
-		&client.TenantID,
-		&client.ClientName,
-		&client.ClientSecretHash,
-		&redirectURIs,
-		&client.IsActive,
-		&client.CreatedAt,
-		&client.UpdatedAt,
-	)
-
+	var model ClientModel
+	err := r.db.WithContext(ctx).
+		Where("client_id = ? AND tenant_id = ? AND is_active = true", clientID, tenantID).
+		First(&model).Error
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("client not found")
 		}
 		return nil, err
 	}
 
-	client.AllowedRedirectURIs = redirectURIs
-	return &client, nil
+	return modelToEntity(&model), nil
 }
 
 // Update updates an existing client
 func (r *PostgresClientRepository) Update(ctx context.Context, client *entities.Client) error {
-	query := `
-		UPDATE clients
-		SET client_name = $2, client_secret = $3, redirect_uris = $4, is_active = $5, updated_at = $6
-		WHERE client_id = $1
-	`
-
-	result, err := r.pool.Exec(ctx, query,
-		client.ClientID,
-		client.ClientName,
-		client.ClientSecretHash,
-		pq.Array(client.AllowedRedirectURIs),
-		client.IsActive,
-		time.Now(),
-	)
-
-	if err != nil {
-		return err
+	model := &ClientModel{
+		ClientID:         client.ClientID,
+		TenantID:         client.TenantID,
+		ClientName:       client.ClientName,
+		ClientSecretHash: client.ClientSecretHash,
+		RedirectURIs:     client.AllowedRedirectURIs,
+		IsActive:         client.IsActive,
+		CreatedAt:        client.CreatedAt,
+		UpdatedAt:        client.UpdatedAt,
 	}
 
-	if result.RowsAffected() == 0 {
-		return errors.New("client not found")
-	}
-
-	return nil
+	return r.db.WithContext(ctx).Save(model).Error
 }
 
 // Delete soft-deletes a client (sets is_active = false)
 func (r *PostgresClientRepository) Delete(ctx context.Context, clientID string) error {
-	query := `
-		UPDATE clients
-		SET is_active = false, updated_at = $2
-		WHERE client_id = $1
-	`
-
-	result, err := r.pool.Exec(ctx, query, clientID, time.Now())
-	if err != nil {
-		return err
-	}
-
-	if result.RowsAffected() == 0 {
-		return errors.New("client not found")
-	}
-
-	return nil
+	return r.db.WithContext(ctx).
+		Model(&ClientModel{}).
+		Where("client_id = ?", clientID).
+		Update("is_active", false).Error
 }
 
-// ListByTenant retrieves all clients for a tenant
+// ListByTenant retrieves all active clients for a tenant
 func (r *PostgresClientRepository) ListByTenant(ctx context.Context, tenantID string) ([]*entities.Client, error) {
-	query := `
-		SELECT client_id, tenant_id, client_name, client_secret, redirect_uris, is_active, created_at, updated_at
-		FROM clients
-		WHERE tenant_id = $1
-		ORDER BY created_at DESC
-	`
-
-	rows, err := r.pool.Query(ctx, query, tenantID)
+	var models []ClientModel
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND is_active = true", tenantID).
+		Order("created_at DESC").
+		Find(&models).Error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var clients []*entities.Client
-	for rows.Next() {
-		var client entities.Client
-		var redirectURIs pq.StringArray
-
-		err := rows.Scan(
-			&client.ClientID,
-			&client.TenantID,
-			&client.ClientName,
-			&client.ClientSecretHash,
-			&redirectURIs,
-			&client.IsActive,
-			&client.CreatedAt,
-			&client.UpdatedAt,
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
-		client.AllowedRedirectURIs = redirectURIs
-		clients = append(clients, &client)
+	clients := make([]*entities.Client, len(models))
+	for i, model := range models {
+		clients[i] = modelToEntity(&model)
 	}
 
-	return clients, rows.Err()
+	return clients, nil
 }
 
-// ValidateCredentials validates client credentials and returns the client if valid
+// ValidateCredentials validates client credentials (client_id + client_secret)
 func (r *PostgresClientRepository) ValidateCredentials(ctx context.Context, clientID string, clientSecret string) (*entities.Client, error) {
-	client, err := r.GetByID(ctx, clientID)
+	var model ClientModel
+	err := r.db.WithContext(ctx).
+		Where("client_id = ? AND is_active = true", clientID).
+		First(&model).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("invalid client credentials")
+		}
 		return nil, err
 	}
 
-	if client == nil {
+	// Verify the secret using bcrypt
+	if err := bcrypt.CompareHashAndPassword([]byte(model.ClientSecretHash), []byte(clientSecret)); err != nil {
 		return nil, errors.New("invalid client credentials")
 	}
 
-	// Verify client secret using bcrypt
-	err = bcrypt.CompareHashAndPassword([]byte(client.ClientSecretHash), []byte(clientSecret))
-	if err != nil {
-		return nil, errors.New("invalid client credentials")
-	}
+	return modelToEntity(&model), nil
+}
 
-	// Check if client is active
-	if !client.IsActive {
-		return nil, errors.New("client is not active")
+// Helper function to convert model to entity
+func modelToEntity(model *ClientModel) *entities.Client {
+	return &entities.Client{
+		ClientID:            model.ClientID,
+		TenantID:            model.TenantID,
+		ClientName:          model.ClientName,
+		ClientSecretHash:    model.ClientSecretHash,
+		AllowedRedirectURIs: model.RedirectURIs,
+		IsActive:            model.IsActive,
+		CreatedAt:           model.CreatedAt,
+		UpdatedAt:           model.UpdatedAt,
 	}
-
-	return client, nil
 }
