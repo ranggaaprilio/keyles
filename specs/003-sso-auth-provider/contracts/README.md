@@ -23,6 +23,7 @@ This directory contains API specifications for the Core SSO Auth Provider.
 ### Admin Endpoints (Session-protected)
 
 **Client Management**:
+
 - `GET /admin/clients` - List clients
 - `POST /admin/clients` - Create client
 - `GET /admin/clients/{client_id}` - Get client details
@@ -31,6 +32,7 @@ This directory contains API specifications for the Core SSO Auth Provider.
 - `POST /admin/clients/{client_id}/secret` - Regenerate secret
 
 **Role Management**:
+
 - `GET /admin/roles` - List role assignments
 - `POST /admin/roles` - Assign role to user
 - `DELETE /admin/roles/{assignment_id}` - Revoke role
@@ -38,11 +40,13 @@ This directory contains API specifications for the Core SSO Auth Provider.
 ## Authentication
 
 ### OAuth Endpoints
+
 - **No auth** required for `/oauth2/auth` (redirects to login if needed)
 - **Client credentials** (`client_id` + `client_secret`) for `/oauth2/token` and `/oauth2/revoke`
 - **Bearer token** for `/oauth2/userinfo`
 
 ### Admin Endpoints
+
 - **Session cookie** (`session_id`) required for all `/admin/*` endpoints
 - Session obtained by logging into admin portal
 
@@ -54,9 +58,11 @@ This directory contains API specifications for the Core SSO Auth Provider.
 ## Viewing the Spec
 
 ### Online Viewer
+
 Upload `openapi.yaml` to [Swagger Editor](https://editor.swagger.io/)
 
 ### Local Viewer
+
 ```bash
 # Install swagger-ui
 npm install -g swagger-ui-watcher
@@ -66,11 +72,13 @@ swagger-ui-watcher contracts/openapi.yaml
 ```
 
 ### VS Code Extension
+
 Install [OpenAPI (Swagger) Editor](https://marketplace.visualstudio.com/items?itemName=42Crunch.vscode-openapi) extension
 
 ## Code Generation
 
 ### Go Server Stubs
+
 ```bash
 # Install oapi-codegen
 go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
@@ -80,6 +88,7 @@ oapi-codegen -package handlers -generate types,chi-server contracts/openapi.yaml
 ```
 
 ### TypeScript Client
+
 ```bash
 # Install openapi-typescript
 npm install -D openapi-typescript
@@ -91,6 +100,7 @@ npx openapi-typescript contracts/openapi.yaml -o frontend/src/types/api.ts
 ## Standards Compliance
 
 This API adheres to:
+
 - **RFC 6749**: OAuth 2.0 Authorization Framework
 - **RFC 6750**: OAuth 2.0 Bearer Token Usage
 - **RFC 7009**: OAuth 2.0 Token Revocation

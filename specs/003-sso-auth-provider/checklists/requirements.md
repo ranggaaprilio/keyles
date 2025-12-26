@@ -37,5 +37,4 @@
   3. Tenant identification: Client-based (via client_id lookup) - added FR-010a
   4. User permissions: Role-based access control - updated FR-012, added FR-006a through FR-006e, added User Story 8
   5. Rate limiting: 10 requests/minute per client_id - updated FR-057
-  
 - **Status**: Specification is complete with all high-priority underspecified areas clarified and integrated. Ready for planning phase (`/speckit.plan`).

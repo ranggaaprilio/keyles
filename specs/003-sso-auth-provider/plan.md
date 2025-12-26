@@ -11,12 +11,14 @@ Implement a production-grade OAuth 2.0 + OpenID Connect (OIDC) Single Sign-On pr
 
 ## Technical Context
 
-**Language/Version**: 
+**Language/Version**:
+
 - Backend: Go 1.21+ (latest stable)
 - Frontend: TypeScript 5.x (strict mode enabled)
 
 **Primary Dependencies**:
-- **Backend**: 
+
+- **Backend**:
   - `github.com/ory/fosite` (OAuth 2.0/OIDC framework)
   - `github.com/jackc/pgx/v5` (PostgreSQL driver with connection pooling)
   - `github.com/redis/go-redis/v9` (Redis client with context support)
@@ -29,30 +31,35 @@ Implement a production-grade OAuth 2.0 + OpenID Connect (OIDC) Single Sign-On pr
   - Axios or Fetch API (HTTP client)
   - Shadcn/UI or Material-UI (UI components)
 
-**Storage**: 
+**Storage**:
+
 - **PostgreSQL 14+**: Persistent data (tenants, clients, users, roles, refresh_tokens, signing_keys, audit_logs)
 - **Redis 7+**: Ephemeral data (authorization codes 5min TTL, sessions 8hr TTL, refresh token cache 7day TTL, JWKS cache 1hr TTL, rate limit counters 1min TTL)
 
-**Testing**: 
+**Testing**:
+
 - **Backend**: Go's built-in `testing` package, `go-mockgen` or manual mocks for interfaces
 - **Frontend**: Jest + React Testing Library
 - **Integration**: Go `httptest` package for API tests
 
-**Target Platform**: 
+**Target Platform**:
+
 - Linux server (production)
 - Docker/docker-compose for local development
 - Cloud-agnostic (deployable to AWS, GCP, Azure)
 
 **Project Type**: Web application (backend API + frontend admin portal)
 
-**Performance Goals**: 
+**Performance Goals**:
+
 - Authorization endpoint: <100ms p95 latency
 - Token endpoint: <200ms p95 (includes DB + Redis operations)
 - Discovery endpoints: <50ms p95 (cached responses)
 - Throughput: 1000 req/s per backend instance
 - JWKS caching: 1-hour TTL to minimize crypto operations
 
-**Constraints**: 
+**Constraints**:
+
 - Authorization codes: 5-minute expiration (RFC 6749)
 - Access tokens: 15 minutes expiration (user-specified, high security)
 - Refresh tokens: 7 days expiration (user-specified, high security)
@@ -61,7 +68,8 @@ Implement a production-grade OAuth 2.0 + OpenID Connect (OIDC) Single Sign-On pr
 - JWT signing: RS256 with 2048-bit RSA keys minimum
 - PKCE mandatory for all clients (no plain flow)
 
-**Scale/Scope**: 
+**Scale/Scope**:
+
 - Multi-tenant: 100+ tenants initially, 1000+ long-term
 - Users: 10k-100k users per tenant
 - Concurrent sessions: 50k active sessions
@@ -71,95 +79,100 @@ Implement a production-grade OAuth 2.0 + OpenID Connect (OIDC) Single Sign-On pr
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 **Clean Architecture Compliance**:
+
 - [x] Domain layer has no imports from infrastructure or frameworks
-  - *Design*: Domain entities (Client, User, Tenant, RefreshToken) use only Go standard library types
-  - *Design*: Repository interfaces (ClientRepository, UserRepository, OTPRepository) defined in `domain/repositories/`
-  - *Design*: Service interfaces (EmailService, OTPService, PasswordService) defined in `domain/services/`
-  - *Design*: Zero dependencies on pgx, go-redis, fosite, or chi in domain layer
+  - _Design_: Domain entities (Client, User, Tenant, RefreshToken) use only Go standard library types
+  - _Design_: Repository interfaces (ClientRepository, UserRepository, OTPRepository) defined in `domain/repositories/`
+  - _Design_: Service interfaces (EmailService, OTPService, PasswordService) defined in `domain/services/`
+  - _Design_: Zero dependencies on pgx, go-redis, fosite, or chi in domain layer
 - [x] All repository/service interfaces defined in Domain layer
-  - *Design*: All 6 repository interfaces in `domain/repositories/`
-  - *Design*: All 3 service interfaces in `domain/services/`
-  - *Design*: AuthService interface in `domain/services/auth_service.go`
+  - _Design_: All 6 repository interfaces in `domain/repositories/`
+  - _Design_: All 3 service interfaces in `domain/services/`
+  - _Design_: AuthService interface in `domain/services/auth_service.go`
 - [x] Concrete implementations only in Infrastructure layer
-  - *Design*: PostgreSQL repositories in `infrastructure/persistence/postgres/`
-  - *Design*: Redis repositories in `infrastructure/persistence/redis/`
-  - *Design*: Brevo email implementation in `infrastructure/services/brevo_email.go`
-  - *Design*: Bcrypt password implementation in `infrastructure/services/bcrypt_password.go`
-  - *Design*: Fosite OAuth adapter in `infrastructure/services/fosite_oauth_adapter.go`
+  - _Design_: PostgreSQL repositories in `infrastructure/persistence/postgres/`
+  - _Design_: Redis repositories in `infrastructure/persistence/redis/`
+  - _Design_: Brevo email implementation in `infrastructure/services/brevo_email.go`
+  - _Design_: Bcrypt password implementation in `infrastructure/services/bcrypt_password.go`
+  - _Design_: Fosite OAuth adapter in `infrastructure/services/fosite_oauth_adapter.go`
 - [x] Dependency arrows verified to point inward (toward Domain)
-  - *Design*: Handlers (outer) → Use Cases (middle) → Domain (inner)
-  - *Design*: Infrastructure implements Domain interfaces
-  - *Design*: Use cases accept repository interfaces, not concrete types
-  - *Design*: No domain imports from `infrastructure/`, `interfaces/`, or external frameworks
+  - _Design_: Handlers (outer) → Use Cases (middle) → Domain (inner)
+  - _Design_: Infrastructure implements Domain interfaces
+  - _Design_: Use cases accept repository interfaces, not concrete types
+  - _Design_: No domain imports from `infrastructure/`, `interfaces/`, or external frameworks
 
 **SOLID Principles Compliance**:
+
 - [x] Each module has single, well-defined responsibility (SRP)
-  - *Design*: `AuthenticateAdmin` use case: single purpose (admin login)
-  - *Design*: `RegisterTenant` use case: single purpose (tenant registration)
-  - *Design*: `IssueToken` use case: single purpose (OAuth token issuance)
-  - *Design*: Handlers only transform HTTP ↔ domain types, no business logic
+  - _Design_: `AuthenticateAdmin` use case: single purpose (admin login)
+  - _Design_: `RegisterTenant` use case: single purpose (tenant registration)
+  - _Design_: `IssueToken` use case: single purpose (OAuth token issuance)
+  - _Design_: Handlers only transform HTTP ↔ domain types, no business logic
 - [x] Domain depends only on abstractions/interfaces (DIP)
-  - *Design*: Use cases accept `UserRepository` interface, not `PostgresUserRepository`
-  - *Design*: Use cases accept `OTPService` interface, not `CryptoOTPService`
-  - *Design*: No concrete type dependencies in domain layer
+  - _Design_: Use cases accept `UserRepository` interface, not `PostgresUserRepository`
+  - _Design_: Use cases accept `OTPService` interface, not `CryptoOTPService`
+  - _Design_: No concrete type dependencies in domain layer
 - [x] No direct database/external API calls from business logic
-  - *Design*: All database access through repository interfaces
-  - *Design*: All email sending through EmailService interface
-  - *Design*: OAuth logic through OAuthProvider interface (fosite abstraction)
+  - _Design_: All database access through repository interfaces
+  - _Design_: All email sending through EmailService interface
+  - _Design_: OAuth logic through OAuthProvider interface (fosite abstraction)
 - [x] Interface segregation verified for all contracts
-  - *Design*: ClientRepository: 4 methods (Create, GetByID, Update, Delete)
-  - *Design*: UserRepository: 5 methods (Create, GetByEmail, Update, UpdatePassword, ListByTenant)
-  - *Design*: OTPService: 3 methods (Generate, Verify, Invalidate)
-  - *Design*: No bloated interfaces with unused methods
+  - _Design_: ClientRepository: 4 methods (Create, GetByID, Update, Delete)
+  - _Design_: UserRepository: 5 methods (Create, GetByEmail, Update, UpdatePassword, ListByTenant)
+  - _Design_: OTPService: 3 methods (Generate, Verify, Invalidate)
+  - _Design_: No bloated interfaces with unused methods
 
 **Testing Requirements**:
+
 - [x] Unit test plan documented for all business logic (target: ≥85% coverage)
-  - *Plan*: Domain entities tested in `tests/unit/domain/`
-  - *Plan*: Use cases tested in `tests/unit/usecase/` with mocked repositories
-  - *Plan*: All 8 user stories have corresponding use case tests
-  - *Plan*: Coverage target: 85%+ for domain + usecase layers
+  - _Plan_: Domain entities tested in `tests/unit/domain/`
+  - _Plan_: Use cases tested in `tests/unit/usecase/` with mocked repositories
+  - _Plan_: All 8 user stories have corresponding use case tests
+  - _Plan_: Coverage target: 85%+ for domain + usecase layers
 - [x] Integration test plan for all handlers/controllers
-  - *Plan*: Integration tests in `tests/integration/`
-  - *Plan*: Each endpoint tested with real PostgreSQL + Redis (test containers)
-  - *Plan*: Existing tests: `auth_test.go`, `registration_test.go`, `verification_test.go`
-  - *Plan*: New tests: `oauth_auth_test.go`, `oauth_token_test.go`, `client_management_test.go`, `role_management_test.go`
+  - _Plan_: Integration tests in `tests/integration/`
+  - _Plan_: Each endpoint tested with real PostgreSQL + Redis (test containers)
+  - _Plan_: Existing tests: `auth_test.go`, `registration_test.go`, `verification_test.go`
+  - _Plan_: New tests: `oauth_auth_test.go`, `oauth_token_test.go`, `client_management_test.go`, `role_management_test.go`
 - [x] Test isolation strategy defined (mocking approach)
-  - *Plan*: Unit tests: Use `tests/mocks/` (manual or generated mocks)
-  - *Plan*: Integration tests: Testcontainers for PostgreSQL and Redis
-  - *Plan*: Each test creates isolated database schema (transaction rollback)
-  - *Plan*: Redis FLUSHDB per test for isolation
+  - _Plan_: Unit tests: Use `tests/mocks/` (manual or generated mocks)
+  - _Plan_: Integration tests: Testcontainers for PostgreSQL and Redis
+  - _Plan_: Each test creates isolated database schema (transaction rollback)
+  - _Plan_: Redis FLUSHDB per test for isolation
 - [x] Test-first workflow feasible for this feature
-  - *Plan*: Write interface definitions first
-  - *Plan*: Write failing tests for use cases
-  - *Plan*: Implement use cases to pass tests
-  - *Plan*: Write integration tests for handlers
-  - *Plan*: Implement handlers
-  - *Plan*: Follows Red-Green-Refactor cycle
+  - _Plan_: Write interface definitions first
+  - _Plan_: Write failing tests for use cases
+  - _Plan_: Implement use cases to pass tests
+  - _Plan_: Write integration tests for handlers
+  - _Plan_: Implement handlers
+  - _Plan_: Follows Red-Green-Refactor cycle
 
 **Code Conventions**:
+
 - [x] Backend: Follows Effective Go, lowercase packages, exported function docs
-  - *Design*: Package names: `domain`, `usecase`, `infrastructure`, `interfaces` (lowercase, single-word)
-  - *Design*: Exported types/functions documented: `// Client represents an OAuth 2.0 client...`
-  - *Design*: Standard Go project layout followed
+  - _Design_: Package names: `domain`, `usecase`, `infrastructure`, `interfaces` (lowercase, single-word)
+  - _Design_: Exported types/functions documented: `// Client represents an OAuth 2.0 client...`
+  - _Design_: Standard Go project layout followed
 - [x] Frontend: TypeScript strict mode, PascalCase components, functional components only
-  - *Design*: tsconfig.json: `"strict": true`
-  - *Design*: Components: `LoginForm`, `ConsentScreen`, `ClientManagement` (PascalCase)
-  - *Design*: All components use hooks (useState, useEffect, custom hooks)
-  - *Design*: No class components
+  - _Design_: tsconfig.json: `"strict": true`
+  - _Design_: Components: `LoginForm`, `ConsentScreen`, `ClientManagement` (PascalCase)
+  - _Design_: All components use hooks (useState, useEffect, custom hooks)
+  - _Design_: No class components
 - [x] Clear separation between backend (domain/usecase/infrastructure) and frontend (components/services)
-  - *Design*: Backend: `backend/domain/`, `backend/usecase/`, `backend/infrastructure/`, `backend/interfaces/`
-  - *Design*: Frontend: `frontend/src/components/`, `frontend/src/services/`, `frontend/src/hooks/`
-  - *Design*: API contracts in `specs/003-sso-auth-provider/contracts/openapi.yaml`
-  - *Design*: Frontend services use API client abstraction (axios/fetch wrapper)
+  - _Design_: Backend: `backend/domain/`, `backend/usecase/`, `backend/infrastructure/`, `backend/interfaces/`
+  - _Design_: Frontend: `frontend/src/components/`, `frontend/src/services/`, `frontend/src/hooks/`
+  - _Design_: API contracts in `specs/003-sso-auth-provider/contracts/openapi.yaml`
+  - _Design_: Frontend services use API client abstraction (axios/fetch wrapper)
 
 **Violations Requiring Justification** (fill Complexity Tracking section if any):
+
 - [x] No constitution violations OR all violations documented with justification
-  - *Status*: No violations. All Clean Architecture and SOLID principles satisfied in design.
-  - *Validation*: Repository pattern used, dependency inversion enforced, interfaces defined in domain, concrete implementations in infrastructure.
-  - *Frontend*: TypeScript strict mode, functional components, proper separation of concerns.
+  - _Status_: No violations. All Clean Architecture and SOLID principles satisfied in design.
+  - _Validation_: Repository pattern used, dependency inversion enforced, interfaces defined in domain, concrete implementations in infrastructure.
+  - _Frontend_: TypeScript strict mode, functional components, proper separation of concerns.
 
 ## Project Structure
 

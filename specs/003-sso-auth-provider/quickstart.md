@@ -251,18 +251,21 @@ VITE_OAUTH_SCOPES=openid profile email
 ### Running Both Services
 
 #### Terminal 1: Backend
+
 ```bash
 cd backend
 air  # or ./bin/server
 ```
 
 #### Terminal 2: Frontend
+
 ```bash
 cd frontend
 npm run dev
 ```
 
 #### Terminal 3: Logs (optional)
+
 ```bash
 # Watch backend logs
 tail -f backend/logs/app.log
@@ -295,10 +298,12 @@ go run cmd/seed/main.go
 1. **Start both backend and frontend**
 
 2. **Access admin portal**: http://localhost:3000/admin
+
    - Login with: `admin@dev-tenant.com` / `admin123`
    - View clients, users, role assignments
 
 3. **Test OAuth flow**:
+
    ```bash
    # Visit authorization endpoint
    open "http://localhost:8080/oauth2/auth?client_id=dev_client_001&redirect_uri=http://localhost:3000/auth/callback&response_type=code&scope=openid%20profile%20email&state=test123&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
@@ -482,12 +487,14 @@ Add to `.vscode/launch.json`:
 ### Common Issues
 
 **Issue**: `migrate: database dirty version X`
+
 ```bash
 # Fix by forcing version
 migrate -path backend/migrations -database $DATABASE_URL force X
 ```
 
 **Issue**: `connection refused` to PostgreSQL
+
 ```bash
 # Check if PostgreSQL is running
 pg_isready
@@ -497,6 +504,7 @@ lsof -i :5432
 ```
 
 **Issue**: `ECONNREFUSED` to Redis
+
 ```bash
 # Check if Redis is running
 redis-cli ping
@@ -506,6 +514,7 @@ redis-server
 ```
 
 **Issue**: `CORS error` in browser
+
 - Verify `SECURITY_ALLOWED_ORIGINS` in backend `.env`
 - Check frontend is running on allowed origin
 
@@ -526,6 +535,7 @@ Visit: http://localhost:8000
 ### Postman Collection
 
 Import `specs/003-sso-auth-provider/contracts/openapi.yaml` into Postman:
+
 1. Open Postman
 2. Import → Upload Files → Select `openapi.yaml`
 3. Collection will be created with all endpoints
@@ -592,6 +602,7 @@ docker-down:
 ```
 
 Usage:
+
 ```bash
 make build
 make run
@@ -603,6 +614,7 @@ make seed
 ## Next Steps
 
 1. **Implement User Stories** (in priority order):
+
    - P1: Client registration
    - P1: User authentication flow
    - P1: Token exchange
@@ -613,6 +625,7 @@ make seed
    - P3: Multi-client management
 
 2. **Write Tests**:
+
    - Unit tests for domain layer
    - Integration tests for repositories
    - API tests for handlers

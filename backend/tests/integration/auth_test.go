@@ -6,13 +6,16 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
@@ -21,46 +24,152 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// MockUserRepository for auth integration tests
+type MockUserRepository struct {
+	users map[string]*entities.AdminUser // keyed by email
+}
+
+func (m *MockUserRepository) Create(ctx context.Context, user *entities.AdminUser) error {
+	if m.users == nil {
+		m.users = make(map[string]*entities.AdminUser)
+	}
+	m.users[user.Email] = user
+	return nil
+}
+
+func (m *MockUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.AdminUser, error) {
+	for _, u := range m.users {
+		if u.ID == id {
+			return u, nil
+		}
+	}
+	return nil, errors.New("user not found")
+}
+
+func (m *MockUserRepository) FindByEmail(ctx context.Context, email string) (*entities.AdminUser, error) {
+	if user, ok := m.users[email]; ok {
+		return user, nil
+	}
+	return nil, errors.New("user not found")
+}
+
+func (m *MockUserRepository) FindByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*entities.AdminUser, error) {
+	var result []*entities.AdminUser
+	for _, u := range m.users {
+		if u.TenantID == tenantID {
+			result = append(result, u)
+		}
+	}
+	return result, nil
+}
+
+func (m *MockUserRepository) Update(ctx context.Context, user *entities.AdminUser) error {
+	m.users[user.Email] = user
+	return nil
+}
+
+func (m *MockUserRepository) EmailExists(ctx context.Context, email string) (bool, error) {
+	_, ok := m.users[email]
+	return ok, nil
+}
+
+func (m *MockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	for email, u := range m.users {
+		if u.ID == id {
+			delete(m.users, email)
+			return nil
+		}
+	}
+	return nil
+}
+
+// MockTenantRepository for auth integration tests
+type MockTenantRepository struct {
+	tenants map[uuid.UUID]*entities.Tenant
+}
+
+func (m *MockTenantRepository) Create(ctx context.Context, tenant *entities.Tenant) error {
+	if m.tenants == nil {
+		m.tenants = make(map[uuid.UUID]*entities.Tenant)
+	}
+	m.tenants[tenant.ID] = tenant
+	return nil
+}
+
+func (m *MockTenantRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Tenant, error) {
+	if tenant, ok := m.tenants[id]; ok {
+		return tenant, nil
+	}
+	return nil, errors.New("tenant not found")
+}
+
+func (m *MockTenantRepository) FindByOrganizationName(ctx context.Context, name string) (*entities.Tenant, error) {
+	for _, t := range m.tenants {
+		if t.OrganizationName == name {
+			return t, nil
+		}
+	}
+	return nil, errors.New("tenant not found")
+}
+
+func (m *MockTenantRepository) Update(ctx context.Context, tenant *entities.Tenant) error {
+	m.tenants[tenant.ID] = tenant
+	return nil
+}
+
+func (m *MockTenantRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	delete(m.tenants, id)
+	return nil
+}
+
+func (m *MockTenantRepository) OrganizationNameExists(ctx context.Context, name string) (bool, error) {
+	for _, t := range m.tenants {
+		if t.OrganizationName == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func TestLoginHandler_Success(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
 	// Create mock repositories
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
 	// Create test data
+	tenantID := uuid.New()
+	userID := uuid.New()
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	tenant := &entities.Tenant{
-		ID:               "tenant-123",
+		ID:               tenantID,
 		OrganizationName: "Test Org",
-		Status:           "active",
+		Status:           entities.TenantStatusActive,
 		CreatedAt:        time.Now(),
 		VerifiedAt:       func() *time.Time { t := time.Now(); return &t }(),
 	}
 
 	user := &entities.AdminUser{
-		ID:           "user-123",
-		TenantID:     "tenant-123",
+		ID:           userID,
+		TenantID:     tenantID,
 		FullName:     "John Doe",
 		Email:        "john@example.com",
 		PasswordHash: string(hashedPassword),
-		Role:         "admin",
+		Role:         entities.UserRoleAdmin,
 		CreatedAt:    time.Now(),
 	}
 
-	mockUserRepo.users = map[string]*entities.AdminUser{
-		"john@example.com": user,
-	}
-	mockTenantRepo.tenants = map[string]*entities.Tenant{
-		"tenant-123": tenant,
-	}
+	mockUserRepo.users["john@example.com"] = user
+	mockTenantRepo.tenants[tenantID] = tenant
 
 	// Create use case and handler
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	// Setup route
@@ -89,13 +198,13 @@ func TestLoginHandler_Success(t *testing.T) {
 	assert.Equal(t, float64(86400), response["expires_in"])
 
 	userInfo := response["user"].(map[string]interface{})
-	assert.Equal(t, "user-123", userInfo["id"])
+	assert.NotEmpty(t, userInfo["id"])
 	assert.Equal(t, "john@example.com", userInfo["email"])
 	assert.Equal(t, "John Doe", userInfo["full_name"])
 	assert.Equal(t, "admin", userInfo["role"])
 
 	tenantInfo := response["tenant"].(map[string]interface{})
-	assert.Equal(t, "tenant-123", tenantInfo["id"])
+	assert.NotEmpty(t, tenantInfo["id"])
 	assert.Equal(t, "Test Org", tenantInfo["organization_name"])
 	assert.Equal(t, "active", tenantInfo["status"])
 }
@@ -105,24 +214,25 @@ func TestLoginHandler_InvalidCredentials(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
+	userID := uuid.New()
+	tenantID := uuid.New()
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	user := &entities.AdminUser{
-		ID:           "user-123",
-		TenantID:     "tenant-123",
+		ID:           userID,
+		TenantID:     tenantID,
 		Email:        "john@example.com",
 		PasswordHash: string(hashedPassword),
 	}
 
-	mockUserRepo.users = map[string]*entities.AdminUser{
-		"john@example.com": user,
-	}
+	mockUserRepo.users["john@example.com"] = user
 
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	router.POST("/api/v1/login", authHandler.Login)
@@ -153,14 +263,15 @@ func TestLoginHandler_UserNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
 	mockUserRepo.users = map[string]*entities.AdminUser{}
 
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	router.POST("/api/v1/login", authHandler.Login)
@@ -191,34 +302,33 @@ func TestLoginHandler_TenantNotActive(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
+	tenantID := uuid.New()
+	userID := uuid.New()
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	tenant := &entities.Tenant{
-		ID:               "tenant-123",
+		ID:               tenantID,
 		OrganizationName: "Test Org",
-		Status:           "pending",
+		Status:           entities.TenantStatusPendingVerification,
 		CreatedAt:        time.Now(),
 	}
 
 	user := &entities.AdminUser{
-		ID:           "user-123",
-		TenantID:     "tenant-123",
+		ID:           userID,
+		TenantID:     tenantID,
 		Email:        "john@example.com",
 		PasswordHash: string(hashedPassword),
 	}
 
-	mockUserRepo.users = map[string]*entities.AdminUser{
-		"john@example.com": user,
-	}
-	mockTenantRepo.tenants = map[string]*entities.Tenant{
-		"tenant-123": tenant,
-	}
+	mockUserRepo.users["john@example.com"] = user
+	mockTenantRepo.tenants[tenantID] = tenant
 
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	router.POST("/api/v1/login", authHandler.Login)
@@ -249,12 +359,13 @@ func TestLoginHandler_MissingEmail(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	router.POST("/api/v1/login", authHandler.Login)
@@ -284,12 +395,13 @@ func TestLoginHandler_MissingPassword(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	router.POST("/api/v1/login", authHandler.Login)
@@ -319,12 +431,13 @@ func TestLoginHandler_InvalidJSON(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	mockUserRepo := &MockUserRepository{}
-	mockTenantRepo := &MockTenantRepository{}
+	mockUserRepo := &MockUserRepository{users: make(map[string]*entities.AdminUser)}
+	mockTenantRepo := &MockTenantRepository{tenants: make(map[uuid.UUID]*entities.Tenant)}
 	passwordService := services.NewBcryptPasswordService()
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
+	jwtAdapter := services.NewAuthJWTServiceAdapter(jwtService)
 
-	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtService)
+	authenticateUseCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, passwordService, jwtAdapter)
 	authHandler := handlers.NewAuthHandler(authenticateUseCase)
 
 	router.POST("/api/v1/login", authHandler.Login)

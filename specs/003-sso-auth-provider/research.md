@@ -8,6 +8,7 @@
 ### Decision: Use `github.com/ory/fosite` (Recommended)
 
 **Rationale**:
+
 - **Production-ready**: Battle-tested OIDC/OAuth2 framework used by Ory Hydra
 - **RFC compliance**: Full compliance with OAuth 2.0 (RFC 6749), OIDC Core, PKCE (RFC 7636), and token introspection
 - **Flexibility**: Highly customizable storage backends, token strategies, and validation logic
@@ -16,14 +17,15 @@
 
 **Alternatives Considered**:
 
-| Library | Pros | Cons | Verdict |
-|---------|------|------|---------|
-| `github.com/ory/fosite` | Full OIDC support, extensible, RFC-compliant, multi-tenant ready | Learning curve, more complex setup | ✅ **Selected** |
-| `golang.org/x/oauth2` | Simple, official Google library | Client-side only, lacks server implementation | ❌ Rejected - doesn't provide server functionality |
-| Custom implementation | Full control, minimal dependencies | High maintenance, security risks, RFC compliance burden | ❌ Rejected - too much complexity |
-| `github.com/coreos/go-oidc` | Simple OIDC provider | Client-side validation only, no server | ❌ Rejected - client library only |
+| Library                     | Pros                                                             | Cons                                                    | Verdict                                            |
+| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| `github.com/ory/fosite`     | Full OIDC support, extensible, RFC-compliant, multi-tenant ready | Learning curve, more complex setup                      | ✅ **Selected**                                    |
+| `golang.org/x/oauth2`       | Simple, official Google library                                  | Client-side only, lacks server implementation           | ❌ Rejected - doesn't provide server functionality |
+| Custom implementation       | Full control, minimal dependencies                               | High maintenance, security risks, RFC compliance burden | ❌ Rejected - too much complexity                  |
+| `github.com/coreos/go-oidc` | Simple OIDC provider                                             | Client-side validation only, no server                  | ❌ Rejected - client library only                  |
 
 **Implementation Notes**:
+
 - Fosite provides interfaces for: `Storage`, `AccessTokenStrategy`, `RefreshTokenStrategy`
 - We'll implement custom storage backends for PostgreSQL (persistent) and Redis (ephemeral)
 - Supports RS256 signing out of the box with custom key management
@@ -35,12 +37,14 @@
 ### Decision: RS256 with `crypto/rsa` + JWKS Endpoint
 
 **Rationale**:
+
 - **Asymmetric signing**: Eliminates need to share secrets with resource servers
 - **JWKS distribution**: Standard mechanism for key distribution via `/.well-known/jwks.json`
 - **Key rotation**: Supports multiple active keys simultaneously for zero-downtime rotation
 - **Fosite integration**: Fosite has built-in RS256 support via `fosite.DefaultJWTStrategy`
 
 **Key Generation**:
+
 ```go
 // Generate 2048-bit RSA key pair
 privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -48,11 +52,13 @@ publicKey := &privateKey.PublicKey
 ```
 
 **Key Storage**:
+
 - **Private keys**: Stored in PostgreSQL `signing_keys` table, encrypted at rest
 - **Public keys**: Exposed via JWKS endpoint, cached in Redis for performance
 - **Key rotation**: Manual process initially, automated rotation as Phase 2 enhancement
 
 **JWKS Format** (RFC 7517):
+
 ```json
 {
   "keys": [
@@ -69,6 +75,7 @@ publicKey := &privateKey.PublicKey
 ```
 
 **Libraries**:
+
 - `crypto/rsa`: Key generation and signing
 - `github.com/golang-jwt/jwt/v5`: JWT token creation and parsing
 - `gopkg.in/square/go-jose.v2`: JWKS generation and management
@@ -80,12 +87,14 @@ publicKey := &privateKey.PublicKey
 ### Decision: Client-based tenant lookup (from clarifications)
 
 **Rationale** (from spec clarifications):
+
 - Each `client_id` is associated with exactly one `tenant_id`
 - When authorization request arrives with `client_id`, lookup tenant context
 - No subdomain routing needed (simplifies deployment)
 - Most secure approach - no user input for tenant selection
 
 **Implementation**:
+
 ```go
 // In authorization handler
 client, err := storage.GetClient(ctx, clientID)
@@ -95,6 +104,7 @@ ctx = context.WithValue(ctx, "tenant_id", tenantID)
 ```
 
 **Database Schema Implication**:
+
 ```sql
 CREATE TABLE clients (
     client_id VARCHAR(255) PRIMARY KEY,
@@ -113,6 +123,7 @@ CREATE INDEX idx_clients_tenant ON clients(tenant_id);
 **Decision**: Use `github.com/golang-migrate/migrate/v4`
 
 **Rationale**:
+
 - Most popular Go migration tool
 - Supports both SQL and programmatic migrations
 - Version control for database schema
@@ -120,6 +131,7 @@ CREATE INDEX idx_clients_tenant ON clients(tenant_id);
 - CLI tool for local development
 
 **Migration File Structure**:
+
 ```
 migrations/
 ├── 000001_create_tenants.up.sql
@@ -134,12 +146,14 @@ migrations/
 **Multi-Tenancy Strategy**: Shared schema with tenant_id column (Row-Level Security)
 
 **Rationale**:
+
 - Simplifies deployment (single database)
 - Enables cross-tenant analytics if needed
 - PostgreSQL RLS provides security isolation
 - Easier to maintain than separate schemas per tenant
 
 **Entity Relationships**:
+
 ```
 tenants (1) ──< (N) clients
 tenants (1) ──< (N) users
@@ -162,12 +176,14 @@ users (1) ──< (N) refresh_tokens ─> (N) clients
 **Library**: `github.com/jackc/pgx/v5` (PostgreSQL driver)
 
 **Rationale**:
+
 - Best performance for PostgreSQL in Go
 - Native prepared statement support
 - Better error handling than `database/sql`
 - COPY protocol support for bulk operations
 
 **Pool Settings** (recommended):
+
 ```go
 config, _ := pgxpool.ParseConfig("postgres://...")
 config.MaxConns = 25                    // Max connections
@@ -185,6 +201,7 @@ config.MaxConnIdleTime = 30 * time.Minute
 **Decision**: Use go-redis v9 with context support
 
 **Rationale**:
+
 - Most popular Redis client for Go
 - Full Redis 7.x feature support
 - Context-based API for cancellation
@@ -194,6 +211,7 @@ config.MaxConnIdleTime = 30 * time.Minute
 ### Data Structures & TTLs
 
 **Authorization Codes** (5-minute lifetime):
+
 ```
 Key Pattern: auth:code:{code_value}
 Value: JSON {client_id, user_id, tenant_id, redirect_uri, code_challenge, scope}
@@ -201,6 +219,7 @@ TTL: 300 seconds (5 minutes)
 ```
 
 **User Sessions** (8-hour lifetime):
+
 ```
 Key Pattern: session:{session_id}
 Value: JSON {user_id, tenant_id, created_at, expires_at, ip_address, user_agent}
@@ -208,6 +227,7 @@ TTL: 28800 seconds (8 hours)
 ```
 
 **Refresh Tokens** (7-day lifetime):
+
 ```
 Key Pattern: refresh:{token_value}
 Value: JSON {client_id, user_id, tenant_id, created_at, expires_at, is_revoked}
@@ -215,6 +235,7 @@ TTL: 604800 seconds (7 days)
 ```
 
 **JWKS Cache** (1-hour cache):
+
 ```
 Key Pattern: jwks:public_keys
 Value: JSON (JWKS document)
@@ -222,6 +243,7 @@ TTL: 3600 seconds (1 hour)
 ```
 
 **Rate Limiting** (per-client throttling):
+
 ```
 Key Pattern: ratelimit:token:{client_id}
 Value: Request count
@@ -232,6 +254,7 @@ Command: INCR with GET to check limit
 ### Redis Configuration
 
 **Connection**:
+
 ```go
 rdb := redis.NewClient(&redis.Options{
     Addr:         "localhost:6379",
@@ -243,6 +266,7 @@ rdb := redis.NewClient(&redis.Options{
 ```
 
 **High Availability** (future):
+
 - Redis Sentinel for automatic failover
 - Redis Cluster for horizontal scaling
 - Consider Redis persistence (AOF) for refresh tokens
@@ -256,12 +280,14 @@ rdb := redis.NewClient(&redis.Options{
 **Decision**: Mandatory S256 (SHA-256) method
 
 **Rationale**:
+
 - Prevents authorization code interception attacks
 - Required for public clients (SPAs, mobile apps)
 - More secure than "plain" method
 - Fosite has built-in PKCE support
 
 **Flow**:
+
 1. Client generates `code_verifier` (43-128 random characters)
 2. Client computes `code_challenge = BASE64URL(SHA256(code_verifier))`
 3. Authorization request includes `code_challenge` and `code_challenge_method=S256`
@@ -269,12 +295,14 @@ rdb := redis.NewClient(&redis.Options{
 5. Server validates: `BASE64URL(SHA256(code_verifier)) == stored_code_challenge`
 
 **Implementation** (Fosite handles this automatically):
+
 ```go
 // Fosite validates PKCE in OAuth2Provider.NewAccessRequest()
 // Just need to store code_challenge with authorization code
 ```
 
 **Validation**:
+
 ```go
 func validatePKCE(verifier, challenge string) bool {
     hash := sha256.Sum256([]byte(verifier))
@@ -296,12 +324,14 @@ func validatePKCE(verifier, challenge string) bool {
 **Library**: `github.com/ulule/limiter/v3` with Redis driver
 
 **Rationale**:
+
 - Proven rate limiting library
 - Multiple storage backends (Redis, memory, etc.)
 - Token bucket and sliding window algorithms
 - Middleware-ready for HTTP handlers
 
 **Configuration**:
+
 ```go
 import "github.com/ulule/limiter/v3"
 import "github.com/ulule/limiter/v3/drivers/store/redis"
@@ -318,6 +348,7 @@ instance := limiter.New(store, rate)
 ```
 
 **Middleware**:
+
 ```go
 func RateLimitMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -336,6 +367,7 @@ func RateLimitMiddleware(next http.Handler) http.Handler {
 ```
 
 **Alternative**: Manual implementation with Redis INCR
+
 ```go
 key := fmt.Sprintf("ratelimit:token:%s", clientID)
 count, _ := redisClient.Incr(ctx, key).Result()
@@ -354,6 +386,7 @@ if count > 10 {
 ### Strategy: HTTP-only, Secure, SameSite cookies + Redis
 
 **Cookie Configuration**:
+
 ```go
 http.SetCookie(w, &http.Cookie{
     Name:     "session_id",
@@ -368,12 +401,14 @@ http.SetCookie(w, &http.Cookie{
 ```
 
 **Session Storage**:
+
 - Store in Redis with session_id as key
 - Include user_id, tenant_id, IP address, user agent
 - Invalidate on logout or timeout
 - Sliding expiration: update TTL on each request
 
 **Session Validation Middleware**:
+
 ```go
 func ValidateSession(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -382,7 +417,7 @@ func ValidateSession(next http.Handler) http.Handler {
             http.Error(w, "Unauthorized", 401)
             return
         }
-        
+
         // Get session from Redis
         sessionKey := fmt.Sprintf("session:%s", cookie.Value)
         sessionData, err := redisClient.Get(r.Context(), sessionKey).Result()
@@ -390,10 +425,10 @@ func ValidateSession(next http.Handler) http.Handler {
             http.Error(w, "Session expired", 401)
             return
         }
-        
+
         // Extend session TTL (sliding expiration)
         redisClient.Expire(r.Context(), sessionKey, 8*time.Hour)
-        
+
         // Add session to context
         ctx := context.WithValue(r.Context(), "session", sessionData)
         next.ServeHTTP(w, r.WithContext(ctx))
@@ -408,17 +443,20 @@ func ValidateSession(next http.Handler) http.Handler {
 ### Strategy: State parameter + SameSite cookies
 
 **OAuth State Parameter** (built into OAuth 2.0):
+
 - Client generates random `state` value
 - Includes in authorization request
 - Validates returned `state` matches original
 - Fosite handles this automatically
 
 **Additional Protection**:
+
 - `SameSite=Lax` on session cookies
 - CORS configuration to restrict origins
 - Referer header validation for sensitive operations
 
 **Implementation**:
+
 ```go
 // Fosite handles state validation automatically
 // Just ensure state is passed through correctly
@@ -440,6 +478,7 @@ func GenerateCSRFToken() string {
 **State Management**: React Context API + hooks
 
 **Rationale**:
+
 - Sufficient for auth state management
 - No need for Redux complexity
 - Aligns with functional component requirement
@@ -450,6 +489,7 @@ func GenerateCSRFToken() string {
 **Form Handling**: React Hook Form
 
 **Rationale**:
+
 - Performance (uncontrolled components)
 - Built-in validation
 - TypeScript support
@@ -458,6 +498,7 @@ func GenerateCSRFToken() string {
 **HTTP Client**: Axios
 
 **Rationale**:
+
 - Interceptor support for auth headers
 - Request/response transformation
 - Better error handling than fetch
@@ -466,6 +507,7 @@ func GenerateCSRFToken() string {
 **UI Components**: Tailwind CSS + Headless UI
 
 **Rationale** (observed from existing frontend):
+
 - Already in use (tailwind.config.js exists)
 - Utility-first approach
 - Headless UI for accessible components
@@ -517,7 +559,7 @@ export async function generateCodeVerifier(): Promise<string> {
 export async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
-  const hash = await crypto.subtle.digest('SHA-256', data);
+  const hash = await crypto.subtle.digest("SHA-256", data);
   return base64URLEncode(new Uint8Array(hash));
 }
 ```
@@ -531,43 +573,43 @@ export class AuthService {
     const codeVerifier = await generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     const state = generateRandomString(32);
-    
+
     // Store for callback
-    sessionStorage.setItem('code_verifier', codeVerifier);
-    sessionStorage.setItem('oauth_state', state);
-    
+    sessionStorage.setItem("code_verifier", codeVerifier);
+    sessionStorage.setItem("oauth_state", state);
+
     // Redirect to authorization endpoint
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
       redirect_uri: REDIRECT_URI,
-      response_type: 'code',
-      scope: 'openid profile email',
+      response_type: "code",
+      scope: "openid profile email",
       state,
       code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
+      code_challenge_method: "S256",
     });
-    
+
     window.location.href = `${AUTH_URL}/oauth2/auth?${params}`;
   }
-  
+
   async handleCallback(code: string, state: string) {
     // Validate state
-    const storedState = sessionStorage.getItem('oauth_state');
-    if (state !== storedState) throw new Error('Invalid state');
-    
+    const storedState = sessionStorage.getItem("oauth_state");
+    if (state !== storedState) throw new Error("Invalid state");
+
     // Exchange code for tokens
-    const codeVerifier = sessionStorage.getItem('code_verifier');
+    const codeVerifier = sessionStorage.getItem("code_verifier");
     const tokens = await this.exchangeCode(code, codeVerifier);
-    
+
     // Store tokens
-    localStorage.setItem('access_token', tokens.access_token);
-    localStorage.setItem('refresh_token', tokens.refresh_token);
-    localStorage.setItem('id_token', tokens.id_token);
-    
+    localStorage.setItem("access_token", tokens.access_token);
+    localStorage.setItem("refresh_token", tokens.refresh_token);
+    localStorage.setItem("id_token", tokens.id_token);
+
     // Clear temporary storage
-    sessionStorage.removeItem('code_verifier');
-    sessionStorage.removeItem('oauth_state');
-    
+    sessionStorage.removeItem("code_verifier");
+    sessionStorage.removeItem("oauth_state");
+
     return tokens;
   }
 }
@@ -580,6 +622,7 @@ export class AuthService {
 ### Decision: `github.com/go-chi/chi/v5`
 
 **Rationale**:
+
 - Lightweight, idiomatic Go
 - Standard `net/http` compatible
 - Built-in middleware support
@@ -588,6 +631,7 @@ export class AuthService {
 - Better than Gin for Clean Architecture (less opinionated)
 
 **Middleware Stack**:
+
 ```go
 r := chi.NewRouter()
 
@@ -604,7 +648,7 @@ r.Use(TenantContextMiddleware)
 // Rate-limited routes
 r.Group(func(r chi.Router) {
     r.Use(RateLimitMiddleware)
-    
+
     r.Post("/oauth2/token", tokenHandler)
     r.Post("/oauth2/introspect", introspectHandler)
 })
@@ -612,7 +656,7 @@ r.Group(func(r chi.Router) {
 // Session-protected routes
 r.Group(func(r chi.Router) {
     r.Use(ValidateSession)
-    
+
     r.Get("/admin/clients", listClientsHandler)
     r.Post("/admin/clients", createClientHandler)
 })
@@ -625,12 +669,14 @@ r.Group(func(r chi.Router) {
 ### Decision: Environment variables + `github.com/spf13/viper`
 
 **Rationale**:
+
 - 12-factor app compliance
 - Supports multiple sources (env, file, remote)
 - Type-safe configuration
 - Easy testing with mock configs
 
 **Configuration Structure**:
+
 ```go
 type Config struct {
     Server struct {
@@ -659,6 +705,7 @@ type Config struct {
 ```
 
 **Environment Variables**:
+
 ```bash
 # .env.example
 SERVER_PORT=8080
@@ -683,27 +730,28 @@ SECURITY_COOKIE_DOMAIN=.keyles.com
 
 ## Summary of Technology Decisions
 
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| **OIDC Framework** | ory/fosite | Full RFC compliance, extensible, production-ready |
-| **JWT Signing** | crypto/rsa + RS256 | Asymmetric signing, JWKS support, industry standard |
-| **PostgreSQL Driver** | pgx/v5 | Best performance, native features, connection pooling |
-| **Redis Client** | go-redis/v9 | Most popular, context support, full feature set |
-| **Migrations** | golang-migrate | Industry standard, version control, rollback support |
-| **HTTP Router** | chi/v5 | Lightweight, idiomatic, middleware-friendly |
-| **Rate Limiting** | ulule/limiter/v3 | Token bucket algorithm, Redis-backed, middleware-ready |
-| **Configuration** | viper | Environment variables, type-safe, multi-source |
-| **Frontend Framework** | React + TypeScript | Existing stack, functional components, type safety |
-| **State Management** | Context API + Hooks | Sufficient for auth, no Redux complexity needed |
-| **HTTP Client** | Axios | Interceptors, error handling, TypeScript support |
-| **UI Framework** | Tailwind CSS | Existing project standard, utility-first |
-| **Form Handling** | React Hook Form | Performance, validation, TypeScript support |
+| Component              | Technology          | Rationale                                              |
+| ---------------------- | ------------------- | ------------------------------------------------------ |
+| **OIDC Framework**     | ory/fosite          | Full RFC compliance, extensible, production-ready      |
+| **JWT Signing**        | crypto/rsa + RS256  | Asymmetric signing, JWKS support, industry standard    |
+| **PostgreSQL Driver**  | pgx/v5              | Best performance, native features, connection pooling  |
+| **Redis Client**       | go-redis/v9         | Most popular, context support, full feature set        |
+| **Migrations**         | golang-migrate      | Industry standard, version control, rollback support   |
+| **HTTP Router**        | chi/v5              | Lightweight, idiomatic, middleware-friendly            |
+| **Rate Limiting**      | ulule/limiter/v3    | Token bucket algorithm, Redis-backed, middleware-ready |
+| **Configuration**      | viper               | Environment variables, type-safe, multi-source         |
+| **Frontend Framework** | React + TypeScript  | Existing stack, functional components, type safety     |
+| **State Management**   | Context API + Hooks | Sufficient for auth, no Redux complexity needed        |
+| **HTTP Client**        | Axios               | Interceptors, error handling, TypeScript support       |
+| **UI Framework**       | Tailwind CSS        | Existing project standard, utility-first               |
+| **Form Handling**      | React Hook Form     | Performance, validation, TypeScript support            |
 
 ---
 
 ## Next Steps
 
 Phase 1 will produce:
+
 1. **data-model.md**: Complete PostgreSQL schema definitions
 2. **contracts/**: OpenAPI specifications for all endpoints
 3. **quickstart.md**: Developer setup and local development guide

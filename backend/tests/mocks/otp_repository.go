@@ -3,10 +3,11 @@ package mocks
 import (
 	"context"
 
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 // MockOTPRepository is a mock implementation of OTPRepository
@@ -20,7 +21,7 @@ func (m *MockOTPRepository) Create(ctx context.Context, otp *entities.OTPVerific
 }
 
 func (m *MockOTPRepository) FindByTenantIDAndPurpose(ctx context.Context, tenantID, purpose string) (*entities.OTPVerification, error) {
-	args := m.Called(tenantID, purpose)
+	args := m.Called(ctx, tenantID, purpose)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -28,7 +29,7 @@ func (m *MockOTPRepository) FindByTenantIDAndPurpose(ctx context.Context, tenant
 }
 
 func (m *MockOTPRepository) Update(ctx context.Context, otp *entities.OTPVerification) error {
-	args := m.Called(otp)
+	args := m.Called(ctx, otp)
 	return args.Error(0)
 }
 

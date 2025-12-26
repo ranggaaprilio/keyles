@@ -13,7 +13,7 @@
 - Q: How should the system determine if a user is allowed to authenticate with a specific client application? → A: Role-based access control
 - Q: What rate limits should be enforced on token endpoints? → A: 10 requests/minute per client_id
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Client App Registration (Priority: P1)
 
@@ -181,7 +181,7 @@ A tenant administrator needs to control which users in their organization can au
 - What happens when a user's role for a client is revoked while they have an active session?
 - How does the system handle a user who belongs to multiple tenants trying to authenticate?
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -311,7 +311,7 @@ A tenant administrator needs to control which users in their organization can au
 7. **Session Management**: Assuming sessions are stored server-side with a default timeout of 8 hours of inactivity.
 8. **Rate Limit Response**: Assuming HTTP 429 (Too Many Requests) is returned when rate limits are exceeded, with retry-after header.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -334,7 +334,7 @@ A tenant administrator needs to control which users in their organization can au
 - **SC-017**: Users without role-based permissions for a client are denied authentication 100% of the time.
 - **SC-018**: Tenant isolation ensures that client_id lookups correctly identify tenant context with 100% accuracy.
 
-## Workflow Documentation *(mandatory)*
+## Workflow Documentation _(mandatory)_
 
 This section provides step-by-step documentation of the validation and processing workflow from the time a request is received until tokens are issued, including JSON data structures.
 
@@ -345,6 +345,7 @@ This section provides step-by-step documentation of the validation and processin
 The client application redirects the user to the SSO provider's authorization endpoint.
 
 **Request Parameters**:
+
 ```json
 {
   "client_id": "abc123xyz",
@@ -364,11 +365,11 @@ System validates the incoming request:
 1. Verify `client_id` exists and is active
 2. Lookup and set tenant context based on the client's tenant_id
 3. Verify `redirect_uri` exactly matches one of the registered URIs for the client
-3. Verify `response_type` is "code"
-4. Verify `code_challenge_method` is "S256"
-5. Verify `code_challenge` is present and properly formatted
-6. Verify `state` is present (CSRF protection)
-7. Verify `scope` contains at minimum "openid"
+4. Verify `response_type` is "code"
+5. Verify `code_challenge_method` is "S256"
+6. Verify `code_challenge` is present and properly formatted
+7. Verify `state` is present (CSRF protection)
+8. Verify `scope` contains at minimum "openid"
 
 **Validation Failure Response**:
 If validation fails (except for redirect_uri mismatch), display error page to user.
@@ -386,6 +387,7 @@ If redirect_uri is invalid, do not redirect to prevent open redirect vulnerabili
 If validation succeeds and user is not authenticated, present login form.
 
 **Login Request**:
+
 ```json
 {
   "email": "user@tenant-a.com",
@@ -404,6 +406,7 @@ System validates user credentials:
 5. Check if user has role-based permissions to access the requested client application (query user role assignments for this client_id)
 
 **Authentication Failure Response**:
+
 ```json
 {
   "error": "invalid_credentials",
@@ -416,6 +419,7 @@ System validates user credentials:
 Upon successful authentication, create user session:
 
 **Session Object**:
+
 ```json
 {
   "session_id": "sess_9f8e7d6c5b4a3210",
@@ -434,6 +438,7 @@ Upon successful authentication, create user session:
 System generates single-use authorization code:
 
 **Authorization Code Object**:
+
 ```json
 {
   "code": "auth_code_a1b2c3d4e5f6g7h8",
@@ -455,6 +460,7 @@ System generates single-use authorization code:
 Redirect user back to client application with authorization code:
 
 **Redirect URL**:
+
 ```
 https://client-app.example.com/callback?code=auth_code_a1b2c3d4e5f6g7h8&state=random-csrf-token-12345
 ```
@@ -468,6 +474,7 @@ https://client-app.example.com/callback?code=auth_code_a1b2c3d4e5f6g7h8&state=ra
 Client application makes POST request to token endpoint.
 
 **Token Request**:
+
 ```json
 {
   "grant_type": "authorization_code",
@@ -495,6 +502,7 @@ System validates token exchange request:
 8. Verify tenant_id from code matches tenant_id of client
 
 **PKCE Verification Example**:
+
 ```
 code_verifier: dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
 SHA256(code_verifier): 4f8...1c2 (binary)
@@ -503,6 +511,7 @@ Must equal code_challenge: E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM ✓
 ```
 
 **Validation Failure Response**:
+
 ```json
 {
   "error": "invalid_grant",
@@ -527,6 +536,7 @@ Update authorization code to prevent reuse:
 Create ID Token with user profile information.
 
 **ID Token Payload**:
+
 ```json
 {
   "iss": "https://sso.keyles.com",
@@ -544,6 +554,7 @@ Create ID Token with user profile information.
 ```
 
 **ID Token Header**:
+
 ```json
 {
   "alg": "RS256",
@@ -553,6 +564,7 @@ Create ID Token with user profile information.
 ```
 
 **Signed ID Token** (example):
+
 ```
 eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0.eyJpc3MiOiJodHRwczovL3Nzby5rZXlsZXMuY29tIiwic3ViIjoidXNlcl8xMjM0NSIsImF1ZCI6ImFiYzEyM3h5eiIsImV4cCI6MTczNTIxMzgyMCwiaWF0IjoxNzM1MjEwMjIwLCJ0ZW5hbnRfaWQiOiJ0ZW5hbnRfYSIsImVtYWlsIjoidXNlckB0ZW5hbnQtYS5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmFtZSI6IkpvaG4gRG9lIiwiZ2l2ZW5fbmFtZSI6IkpvaG4iLCJmYW1pbHlfbmFtZSI6IkRvZSJ9.signature_bytes_here
 ```
@@ -562,6 +574,7 @@ eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0.eyJpc3MiOiJodHRw
 Create Access Token for API authorization.
 
 **Access Token Payload**:
+
 ```json
 {
   "iss": "https://sso.keyles.com",
@@ -576,6 +589,7 @@ Create Access Token for API authorization.
 ```
 
 **Access Token Header**:
+
 ```json
 {
   "alg": "RS256",
@@ -585,6 +599,7 @@ Create Access Token for API authorization.
 ```
 
 **Signed Access Token** (example):
+
 ```
 eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0.eyJpc3MiOiJodHRwczovL3Nzby5rZXlsZXMuY29tIiwic3ViIjoidXNlcl8xMjM0NSIsImF1ZCI6ImFiYzEyM3h5eiIsImV4cCI6MTczNTIxMTEyMCwiaWF0IjoxNzM1MjEwMjIwLCJ0ZW5hbnRfaWQiOiJ0ZW5hbnRfYSIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwiLCJjbGllbnRfaWQiOiJhYmMxMjN4eXoifQ.signature_bytes_here
 ```
@@ -594,6 +609,7 @@ eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0.eyJpc3MiOiJodHRw
 Create Refresh Token as database-backed opaque token.
 
 **Refresh Token Object**:
+
 ```json
 {
   "token": "refresh_9z8y7x6w5v4u3t2s1r0q",
@@ -613,6 +629,7 @@ Create Refresh Token as database-backed opaque token.
 Send tokens to client application:
 
 **Token Response**:
+
 ```json
 {
   "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0...",
@@ -637,11 +654,13 @@ Client application receives JWT token (ID token or access token) from user reque
 Client makes GET request to JWKS endpoint to retrieve public keys.
 
 **JWKS Endpoint Request**:
+
 ```
 GET https://sso.keyles.com/.well-known/jwks.json
 ```
 
 **JWKS Response**:
+
 ```json
 {
   "keys": [
@@ -670,6 +689,7 @@ GET https://sso.keyles.com/.well-known/jwks.json
 Extract header from JWT to get key ID.
 
 **Token Header**:
+
 ```json
 {
   "alg": "RS256",
@@ -705,6 +725,7 @@ After signature verification, validate token claims:
 **Validation Success**: Token is valid and claims can be trusted.
 
 **Validation Failure Examples**:
+
 ```json
 {
   "error": "invalid_token",
@@ -735,6 +756,7 @@ After signature verification, validate token claims:
 Client sends refresh token to obtain new access token.
 
 **Refresh Request**:
+
 ```json
 {
   "grant_type": "refresh_token",
@@ -758,6 +780,7 @@ System validates refresh token:
 8. Verify tenant_id matches
 
 **Validation Failure Response**:
+
 ```json
 {
   "error": "invalid_grant",
@@ -785,6 +808,7 @@ Create new access token (same structure as in Workflow 2, Step 5).
 System may issue a new refresh token (refresh token rotation for enhanced security):
 
 **New Refresh Token Object**:
+
 ```json
 {
   "token": "refresh_8y7x6w5v4u3t2s1r0q9p",
@@ -814,6 +838,7 @@ If new refresh token is issued, revoke old one:
 Send new tokens to client:
 
 **Refresh Response**:
+
 ```json
 {
   "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0...",
@@ -833,6 +858,7 @@ Send new tokens to client:
 Client or administrator sends revocation request.
 
 **Revocation Request**:
+
 ```json
 {
   "token": "refresh_9z8y7x6w5v4u3t2s1r0q",
@@ -865,6 +891,7 @@ Update token to revoked status:
 **Step 4: Return Success Response**
 
 **Revocation Response**:
+
 ```json
 {
   "status": "revoked"
@@ -878,22 +905,26 @@ Note: Per RFC 7009, revocation endpoint should return 200 OK even if token doesn
 ### Security Validation Summary
 
 **Multi-Tenant Isolation Checkpoints**:
+
 1. Authorization endpoint: Validate user belongs to tenant from client
 2. Token exchange: Verify tenant_id matches across authorization code, user, and client
 3. Token validation: Verify tenant_id claim matches expected tenant context
 4. Refresh token: Verify tenant_id matches throughout refresh process
 
 **PKCE Validation Flow**:
+
 1. Authorization request: Store code_challenge and method with authorization code
 2. Token exchange: Compute SHA256(code_verifier), base64url encode, compare with stored code_challenge
 3. Reject if mismatch: Prevents authorization code interception attacks
 
 **Redirect URI Validation**:
+
 1. Authorization request: Exact match against registered URIs
 2. Token exchange: Verify redirect_uri matches the one used in authorization request
 3. No wildcards or pattern matching: Prevents open redirect vulnerabilities
 
 **Token Expiration Enforcement**:
+
 1. Authorization codes: 5-minute lifetime, one-time use
 2. Access tokens: Short-lived (15 minutes default)
 3. Refresh tokens: Long-lived (30 days default) but revocable

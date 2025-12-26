@@ -15,7 +15,7 @@
 
 ## Path Conventions
 
-- **Web app (Clean Architecture)**: 
+- **Web app (Clean Architecture)**:
   - Backend: `backend/domain/`, `backend/usecase/`, `backend/infrastructure/`, `backend/interfaces/`
   - Frontend: `frontend/src/components/`, `frontend/src/services/`
   - Tests: `backend/tests/unit/`, `backend/tests/integration/`, `frontend/tests/`
@@ -27,16 +27,16 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Install backend OAuth dependencies (go get github.com/ory/fosite, github.com/jackc/pgx/v5, github.com/redis/go-redis/v9, github.com/go-chi/chi/v5, github.com/ulule/limiter/v3)
-- [ ] T002 [P] Install frontend OAuth UI dependencies (npm install axios react-router-dom, update package.json)
-- [ ] T003 Create backend/.env.example with OAuth-specific variables (OAUTH_ISSUER, OAUTH_ACCESS_TOKEN_TTL=900, OAUTH_REFRESH_TOKEN_TTL=604800, JWT_SIGNING_KEY_PATH, JWT_PUBLIC_KEY_PATH, JWT_KEY_ID, RATE_LIMIT_TOKEN_ENDPOINT=10)
-- [ ] T004 [P] Create frontend/.env.example with OAuth variables (VITE_OAUTH_ISSUER, VITE_CLIENT_ID, VITE_OAUTH_REDIRECT_URI, VITE_OAUTH_SCOPES)
-- [ ] T005 Create backend/cmd/keygen/main.go for RSA keypair generation utility (generates 2048-bit keys to backend/keys/)
-- [ ] T006 [P] Create backend/cmd/seed/main.go for test data seeder (creates dev tenant, users, clients, role assignments)
-- [ ] T007 Create backend/Makefile with targets: build, run, test, test-coverage, migrate-up, migrate-down, seed, clean, docker-up, docker-down
-- [ ] T008 Update docker-compose.yml to include Redis service if not already present
-- [ ] T009 Update backend/README.md with OAuth setup instructions and quickstart reference
-- [ ] T010 [P] Update frontend/README.md with OAuth integration guide
+- [x] T001 Install backend OAuth dependencies (go get github.com/ory/fosite, github.com/jackc/pgx/v5, github.com/redis/go-redis/v9, github.com/go-chi/chi/v5, github.com/ulule/limiter/v3)
+- [x] T002 [P] Install frontend OAuth UI dependencies (npm install axios react-router-dom, update package.json)
+- [x] T003 Create backend/.env.example with OAuth-specific variables (OAUTH_ISSUER, OAUTH_ACCESS_TOKEN_TTL=900, OAUTH_REFRESH_TOKEN_TTL=604800, JWT_SIGNING_KEY_PATH, JWT_PUBLIC_KEY_PATH, JWT_KEY_ID, RATE_LIMIT_TOKEN_ENDPOINT=10)
+- [x] T004 [P] Create frontend/.env.example with OAuth variables (VITE_OAUTH_ISSUER, VITE_CLIENT_ID, VITE_OAUTH_REDIRECT_URI, VITE_OAUTH_SCOPES)
+- [x] T005 Create backend/cmd/keygen/main.go for RSA keypair generation utility (generates 2048-bit keys to backend/keys/)
+- [x] T006 [P] Create backend/cmd/seed/main.go for test data seeder (creates dev tenant, users, clients, role assignments)
+- [x] T007 Create backend/Makefile with targets: build, run, test, test-coverage, migrate-up, migrate-down, seed, clean, docker-up, docker-down
+- [x] T008 Update docker-compose.yml to include Redis service if not already present
+- [x] T009 Update backend/README.md with OAuth setup instructions and quickstart reference
+- [x] T010 [P] Update frontend/README.md with OAuth integration guide
 
 ---
 
@@ -48,60 +48,61 @@
 
 ### Database Migrations
 
-- [ ] T011 Create migration 000004_create_clients_table.up.sql with columns: client_id (PK), tenant_id (FK), client_name, client_secret_hash, allowed_redirect_uris (TEXT[]), created_at, updated_at, is_active
-- [ ] T012 Create migration 000004_create_clients_table.down.sql
-- [ ] T013 [P] Create migration 000005_create_user_role_assignments_table.up.sql with columns: id (PK), user_id (FK), client_id (FK), role (VARCHAR 50), assigned_at, assigned_by, is_active, UNIQUE(user_id, client_id, role)
-- [ ] T014 [P] Create migration 000005_create_user_role_assignments_table.down.sql
-- [ ] T015 [P] Create migration 000006_create_refresh_tokens_table.up.sql with columns: token_id (PK), user_id (FK), client_id (FK), tenant_id (FK), token_hash, expires_at, revoked_at, created_at, INDEX(user_id, client_id)
-- [ ] T016 [P] Create migration 000006_create_refresh_tokens_table.down.sql
-- [ ] T017 [P] Create migration 000007_create_signing_keys_table.up.sql with columns: key_id (PK), algorithm (VARCHAR 10), public_key (TEXT), private_key_encrypted (TEXT), created_at, expires_at, is_active
-- [ ] T018 [P] Create migration 000007_create_signing_keys_table.down.sql
+- [x] T011 Create migration 000004_create_clients_table.up.sql with columns: client_id (PK), tenant_id (FK), client_name, client_secret_hash, allowed_redirect_uris (TEXT[]), created_at, updated_at, is_active
+- [x] T012 Create migration 000004_create_clients_table.down.sql
+- [x] T013 [P] Create migration 000005_create_user_role_assignments_table.up.sql with columns: id (PK), user_id (FK), client_id (FK), role (VARCHAR 50), assigned_at, assigned_by, is_active, UNIQUE(user_id, client_id, role)
+- [x] T014 [P] Create migration 000005_create_user_role_assignments_table.down.sql
+- [x] T015 [P] Create migration 000006_create_refresh_tokens_table.up.sql with columns: token_id (PK), user_id (FK), client_id (FK), tenant_id (FK), token_hash, expires_at, revoked_at, created_at, INDEX(user_id, client_id)
+- [x] T016 [P] Create migration 000006_create_refresh_tokens_table.down.sql
+- [x] T017 [P] Create migration 000007_create_signing_keys_table.up.sql with columns: key_id (PK), algorithm (VARCHAR 10), public_key (TEXT), private_key_encrypted (TEXT), created_at, expires_at, is_active
+- [x] T018 [P] Create migration 000007_create_signing_keys_table.down.sql
 
 ### Domain Entities (Clean Architecture - Innermost Layer)
 
-- [ ] T019 Define Client entity in backend/domain/entities/client.go with fields: ClientID, TenantID, ClientName, ClientSecretHash, AllowedRedirectURIs, IsActive, CreatedAt, UpdatedAt, validation methods (ValidateRedirectURI, IsURIAllowed)
-- [ ] T020 [P] Define UserRole entity in backend/domain/entities/user_role.go with fields: ID, UserID, ClientID, Role, AssignedAt, AssignedBy, IsActive, validation methods (ValidateRole)
-- [ ] T021 [P] Define RefreshToken entity in backend/domain/entities/refresh_token.go with fields: TokenID, UserID, ClientID, TenantID, TokenHash, ExpiresAt, RevokedAt, CreatedAt, methods (IsExpired, IsRevoked, IsValid)
-- [ ] T022 [P] Define SigningKey entity in backend/domain/entities/signing_key.go with fields: KeyID, Algorithm, PublicKey, PrivateKeyEncrypted, CreatedAt, ExpiresAt, IsActive
-- [ ] T023 [P] Define AuthorizationCode entity (in-memory/Redis) in backend/domain/entities/authorization_code.go with fields: Code, ClientID, UserID, TenantID, RedirectURI, CodeChallenge, CodeChallengeMethod, Scope, ExpiresAt, IsUsed
+- [x] T019 Define Client entity in backend/domain/entities/client.go with fields: ClientID, TenantID, ClientName, ClientSecretHash, AllowedRedirectURIs, IsActive, CreatedAt, UpdatedAt, validation methods (ValidateRedirectURI, IsURIAllowed)
+- [x] T020 [P] Define UserRole entity in backend/domain/entities/user_role.go with fields: ID, UserID, ClientID, Role, AssignedAt, AssignedBy, IsActive, validation methods (ValidateRole)
+- [x] T021 [P] Define RefreshToken entity in backend/domain/entities/refresh_token.go with fields: TokenID, UserID, ClientID, TenantID, TokenHash, ExpiresAt, RevokedAt, CreatedAt, methods (IsExpired, IsRevoked, IsValid)
+- [x] T022 [P] Define SigningKey entity in backend/domain/entities/signing_key.go with fields: KeyID, Algorithm, PublicKey, PrivateKeyEncrypted, CreatedAt, ExpiresAt, IsActive
+- [x] T023 [P] Define AuthorizationCode entity (in-memory/Redis) in backend/domain/entities/authorization_code.go with fields: Code, ClientID, UserID, TenantID, RedirectURI, CodeChallenge, CodeChallengeMethod, Scope, ExpiresAt, IsUsed
 
 ### Domain Repository Interfaces (Clean Architecture - Domain Layer)
 
-- [ ] T024 Define ClientRepository interface in backend/domain/repositories/client_repository.go with methods: Create(client), GetByID(clientID), GetByClientID(clientID, tenantID), Update(client), Delete(clientID), ListByTenant(tenantID), ValidateCredentials(clientID, clientSecret)
-- [ ] T025 [P] Define RoleRepository interface in backend/domain/repositories/role_repository.go with methods: AssignRole(userID, clientID, role, assignedBy), RevokeRole(userID, clientID, role), GetUserRoles(userID, clientID), HasRole(userID, clientID), ListRolesByClient(clientID), ListRolesByUser(userID)
-- [ ] T026 [P] Define RefreshTokenRepository interface in backend/domain/repositories/refresh_token_repository.go with methods: Create(token), GetByToken(tokenHash), Revoke(tokenID), RevokeAllForUser(userID, clientID), DeleteExpired(), IsRevoked(tokenHash)
-- [ ] T027 [P] Define AuthCodeRepository interface in backend/domain/repositories/auth_code_repository.go with methods: Store(code, metadata, ttl), Get(code), MarkAsUsed(code), Delete(code)
-- [ ] T028 [P] Define SessionRepository interface in backend/domain/repositories/session_repository.go with methods: Create(sessionID, userID, metadata, ttl), Get(sessionID), Delete(sessionID), Exists(sessionID)
-- [ ] T029 [P] Define SigningKeyRepository interface in backend/domain/repositories/signing_key_repository.go with methods: Create(key), GetActive(), GetByKeyID(keyID), Deactivate(keyID), DeleteExpired()
+- [x] T024 Define ClientRepository interface in backend/domain/repositories/client_repository.go with methods: Create(client), GetByID(clientID), GetByClientID(clientID, tenantID), Update(client), Delete(clientID), ListByTenant(tenantID), ValidateCredentials(clientID, clientSecret)
+- [x] T025 [P] Define RoleRepository interface in backend/domain/repositories/role_repository.go with methods: AssignRole(userID, clientID, role, assignedBy), RevokeRole(userID, clientID, role), GetUserRoles(userID, clientID), HasRole(userID, clientID), ListRolesByClient(clientID), ListRolesByUser(userID)
+- [x] T026 [P] Define RefreshTokenRepository interface in backend/domain/repositories/refresh_token_repository.go with methods: Create(token), GetByToken(tokenHash), Revoke(tokenID), RevokeAllForUser(userID, clientID), DeleteExpired(), IsRevoked(tokenHash)
+- [x] T027 [P] Define AuthCodeRepository interface in backend/domain/repositories/auth_code_repository.go with methods: Store(code, metadata, ttl), Get(code), MarkAsUsed(code), Delete(code)
+- [x] T028 [P] Define SessionRepository interface in backend/domain/repositories/session_repository.go with methods: Create(sessionID, userID, metadata, ttl), Get(sessionID), Delete(sessionID), Exists(sessionID)
+- [x] T029 [P] Define SigningKeyRepository interface in backend/domain/repositories/signing_key_repository.go with methods: Create(key), GetActive(), GetByKeyID(keyID), Deactivate(keyID), DeleteExpired()
 
 ### Domain Service Interfaces (Clean Architecture - Domain Layer)
 
-- [ ] T030 Define OAuthProvider interface in backend/domain/services/oauth_provider.go with methods: GenerateAuthCode(req AuthRequest), ExchangeCodeForTokens(code, verifier, clientID, clientSecret), RefreshAccessToken(refreshToken, clientID), ValidateToken(token), RevokeToken(token)
-- [ ] T031 [P] Define TokenService interface in backend/domain/services/token_service.go with methods: SignIDToken(claims), SignAccessToken(claims), ValidateTokenSignature(token), GetPublicKey(keyID), GetJWKS()
+- [x] T030 Define OAuthProvider interface in backend/domain/services/oauth_provider.go with methods: GenerateAuthCode(req AuthRequest), ExchangeCodeForTokens(code, verifier, clientID, clientSecret), RefreshAccessToken(refreshToken, clientID), ValidateToken(token), RevokeToken(token)
+- [x] T031 [P] Define TokenService interface in backend/domain/services/token_service.go with methods: SignIDToken(claims), SignAccessToken(claims), ValidateTokenSignature(token), GetPublicKey(keyID), GetJWKS()
 
 ### Infrastructure - Repository Implementations (Clean Architecture - Infrastructure Layer)
 
-- [ ] T032 Implement PostgresClientRepository in backend/infrastructure/persistence/postgres/client_repository.go using pgx connection pool, implements ClientRepository interface
-- [ ] T033 [P] Implement PostgresRoleRepository in backend/infrastructure/persistence/postgres/role_repository.go using pgx, implements RoleRepository interface
-- [ ] T034 [P] Implement PostgresRefreshTokenRepository in backend/infrastructure/persistence/postgres/refresh_token_repository.go using pgx, implements RefreshTokenRepository interface, stores bcrypt-hashed tokens
-- [ ] T035 [P] Implement PostgresSigningKeyRepository in backend/infrastructure/persistence/postgres/signing_key_repository.go using pgx, implements SigningKeyRepository interface
-- [ ] T036 Implement RedisAuthCodeRepository in backend/infrastructure/persistence/redis/auth_code_repository.go using go-redis client, implements AuthCodeRepository interface, 5-minute TTL
-- [ ] T037 [P] Implement RedisSessionRepository in backend/infrastructure/persistence/redis/session_repository.go using go-redis, implements SessionRepository interface, 8-hour TTL
-- [ ] T038 [P] Implement RedisTokenCacheRepository in backend/infrastructure/persistence/redis/token_cache_repository.go for refresh token caching (7-day TTL), uses SET with EX for automatic expiration
-- [ ] T039 [P] Implement RedisRateLimiter in backend/infrastructure/persistence/redis/rate_limiter.go using ulule/limiter, supports per-client_id rate limiting (10 req/min)
+- [x] T032 Implement PostgresClientRepository in backend/infrastructure/persistence/postgres/client_repository.go using pgx connection pool, implements ClientRepository interface
+- [x] T033 [P] Implement PostgresRoleRepository in backend/infrastructure/persistence/postgres/role_repository.go using pgx, implements RoleRepository interface
+- [x] T034 [P] Implement PostgresRefreshTokenRepository in backend/infrastructure/persistence/postgres/refresh_token_repository.go using pgx, implements RefreshTokenRepository interface, stores bcrypt-hashed tokens
+- [x] T035 [P] Implement PostgresSigningKeyRepository in backend/infrastructure/persistence/postgres/signing_key_repository.go using pgx, implements SigningKeyRepository interface
+- [x] T036 Implement RedisAuthCodeRepository in backend/infrastructure/persistence/redis/auth_code_repository.go using go-redis client, implements AuthCodeRepository interface, 5-minute TTL
+- [x] T037 [P] Implement RedisSessionRepository in backend/infrastructure/persistence/redis/session_repository.go using go-redis, implements SessionRepository interface, 8-hour TTL
+- [x] T038 [P] Implement RedisTokenCacheRepository in backend/infrastructure/persistence/redis/token_cache_repository.go for refresh token caching (7-day TTL), uses SET with EX for automatic expiration
+- [x] T039 [P] Implement RedisRateLimiter in backend/infrastructure/persistence/redis/rate_limiter.go using ulule/limiter, supports per-client_id rate limiting (10 req/min)
 
 ### Infrastructure - Service Implementations (Clean Architecture - Infrastructure Layer)
 
-- [ ] T040 Implement FositeOAuthProvider in backend/infrastructure/services/fosite_oauth_provider.go wrapping github.com/ory/fosite, implements OAuthProvider interface, handles PKCE validation
-- [ ] T041 [P] Implement RSATokenService in backend/infrastructure/services/rsa_token_service.go using crypto/rsa and crypto/sha256, implements TokenService interface, RS256 signing, JWKS generation
+- [x] T040 Implement FositeOAuthProvider in backend/infrastructure/services/fosite_oauth_provider.go wrapping github.com/ory/fosite, implements OAuthProvider interface, handles PKCE validation
+- [x] T041 [P] Implement RSATokenService in backend/infrastructure/services/rsa_token_service.go using crypto/rsa and crypto/sha256, implements TokenService interface, RS256 signing, JWKS generation
 
 ### HTTP Middleware (Clean Architecture - Interfaces Layer)
 
-- [ ] T042 Create rate limiting middleware in backend/interfaces/http/middleware/rate_limiter.go using RedisRateLimiter (implements FR-057: 10 req/min per client_id), extracts client_id from request, returns HTTP 429 when exceeded
-- [ ] T043 [P] Create tenant context middleware in backend/interfaces/http/middleware/tenant_context.go extracts tenant_id from client_id lookup and adds to request context
-- [ ] T044 [P] Update error handler middleware in backend/interfaces/http/middleware/error_handler.go to handle OAuth-specific errors (invalid_request, invalid_grant, unauthorized_client, access_denied, unsupported_grant_type, invalid_scope)
+- [x] T042 Create rate limiting middleware in backend/interfaces/http/middleware/rate_limiter.go using RedisRateLimiter (implements FR-057: 10 req/min per client_id), extracts client_id from request, returns HTTP 429 when exceeded
+- [x] T043 [P] Create tenant context middleware in backend/interfaces/http/middleware/tenant_context.go extracts tenant_id from client_id lookup and adds to request context
+- [x] T044 [P] Update error handler middleware in backend/interfaces/http/middleware/error_handler.go to handle OAuth-specific errors (invalid_request, invalid_grant, unauthorized_client, access_denied, unsupported_grant_type, invalid_scope)
 
-**Clean Architecture Checkpoint**: 
+**Clean Architecture Checkpoint**:
+
 - Domain layer established with entities and interfaces only
 - Infrastructure layer provides concrete implementations
 - No domain-to-infrastructure dependencies
@@ -119,8 +120,7 @@
 
 ### Tests for User Story 1 (MANDATORY per constitution) ⚠️
 
-> **CONSTITUTION REQUIREMENT: Write these tests FIRST, ensure they FAIL before implementation**
-> **Target: ≥85% coverage for domain/business logic, integration tests for all handlers**
+> **CONSTITUTION REQUIREMENT: Write these tests FIRST, ensure they FAIL before implementation** > **Target: ≥85% coverage for domain/business logic, integration tests for all handlers**
 
 - [ ] T045 [P] [US1] Unit test for Client entity validation in backend/tests/unit/domain/client_test.go (test ValidateRedirectURI, IsURIAllowed, HTTPS validation)
 - [ ] T046 [P] [US1] Unit test for CreateClient use case in backend/tests/unit/usecase/create_client_test.go (mock ClientRepository, test tenant isolation, duplicate client_id handling)
@@ -141,13 +141,14 @@
 - [ ] T056 [US1] Implement ListClients use case in backend/usecase/client/list_clients.go (depends on T024, lists all clients for tenant with pagination)
 - [ ] T057 [US1] Implement RotateSecret use case in backend/usecase/client/rotate_secret.go (depends on T024, generates new client_secret, invalidates old one)
 - [ ] T058 [US1] Implement ClientHandler in backend/interfaces/http/handlers/client_handler.go with routes: POST /api/admin/clients (create), GET /api/admin/clients (list), GET /api/admin/clients/:id (get), PUT /api/admin/clients/:id (update), DELETE /api/admin/clients/:id (delete), POST /api/admin/clients/:id/rotate-secret (rotate), requires admin authentication, extracts tenant from JWT
-- [ ] T059 [US1] Add client management routes to backend/interfaces/http/router.go in /api/admin/* group with auth middleware
+- [ ] T059 [US1] Add client management routes to backend/interfaces/http/router.go in /api/admin/\* group with auth middleware
 - [ ] T060 [P] [US1] Create ClientManagement component in frontend/src/components/admin/ClientManagement.tsx (table view of clients, create/edit/delete buttons)
 - [ ] T061 [P] [US1] Create ClientForm component in frontend/src/components/admin/ClientForm.tsx (form for name, redirect URIs with validation, displays generated credentials)
 - [ ] T062 [US1] Create clientService API client in frontend/src/services/clientService.ts (axios wrapper for client CRUD endpoints)
 - [ ] T063 [P] [US1] Create Client types in frontend/src/types/client.ts (TypeScript interfaces for Client, CreateClientRequest, UpdateClientRequest)
 
 **Architecture Verification**:
+
 - Domain (Client entity) has no infrastructure imports ✓
 - Use cases depend only on ClientRepository interface ✓
 - Handlers depend on use cases, not domain directly ✓
@@ -298,7 +299,7 @@
 - [ ] T112 [US8] Implement RevokeRole use case in backend/usecase/role/revoke_role.go (marks role as inactive per FR-006b, revokes all refresh tokens for user-client pair per FR-006e, records revocation)
 - [ ] T113 [US8] Implement ListUserRoles use case in backend/usecase/role/list_user_roles.go (returns all active roles for user per FR-006b, supports filtering by client)
 - [ ] T114 [US8] Implement RoleHandler in backend/interfaces/http/handlers/role_handler.go with routes: POST /api/admin/roles/assign (assign role per FR-006a), POST /api/admin/roles/revoke (revoke role per FR-006b), GET /api/admin/roles/users/:userId (list user roles), GET /api/admin/roles/clients/:clientId (list client roles), requires admin authentication
-- [ ] T115 [US8] Add role management routes to backend/interfaces/http/router.go in /api/admin/* group
+- [ ] T115 [US8] Add role management routes to backend/interfaces/http/router.go in /api/admin/\* group
 - [ ] T116 [US8] Update AuthorizeClient use case (T069) to check user has active role for client per FR-006d, FR-012 (if not already implemented)
 - [ ] T117 [P] [US8] Create RoleManagement component in frontend/src/components/admin/RoleManagement.tsx (displays user-client role matrix, assign/revoke buttons)
 - [ ] T118 [P] [US8] Create UserRoles component in frontend/src/components/admin/UserRoles.tsx (shows roles for specific user across all clients)
@@ -392,11 +393,13 @@
 ### Critical Path for MVP
 
 **Minimum viable product** (most basic OAuth flow):
+
 1. Phase 1: Setup → Phase 2: Foundational → Phase 3: US1 (Client Registration) → Phase 4: US2 (Authentication) → Phase 5: US3 (Token Exchange)
 
 This delivers: Client registration + user authentication + token issuance
 
 **Production-ready** adds:
+
 - Phase 6: US4 (Token Validation) - for distributed validation
 - Phase 7: US5 (Token Refresh) - for long sessions
 - Phase 9: US8 (Role Management) - for access control

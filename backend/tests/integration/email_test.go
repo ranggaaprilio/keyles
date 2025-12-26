@@ -266,7 +266,7 @@ func TestEmailService_ErrorHandling(t *testing.T) {
 		shouldFail bool
 	}
 
-	failService := &FailingEmailService{shouldFail: true}
+	_ = &FailingEmailService{shouldFail: true} // Placeholder for future error testing
 
 	t.Run("Email service handles failures gracefully", func(t *testing.T) {
 		// In a real implementation, the email service would return errors

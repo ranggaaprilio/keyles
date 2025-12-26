@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
@@ -41,13 +42,29 @@ func (m *MockDashboardUserRepository) Update(ctx context.Context, user *entities
 	return nil
 }
 
+func (m *MockDashboardUserRepository) FindByTenantID(ctx context.Context, tenantID uuid.UUID) ([]*entities.AdminUser, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *MockDashboardUserRepository) EmailExists(ctx context.Context, email string) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (m *MockDashboardUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (m *MockDashboardUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.AdminUser, error) {
+	return nil, errors.New("not implemented")
+}
+
 // MockTenantRepository for dashboard tests
 type MockDashboardTenantRepository struct {
 	tenants map[string]*entities.Tenant
 }
 
-func (m *MockDashboardTenantRepository) FindByID(ctx context.Context, id string) (*entities.Tenant, error) {
-	if tenant, ok := m.tenants[id]; ok {
+func (m *MockDashboardTenantRepository) FindByID(ctx context.Context, id uuid.UUID) (*entities.Tenant, error) {
+	if tenant, ok := m.tenants[id.String()]; ok {
 		return tenant, nil
 	}
 	return nil, errors.New("tenant not found")
@@ -65,6 +82,14 @@ func (m *MockDashboardTenantRepository) FindByOrganizationName(ctx context.Conte
 	return nil, errors.New("not implemented")
 }
 
+func (m *MockDashboardTenantRepository) OrganizationNameExists(ctx context.Context, name string) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
+func (m *MockDashboardTenantRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
 func TestDashboardHandler_Success(t *testing.T) {
 	// Setup
 	gin.SetMode(gin.TestMode)
@@ -72,10 +97,14 @@ func TestDashboardHandler_Success(t *testing.T) {
 
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
 
+	// Create test UUIDs
+	tenantID := uuid.New()
+	userID := uuid.New()
+
 	// Create test data
 	verifiedAt := time.Now()
 	tenant := &entities.Tenant{
-		ID:               "tenant-123",
+		ID:               tenantID,
 		OrganizationName: "Test Org",
 		Status:           "active",
 		CreatedAt:        time.Now(),
@@ -83,8 +112,8 @@ func TestDashboardHandler_Success(t *testing.T) {
 	}
 
 	user := &entities.AdminUser{
-		ID:        "user-123",
-		TenantID:  "tenant-123",
+		ID:        userID,
+		TenantID:  tenantID,
 		FullName:  "John Doe",
 		Email:     "john@example.com",
 		Role:      "admin",
@@ -99,7 +128,7 @@ func TestDashboardHandler_Success(t *testing.T) {
 
 	mockTenantRepo := &MockDashboardTenantRepository{
 		tenants: map[string]*entities.Tenant{
-			"tenant-123": tenant,
+			tenantID.String(): tenant,
 		},
 	}
 
@@ -110,7 +139,7 @@ func TestDashboardHandler_Success(t *testing.T) {
 	router.GET("/api/v1/dashboard", middleware.AuthMiddleware(jwtService), dashboardHandler.GetDashboard)
 
 	// Generate valid JWT token
-	token, _ := jwtService.GenerateToken("user-123", "tenant-123", "john@example.com", "admin")
+	token, _ := jwtService.GenerateToken(userID.String(), tenantID.String(), "john@example.com", "admin")
 
 	// Create request with authorization header
 	req, _ := http.NewRequest("GET", "/api/v1/dashboard", nil)
@@ -127,14 +156,14 @@ func TestDashboardHandler_Success(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	tenantInfo := response["tenant"].(map[string]interface{})
-	assert.Equal(t, "tenant-123", tenantInfo["id"])
+	assert.Equal(t, tenantID.String(), tenantInfo["id"])
 	assert.Equal(t, "Test Org", tenantInfo["organization_name"])
 	assert.Equal(t, "active", tenantInfo["status"])
 	assert.NotNil(t, tenantInfo["created_at"])
 	assert.NotNil(t, tenantInfo["verified_at"])
 
 	userInfo := response["user"].(map[string]interface{})
-	assert.Equal(t, "user-123", userInfo["id"])
+	assert.Equal(t, userID.String(), userInfo["id"])
 	assert.Equal(t, "John Doe", userInfo["full_name"])
 	assert.Equal(t, "john@example.com", userInfo["email"])
 	assert.Equal(t, "admin", userInfo["role"])
@@ -212,7 +241,7 @@ func TestDashboardHandler_ExpiredToken(t *testing.T) {
 	router.GET("/api/v1/dashboard", middleware.AuthMiddleware(jwtService), dashboardHandler.GetDashboard)
 
 	// Generate expired token
-	token, _ := jwtService.GenerateToken("user-123", "tenant-123", "john@example.com", "admin")
+	token, _ := jwtService.GenerateToken(uuid.New().String(), uuid.New().String(), "john@example.com", "admin")
 
 	// Create request with expired token
 	req, _ := http.NewRequest("GET", "/api/v1/dashboard", nil)
@@ -279,7 +308,7 @@ func TestDashboardHandler_UserNotFound(t *testing.T) {
 	router.GET("/api/v1/dashboard", middleware.AuthMiddleware(jwtService), dashboardHandler.GetDashboard)
 
 	// Generate valid JWT token for non-existent user
-	token, _ := jwtService.GenerateToken("user-999", "tenant-999", "notfound@example.com", "admin")
+	token, _ := jwtService.GenerateToken(uuid.New().String(), uuid.New().String(), "notfound@example.com", "admin")
 
 	// Create request with authorization header
 	req, _ := http.NewRequest("GET", "/api/v1/dashboard", nil)
@@ -304,9 +333,12 @@ func TestDashboardHandler_TenantNotFound(t *testing.T) {
 
 	jwtService := services.NewJWTService("test-secret-key-32-characters!", 24)
 
+	tenantID := uuid.New()
+	userID := uuid.New()
+
 	user := &entities.AdminUser{
-		ID:        "user-123",
-		TenantID:  "tenant-123",
+		ID:        userID,
+		TenantID:  tenantID,
 		FullName:  "John Doe",
 		Email:     "john@example.com",
 		Role:      "admin",
@@ -328,7 +360,7 @@ func TestDashboardHandler_TenantNotFound(t *testing.T) {
 	router.GET("/api/v1/dashboard", middleware.AuthMiddleware(jwtService), dashboardHandler.GetDashboard)
 
 	// Generate valid JWT token but tenant doesn't exist
-	token, _ := jwtService.GenerateToken("user-123", "tenant-123", "john@example.com", "admin")
+	token, _ := jwtService.GenerateToken(userID.String(), tenantID.String(), "john@example.com", "admin")
 
 	// Create request with authorization header
 	req, _ := http.NewRequest("GET", "/api/v1/dashboard", nil)

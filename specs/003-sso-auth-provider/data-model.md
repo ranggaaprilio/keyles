@@ -7,6 +7,7 @@
 ## Overview
 
 This document defines the complete database schema for the Core SSO Auth Provider. The system uses:
+
 - **PostgreSQL**: Persistent data (tenants, users, clients, roles, signing keys, audit logs)
 - **Redis**: Ephemeral data (authorization codes, sessions, refresh tokens, rate limiting)
 
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT tenants_domain_lowercase CHECK (domain = LOWER(domain))
 );
 
@@ -69,6 +70,7 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 ```
 
 **Fields**:
+
 - `id`: Unique tenant identifier (e.g., `tenant_a`, UUID)
 - `name`: Human-readable tenant name
 - `domain`: Unique domain identifier for tenant
@@ -92,7 +94,7 @@ CREATE TABLE IF NOT EXISTS clients (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    
+
     CONSTRAINT clients_redirect_uris_not_empty CHECK (array_length(redirect_uris, 1) > 0)
 );
 
@@ -108,6 +110,7 @@ DROP TABLE IF EXISTS clients CASCADE;
 ```
 
 **Fields**:
+
 - `client_id`: Unique client identifier (generated)
 - `tenant_id`: FK to tenants table (determines tenant context)
 - `client_secret`: Hashed client secret for authentication
@@ -117,6 +120,7 @@ DROP TABLE IF EXISTS clients CASCADE;
 - `created_at`, `updated_at`: Audit timestamps
 
 **Security Notes**:
+
 - `client_secret` should be hashed using bcrypt before storage
 - `redirect_uris` is an array to support multiple callbacks per client
 
@@ -141,7 +145,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     last_login_at TIMESTAMP WITH TIME ZONE,
-    
+
     CONSTRAINT users_email_lowercase CHECK (email = LOWER(email)),
     CONSTRAINT users_unique_email_per_tenant UNIQUE (tenant_id, email)
 );
@@ -160,6 +164,7 @@ DROP TABLE IF EXISTS users CASCADE;
 ```
 
 **Fields**:
+
 - `id`: Unique user identifier (UUID recommended)
 - `tenant_id`: FK to tenants table
 - `email`: User email address (unique per tenant)
@@ -171,6 +176,7 @@ DROP TABLE IF EXISTS users CASCADE;
 - `created_at`, `updated_at`: Audit timestamps
 
 **Security Notes**:
+
 - Email is unique per tenant (not globally unique)
 - Password hash using bcrypt with cost factor 12+
 - Composite index on `(tenant_id, email)` for fast lookups
@@ -192,7 +198,7 @@ CREATE TABLE IF NOT EXISTS user_role_assignments (
     is_active BOOLEAN NOT NULL DEFAULT true,
     granted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     granted_by VARCHAR(255),
-    
+
     CONSTRAINT user_role_assignments_unique UNIQUE (user_id, client_id, role)
 );
 
@@ -207,6 +213,7 @@ DROP TABLE IF EXISTS user_role_assignments CASCADE;
 ```
 
 **Fields**:
+
 - `id`: Auto-increment primary key
 - `user_id`: FK to users table
 - `client_id`: FK to clients table
@@ -217,17 +224,19 @@ DROP TABLE IF EXISTS user_role_assignments CASCADE;
 - `granted_by`: User ID of admin who assigned the role
 
 **Usage**:
+
 - Check if user has ANY active role for a client during authentication
 - Roles can be used for fine-grained authorization in resource servers
 - Composite unique constraint prevents duplicate role assignments
 
 **Query Example**:
+
 ```sql
 -- Check if user can access client
 SELECT EXISTS (
     SELECT 1 FROM user_role_assignments
-    WHERE user_id = $1 
-    AND client_id = $2 
+    WHERE user_id = $1
+    AND client_id = $2
     AND is_active = true
 ) AS has_access;
 ```
@@ -266,6 +275,7 @@ DROP TABLE IF EXISTS refresh_tokens CASCADE;
 ```
 
 **Fields**:
+
 - `token`: Unique token value (cryptographically random, opaque)
 - `client_id`: FK to clients table
 - `user_id`: FK to users table
@@ -278,6 +288,7 @@ DROP TABLE IF EXISTS refresh_tokens CASCADE;
 - `revoked_at`, `revoked_by`: Revocation audit trail
 
 **Cleanup Strategy**:
+
 ```sql
 -- Periodic cleanup of expired/revoked tokens (run via cron/scheduled job)
 DELETE FROM refresh_tokens
@@ -286,6 +297,7 @@ WHERE expires_at < NOW() - INTERVAL '30 days'
 ```
 
 **Revocation Queries**:
+
 ```sql
 -- Revoke all refresh tokens for a user-client combination
 UPDATE refresh_tokens
@@ -314,7 +326,7 @@ CREATE TABLE IF NOT EXISTS signing_keys (
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMP WITH TIME ZONE,
-    
+
     CONSTRAINT signing_keys_algorithm_check CHECK (algorithm IN ('RS256', 'RS384', 'RS512'))
 );
 
@@ -326,6 +338,7 @@ DROP TABLE IF EXISTS signing_keys CASCADE;
 ```
 
 **Fields**:
+
 - `kid`: Key ID (included in JWT header)
 - `algorithm`: Signing algorithm (RS256 required, others optional)
 - `private_key`: PEM-encoded RSA private key (encrypted at rest)
@@ -335,6 +348,7 @@ DROP TABLE IF EXISTS signing_keys CASCADE;
 - `expires_at`: Optional key expiration for rotation
 
 **Key Rotation Strategy**:
+
 1. Generate new key with unique `kid`
 2. Set new key as active (`is_active = true`)
 3. Set old key as inactive (`is_active = false`)
@@ -342,6 +356,7 @@ DROP TABLE IF EXISTS signing_keys CASCADE;
 5. Remove keys after all tokens signed with them have expired
 
 **Query Examples**:
+
 ```sql
 -- Get active key for signing
 SELECT kid, private_key FROM signing_keys
@@ -354,6 +369,7 @@ WHERE is_active = true OR expires_at > NOW();
 ```
 
 **Security Notes**:
+
 - Private keys should be encrypted at rest using application-level encryption
 - Consider using HashiCorp Vault or AWS KMS for key management in production
 - Rotate keys every 90-180 days
@@ -378,7 +394,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     success BOOLEAN NOT NULL,
     error_message TEXT,
     metadata JSONB,
-    
+
     CONSTRAINT audit_logs_event_type_check CHECK (
         event_type IN (
             'authentication_attempt',
@@ -416,6 +432,7 @@ DROP TABLE IF EXISTS audit_logs CASCADE;
 ```
 
 **Fields**:
+
 - `id`: Auto-increment primary key
 - `event_type`: Type of event (constrained to specific values)
 - `user_id`: User involved (nullable for system events)
@@ -429,6 +446,7 @@ DROP TABLE IF EXISTS audit_logs CASCADE;
 - `metadata`: Additional structured data (JSONB for flexible storage)
 
 **Usage Examples**:
+
 ```sql
 -- Log authentication attempt
 INSERT INTO audit_logs (event_type, user_id, tenant_id, client_id, ip_address, user_agent, success)
@@ -436,7 +454,7 @@ VALUES ('authentication_attempt', $1, $2, $3, $4, $5, $6);
 
 -- Query failed login attempts for user
 SELECT * FROM audit_logs
-WHERE user_id = $1 
+WHERE user_id = $1
   AND event_type = 'authentication_failure'
   AND timestamp > NOW() - INTERVAL '1 hour'
 ORDER BY timestamp DESC;
@@ -452,6 +470,7 @@ ORDER BY attempt_count DESC;
 ```
 
 **Retention Policy**:
+
 ```sql
 -- Archive old audit logs (run monthly)
 DELETE FROM audit_logs WHERE timestamp < NOW() - INTERVAL '2 years';
@@ -468,6 +487,7 @@ DELETE FROM audit_logs WHERE timestamp < NOW() - INTERVAL '2 years';
 **Key Pattern**: `auth:code:{code_value}`
 
 **Value Structure** (JSON):
+
 ```json
 {
   "code": "auth_code_a1b2c3d4e5f6g7h8",
@@ -483,11 +503,12 @@ DELETE FROM audit_logs WHERE timestamp < NOW() - INTERVAL '2 years';
 ```
 
 **Operations**:
+
 ```go
 // Store authorization code
-redisClient.Set(ctx, 
-    fmt.Sprintf("auth:code:%s", code), 
-    jsonData, 
+redisClient.Set(ctx,
+    fmt.Sprintf("auth:code:%s", code),
+    jsonData,
     5*time.Minute)
 
 // Retrieve and delete (atomic)
@@ -506,6 +527,7 @@ exists, _ := redisClient.Exists(ctx, fmt.Sprintf("auth:code:%s", code)).Result()
 **Key Pattern**: `session:{session_id}`
 
 **Value Structure** (JSON):
+
 ```json
 {
   "session_id": "sess_9f8e7d6c5b4a3210",
@@ -521,11 +543,12 @@ exists, _ := redisClient.Exists(ctx, fmt.Sprintf("auth:code:%s", code)).Result()
 ```
 
 **Operations**:
+
 ```go
 // Create session
-redisClient.Set(ctx, 
-    fmt.Sprintf("session:%s", sessionID), 
-    jsonData, 
+redisClient.Set(ctx,
+    fmt.Sprintf("session:%s", sessionID),
+    jsonData,
     8*time.Hour)
 
 // Get session and extend TTL (sliding expiration)
@@ -545,6 +568,7 @@ redisClient.Del(ctx, fmt.Sprintf("session:%s", sessionID))
 **Key Pattern**: `refresh:{token_value}`
 
 **Value Structure** (JSON - cached from PostgreSQL):
+
 ```json
 {
   "token": "refresh_9z8y7x6w5v4u3t2s1r0q",
@@ -558,11 +582,12 @@ redisClient.Del(ctx, fmt.Sprintf("session:%s", sessionID))
 ```
 
 **Operations**:
+
 ```go
 // Cache refresh token after creation (write-through cache)
-redisClient.Set(ctx, 
-    fmt.Sprintf("refresh:%s", token), 
-    jsonData, 
+redisClient.Set(ctx,
+    fmt.Sprintf("refresh:%s", token),
+    jsonData,
     7*24*time.Hour)
 
 // Check cache first, fall back to PostgreSQL
@@ -586,6 +611,7 @@ redisClient.Del(ctx, fmt.Sprintf("refresh:%s", token))
 **Key Pattern**: `jwks:public_keys`
 
 **Value Structure** (JSON - JWKS document):
+
 ```json
 {
   "keys": [
@@ -602,6 +628,7 @@ redisClient.Del(ctx, fmt.Sprintf("refresh:%s", token))
 ```
 
 **Operations**:
+
 ```go
 // Cache JWKS document
 redisClient.Set(ctx, "jwks:public_keys", jwksJSON, time.Hour)
@@ -629,6 +656,7 @@ redisClient.Del(ctx, "jwks:public_keys")
 **Value**: Integer counter
 
 **Operations**:
+
 ```go
 // Increment counter
 key := fmt.Sprintf("ratelimit:token:%s", clientID)
@@ -683,6 +711,7 @@ count := incrCmd.Val()
 ```
 
 **Relationships**:
+
 - `tenants` (1) ──< (N) `clients`
 - `tenants` (1) ──< (N) `users`
 - `clients` (1) ──< (N) `user_role_assignments` ─> (N) `users`
@@ -738,8 +767,8 @@ RETURNING *;
 -- Validate refresh token (check PostgreSQL if not in Redis)
 SELECT *
 FROM refresh_tokens
-WHERE token = $1 
-  AND is_revoked = false 
+WHERE token = $1
+  AND is_revoked = false
   AND expires_at > NOW();
 
 -- Update last_used_at
@@ -774,15 +803,15 @@ WHERE user_id = $1 AND client_id = $2;
 
 ### Indexes Summary
 
-| Table | Index | Purpose |
-|-------|-------|---------|
-| `tenants` | `domain`, `is_active` | Fast tenant lookup |
-| `clients` | `tenant_id`, `is_active` | Tenant filtering |
-| `users` | `(tenant_id, email)`, `is_active` | Authentication lookup |
-| `user_role_assignments` | `(user_id, client_id)`, `is_active` | Permission checks |
-| `refresh_tokens` | `(user_id, client_id)`, `expires_at` | Token validation & cleanup |
-| `signing_keys` | `is_active`, `expires_at` | Key selection |
-| `audit_logs` | `timestamp DESC`, `event_type`, `user_id` | Audit queries |
+| Table                   | Index                                     | Purpose                    |
+| ----------------------- | ----------------------------------------- | -------------------------- |
+| `tenants`               | `domain`, `is_active`                     | Fast tenant lookup         |
+| `clients`               | `tenant_id`, `is_active`                  | Tenant filtering           |
+| `users`                 | `(tenant_id, email)`, `is_active`         | Authentication lookup      |
+| `user_role_assignments` | `(user_id, client_id)`, `is_active`       | Permission checks          |
+| `refresh_tokens`        | `(user_id, client_id)`, `expires_at`      | Token validation & cleanup |
+| `signing_keys`          | `is_active`, `expires_at`                 | Key selection              |
+| `audit_logs`            | `timestamp DESC`, `event_type`, `user_id` | Audit queries              |
 
 ### Query Optimization
 
@@ -839,6 +868,7 @@ WHERE user_id = $1 AND client_id = $2;
 ### Backup Strategy
 
 **PostgreSQL**:
+
 ```bash
 # Daily full backup
 pg_dump -h localhost -U postgres keyles_sso > backup_$(date +%Y%m%d).sql
@@ -848,6 +878,7 @@ pg_dump -h localhost -U postgres keyles_sso > backup_$(date +%Y%m%d).sql
 ```
 
 **Redis**:
+
 ```bash
 # Enable AOF (Append-Only File) for durability
 redis-cli CONFIG SET appendonly yes
@@ -877,7 +908,8 @@ redis-cli BGSAVE
 - [x] Default values specified
 - [x] NOT NULL constraints applied appropriately
 
-**Next Steps**: 
+**Next Steps**:
+
 1. Create API contracts (OpenAPI specifications)
 2. Define repository interfaces in Domain layer
 3. Implement concrete repository classes in Infrastructure layer

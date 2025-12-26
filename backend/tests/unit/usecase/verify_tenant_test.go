@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/tests/mocks"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
@@ -19,12 +20,12 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		// Create test OTP
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
@@ -39,23 +40,23 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		}
 
 		// Mock expectations
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
-		mockOTPRepo.On("Update", mock.MatchedBy(func(otp *entities.OTPVerification) bool {
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("Update", mock.Anything, mock.MatchedBy(func(otp *entities.OTPVerification) bool {
 			return otp.Verified == true
 		})).Return(nil)
-		mockTenantRepo.On("FindByID", tenantID).Return(testTenant, nil)
-		mockTenantRepo.On("Update", mock.MatchedBy(func(t *entities.Tenant) bool {
+		mockTenantRepo.On("FindByID", mock.Anything, tenantID).Return(testTenant, nil)
+		mockTenantRepo.On("Update", mock.Anything, mock.MatchedBy(func(t *entities.Tenant) bool {
 			return t.Status == entities.TenantStatusActive
 		})).Return(nil)
-		mockAuditRepo.On("Create", mock.MatchedBy(func(log *entities.AuditLog) bool {
-			return log.EventType == "tenant.verified" && log.TenantID == tenantID
+		mockAuditRepo.On("Create", mock.Anything, mock.MatchedBy(func(log *entities.AuditLog) bool {
+			return log.EventType == entities.EventTenantActivated && log.TenantID != nil && *log.TenantID == tenantID
 		})).Return(nil)
 
 		// Create use case
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
 		// Execute
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		// Assert
 		assert.NoError(t, err)
@@ -69,15 +70,15 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").
 			Return(nil, errors.New("OTP not found"))
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "OTP not found")
@@ -89,12 +90,12 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		verifiedAt := time.Now().Add(-1 * time.Hour)
 		testOTP := &entities.OTPVerification{
-			TenantID:   tenantID,
+			TenantID:   tenantID.String(),
 			Code:       otpCode,
 			Purpose:    "email_verification",
 			ExpiresAt:  time.Now().Add(10 * time.Minute),
@@ -102,11 +103,11 @@ func TestVerifyTenant_Execute(t *testing.T) {
 			VerifiedAt: &verifiedAt,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already been used")
@@ -118,22 +119,22 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(-1 * time.Minute), // Expired
 			Verified:  false,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "expired")
@@ -145,23 +146,23 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		correctCode := "123456"
 		wrongCode := "654321"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      correctCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
 			Verified:  false,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, wrongCode)
+		err := useCase.Execute(tenantID.String(), wrongCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid")
@@ -173,24 +174,24 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
 			Verified:  false,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
-		mockOTPRepo.On("Update", mock.Anything).Return(nil)
-		mockTenantRepo.On("FindByID", tenantID).Return(nil, errors.New("tenant not found"))
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+		mockTenantRepo.On("FindByID", mock.Anything, tenantID).Return(nil, errors.New("tenant not found"))
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "tenant not found")
@@ -203,11 +204,11 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
@@ -220,13 +221,13 @@ func TestVerifyTenant_Execute(t *testing.T) {
 			Status:           entities.TenantStatusActive, // Already active
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
-		mockOTPRepo.On("Update", mock.Anything).Return(nil)
-		mockTenantRepo.On("FindByID", tenantID).Return(testTenant, nil)
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+		mockTenantRepo.On("FindByID", mock.Anything, tenantID).Return(testTenant, nil)
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already active")
@@ -239,23 +240,23 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
 			Verified:  false,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
-		mockOTPRepo.On("Update", mock.Anything).Return(errors.New("database error"))
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("Update", mock.Anything, mock.Anything).Return(errors.New("database error"))
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "database error")
@@ -267,11 +268,11 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
@@ -284,14 +285,14 @@ func TestVerifyTenant_Execute(t *testing.T) {
 			Status:           entities.TenantStatusPendingVerification,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
-		mockOTPRepo.On("Update", mock.Anything).Return(nil)
-		mockTenantRepo.On("FindByID", tenantID).Return(testTenant, nil)
-		mockTenantRepo.On("Update", mock.Anything).Return(errors.New("database error"))
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+		mockTenantRepo.On("FindByID", mock.Anything, tenantID).Return(testTenant, nil)
+		mockTenantRepo.On("Update", mock.Anything, mock.Anything).Return(errors.New("database error"))
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "database error")
@@ -305,11 +306,11 @@ func TestVerifyTenant_Execute(t *testing.T) {
 		mockTenantRepo := new(mocks.MockTenantRepository)
 		mockAuditRepo := new(mocks.MockAuditRepository)
 
-		tenantID := "tenant-123"
+		tenantID := uuid.New()
 		otpCode := "123456"
 
 		testOTP := &entities.OTPVerification{
-			TenantID:  tenantID,
+			TenantID:  tenantID.String(),
 			Code:      otpCode,
 			Purpose:   "email_verification",
 			ExpiresAt: time.Now().Add(10 * time.Minute),
@@ -322,15 +323,15 @@ func TestVerifyTenant_Execute(t *testing.T) {
 			Status:           entities.TenantStatusPendingVerification,
 		}
 
-		mockOTPRepo.On("FindByTenantIDAndPurpose", tenantID, "email_verification").Return(testOTP, nil)
-		mockOTPRepo.On("Update", mock.Anything).Return(nil)
-		mockTenantRepo.On("FindByID", tenantID).Return(testTenant, nil)
-		mockTenantRepo.On("Update", mock.Anything).Return(nil)
-		mockAuditRepo.On("Create", mock.Anything).Return(errors.New("audit log error"))
+		mockOTPRepo.On("FindByTenantIDAndPurpose", mock.Anything, tenantID.String(), "email_verification").Return(testOTP, nil)
+		mockOTPRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+		mockTenantRepo.On("FindByID", mock.Anything, tenantID).Return(testTenant, nil)
+		mockTenantRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
+		mockAuditRepo.On("Create", mock.Anything, mock.Anything).Return(errors.New("audit log error"))
 
 		useCase := tenant.NewVerifyTenantUseCase(mockOTPRepo, mockTenantRepo, mockAuditRepo)
 
-		err := useCase.Execute(tenantID, otpCode)
+		err := useCase.Execute(tenantID.String(), otpCode)
 
 		// Should succeed despite audit log error
 		assert.NoError(t, err)
