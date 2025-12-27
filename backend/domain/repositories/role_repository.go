@@ -20,9 +20,13 @@ type RoleRepository interface {
 	// HasRole checks if a user has a specific role for a client
 	HasRole(ctx context.Context, userID, clientID, role string) (bool, error)
 
+	// HasAnyRole checks if a user has any active role for a client
+	HasAnyRole(ctx context.Context, userID, clientID string) (bool, error)
+
 	// ListRolesByClient retrieves all role assignments for a client
 	ListRolesByClient(ctx context.Context, clientID string) ([]*entities.UserRoleAssignment, error)
 
 	// ListRolesByUser retrieves all role assignments for a user across all clients
 	ListRolesByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error)
 }
+

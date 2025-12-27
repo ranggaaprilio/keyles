@@ -19,6 +19,7 @@ type Router struct {
 	dashboardHandler     *handlers.DashboardHandler
 	healthHandler        *handlers.HealthHandler
 	clientHandler        *handlers.ClientHandler
+	oauthHandler         *handlers.OAuthHandler
 	jwtService           *services.JWTService
 }
 
@@ -33,6 +34,7 @@ func NewRouter(
 	dashboardHandler *handlers.DashboardHandler,
 	healthHandler *handlers.HealthHandler,
 	clientHandler *handlers.ClientHandler,
+	oauthHandler *handlers.OAuthHandler,
 	jwtService *services.JWTService,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
@@ -55,6 +57,7 @@ func NewRouter(
 		dashboardHandler:    dashboardHandler,
 		healthHandler:       healthHandler,
 		clientHandler:       clientHandler,
+		oauthHandler:        oauthHandler,
 		jwtService:          jwtService,
 	}
 }
@@ -64,6 +67,13 @@ func (r *Router) Setup() {
 	r.engine.GET("/health", r.healthHandler.Health)
 	r.engine.GET("/health/db", r.healthHandler.HealthDB)
 	r.engine.GET("/health/redis", r.healthHandler.HealthRedis)
+
+	// OAuth 2.0 routes (public - handles authentication)
+	oauth2 := r.engine.Group("/oauth2")
+	{
+		oauth2.GET("/auth", r.oauthHandler.Authorize)
+		oauth2.POST("/auth", r.oauthHandler.Authorize)
+	}
 
 	// API v1 routes
 	v1 := r.engine.Group("/api/v1")

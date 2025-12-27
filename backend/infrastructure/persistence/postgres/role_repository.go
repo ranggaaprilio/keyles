@@ -2,192 +2,192 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/gorm"
+
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
-type roleRepository struct {
-	pool *pgxpool.Pool
+// UserRoleAssignmentModel is the GORM model for user_role_assignments table
+type UserRoleAssignmentModel struct {
+	ID        int64     `gorm:"column:id;primaryKey;autoIncrement"`
+	UserID    string    `gorm:"column:user_id;not null;index"`
+	ClientID  string    `gorm:"column:client_id;not null;index"`
+	TenantID  string    `gorm:"column:tenant_id;not null;index"`
+	Role      string    `gorm:"column:role;not null"`
+	IsActive  bool      `gorm:"column:is_active;not null;default:true"`
+	GrantedAt time.Time `gorm:"column:granted_at;not null"`
+	GrantedBy string    `gorm:"column:granted_by;not null"`
 }
 
-func NewRoleRepository(pool *pgxpool.Pool) repositories.RoleRepository {
-	return &roleRepository{pool: pool}
+func (UserRoleAssignmentModel) TableName() string {
+	return "user_role_assignments"
 }
 
-func (r *roleRepository) AssignRole(ctx context.Context, assignment *entities.UserRoleAssignment) error {
-	query := `
-		INSERT INTO user_role_assignments (user_id, client_id, tenant_id, role, is_active, granted_at, granted_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		ON CONFLICT (user_id, client_id, role)
-		DO UPDATE SET is_active = $5, granted_at = $6, granted_by = $7
-		RETURNING id
-	`
+// toEntity converts GORM model to domain entity
+func (m *UserRoleAssignmentModel) toEntity() *entities.UserRoleAssignment {
+	return &entities.UserRoleAssignment{
+		ID:        m.ID,
+		UserID:    m.UserID,
+		ClientID:  m.ClientID,
+		TenantID:  m.TenantID,
+		Role:      m.Role,
+		IsActive:  m.IsActive,
+		GrantedAt: m.GrantedAt,
+		GrantedBy: m.GrantedBy,
+	}
+}
 
+// fromEntity converts domain entity to GORM model
+func fromUserRoleEntity(e *entities.UserRoleAssignment) *UserRoleAssignmentModel {
+	return &UserRoleAssignmentModel{
+		ID:        e.ID,
+		UserID:    e.UserID,
+		ClientID:  e.ClientID,
+		TenantID:  e.TenantID,
+		Role:      e.Role,
+		IsActive:  e.IsActive,
+		GrantedAt: e.GrantedAt,
+		GrantedBy: e.GrantedBy,
+	}
+}
+
+// PostgresRoleRepository implements RoleRepository using GORM
+type PostgresRoleRepository struct {
+	db *gorm.DB
+}
+
+// NewPostgresRoleRepository creates a new PostgreSQL role repository
+func NewPostgresRoleRepository(db *gorm.DB) repositories.RoleRepository {
+	return &PostgresRoleRepository{db: db}
+}
+
+func (r *PostgresRoleRepository) AssignRole(ctx context.Context, assignment *entities.UserRoleAssignment) error {
 	if assignment.GrantedAt.IsZero() {
 		assignment.GrantedAt = time.Now()
 	}
 
-	err := r.pool.QueryRow(
-ctx,
-query,
-assignment.UserID,
-assignment.ClientID,
-assignment.TenantID,
-assignment.Role,
-assignment.IsActive,
-assignment.GrantedAt,
-assignment.GrantedBy,
-).Scan(&assignment.ID)
+	model := fromUserRoleEntity(assignment)
 
-	if err != nil {
-		return fmt.Errorf("failed to assign role: %w", err)
+	// Use upsert: update on conflict
+	result := r.db.WithContext(ctx).
+		Where("user_id = ? AND client_id = ? AND role = ?", model.UserID, model.ClientID, model.Role).
+		Assign(map[string]interface{}{
+			"is_active":  model.IsActive,
+			"granted_at": model.GrantedAt,
+			"granted_by": model.GrantedBy,
+		}).
+		FirstOrCreate(model)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	assignment.ID = model.ID
+	return nil
+}
+
+func (r *PostgresRoleRepository) RevokeRole(ctx context.Context, userID, clientID, role string) error {
+	result := r.db.WithContext(ctx).
+		Model(&UserRoleAssignmentModel{}).
+		Where("user_id = ? AND client_id = ? AND role = ?", userID, clientID, role).
+		Update("is_active", false)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
 	}
 
 	return nil
 }
 
-func (r *roleRepository) RevokeRole(ctx context.Context, userID, clientID, role string) error {
-	query := `
-		UPDATE user_role_assignments
-		SET is_active = false
-		WHERE user_id = $1 AND client_id = $2 AND role = $3
-	`
+func (r *PostgresRoleRepository) GetUserRoles(ctx context.Context, userID, clientID string) ([]*entities.UserRoleAssignment, error) {
+	var models []UserRoleAssignmentModel
 
-	commandTag, err := r.pool.Exec(ctx, query, userID, clientID, role)
-	if err != nil {
-		return fmt.Errorf("failed to revoke role: %w", err)
+	result := r.db.WithContext(ctx).
+		Where("user_id = ? AND client_id = ? AND is_active = ?", userID, clientID, true).
+		Find(&models)
+
+	if result.Error != nil {
+		return nil, result.Error
 	}
 
-	if commandTag.RowsAffected() == 0 {
-		return fmt.Errorf("role assignment not found")
-	}
-
-	return nil
-}
-
-func (r *roleRepository) GetUserRoles(ctx context.Context, userID, clientID string) ([]*entities.UserRoleAssignment, error) {
-	query := `
-		SELECT id, user_id, client_id, tenant_id, role, is_active, granted_at, granted_by
-		FROM user_role_assignments
-		WHERE user_id = $1 AND client_id = $2 AND is_active = true
-	`
-
-	rows, err := r.pool.Query(ctx, query, userID, clientID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user roles: %w", err)
-	}
-	defer rows.Close()
-
-	var assignments []*entities.UserRoleAssignment
-	for rows.Next() {
-		var a entities.UserRoleAssignment
-		err := rows.Scan(
-&a.ID,
-			&a.UserID,
-			&a.ClientID,
-			&a.TenantID,
-			&a.Role,
-			&a.IsActive,
-			&a.GrantedAt,
-			&a.GrantedBy,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan role assignment: %w", err)
-		}
-		assignments = append(assignments, &a)
+	assignments := make([]*entities.UserRoleAssignment, len(models))
+	for i, m := range models {
+		assignments[i] = m.toEntity()
 	}
 
 	return assignments, nil
 }
 
-func (r *roleRepository) HasRole(ctx context.Context, userID, clientID, role string) (bool, error) {
-	query := `
-		SELECT EXISTS(
-SELECT 1 FROM user_role_assignments
-WHERE user_id = $1 AND client_id = $2 AND role = $3 AND is_active = true
-)
-	`
+func (r *PostgresRoleRepository) HasRole(ctx context.Context, userID, clientID, role string) (bool, error) {
+	var count int64
+	result := r.db.WithContext(ctx).
+		Model(&UserRoleAssignmentModel{}).
+		Where("user_id = ? AND client_id = ? AND role = ? AND is_active = ?", userID, clientID, role, true).
+		Count(&count)
 
-	var exists bool
-	err := r.pool.QueryRow(ctx, query, userID, clientID, role).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("failed to check role: %w", err)
+	if result.Error != nil {
+		return false, result.Error
 	}
 
-	return exists, nil
+	return count > 0, nil
 }
 
-func (r *roleRepository) ListRolesByClient(ctx context.Context, clientID string) ([]*entities.UserRoleAssignment, error) {
-	query := `
-		SELECT id, user_id, client_id, tenant_id, role, is_active, granted_at, granted_by
-		FROM user_role_assignments
-		WHERE client_id = $1 AND is_active = true
-		ORDER BY granted_at DESC
-	`
+func (r *PostgresRoleRepository) HasAnyRole(ctx context.Context, userID, clientID string) (bool, error) {
+	var count int64
+	result := r.db.WithContext(ctx).
+		Model(&UserRoleAssignmentModel{}).
+		Where("user_id = ? AND client_id = ? AND is_active = ?", userID, clientID, true).
+		Count(&count)
 
-	rows, err := r.pool.Query(ctx, query, clientID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list roles by client: %w", err)
+	if result.Error != nil {
+		return false, result.Error
 	}
-	defer rows.Close()
 
-	var assignments []*entities.UserRoleAssignment
-	for rows.Next() {
-		var a entities.UserRoleAssignment
-		err := rows.Scan(
-&a.ID,
-			&a.UserID,
-			&a.ClientID,
-			&a.TenantID,
-			&a.Role,
-			&a.IsActive,
-			&a.GrantedAt,
-			&a.GrantedBy,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan role assignment: %w", err)
-		}
-		assignments = append(assignments, &a)
+	return count > 0, nil
+}
+
+func (r *PostgresRoleRepository) ListRolesByClient(ctx context.Context, clientID string) ([]*entities.UserRoleAssignment, error) {
+	var models []UserRoleAssignmentModel
+
+	result := r.db.WithContext(ctx).
+		Where("client_id = ? AND is_active = ?", clientID, true).
+		Order("granted_at DESC").
+		Find(&models)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	assignments := make([]*entities.UserRoleAssignment, len(models))
+	for i, m := range models {
+		assignments[i] = m.toEntity()
 	}
 
 	return assignments, nil
 }
 
-func (r *roleRepository) ListRolesByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error) {
-	query := `
-		SELECT id, user_id, client_id, tenant_id, role, is_active, granted_at, granted_by
-		FROM user_role_assignments
-		WHERE user_id = $1 AND is_active = true
-		ORDER BY granted_at DESC
-	`
+func (r *PostgresRoleRepository) ListRolesByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error) {
+	var models []UserRoleAssignmentModel
 
-	rows, err := r.pool.Query(ctx, query, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list roles by user: %w", err)
+	result := r.db.WithContext(ctx).
+		Where("user_id = ? AND is_active = ?", userID, true).
+		Order("granted_at DESC").
+		Find(&models)
+
+	if result.Error != nil {
+		return nil, result.Error
 	}
-	defer rows.Close()
 
-	var assignments []*entities.UserRoleAssignment
-	for rows.Next() {
-		var a entities.UserRoleAssignment
-		err := rows.Scan(
-&a.ID,
-			&a.UserID,
-			&a.ClientID,
-			&a.TenantID,
-			&a.Role,
-			&a.IsActive,
-			&a.GrantedAt,
-			&a.GrantedBy,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan role assignment: %w", err)
-		}
-		assignments = append(assignments, &a)
+	assignments := make([]*entities.UserRoleAssignment, len(models))
+	for i, m := range models {
+		assignments[i] = m.toEntity()
 	}
 
 	return assignments, nil

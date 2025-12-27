@@ -165,25 +165,25 @@
 
 ### Tests for User Story 2 (MANDATORY per constitution) ⚠️
 
-- [ ] T064 [P] [US2] Unit test for AuthorizationCode entity in backend/tests/unit/domain/authorization_code_test.go (test expiration, single-use validation)
-- [ ] T065 [P] [US2] Unit test for AuthorizeClient use case in backend/tests/unit/usecase/authorize_client_test.go (mock ClientRepository, UserRepository, RoleRepository, AuthCodeRepository, test PKCE validation, test redirect URI matching per FR-010, test role-based access control per FR-006d, FR-012)
-- [ ] T066 [US2] Integration test for OAuth authorization flow in backend/tests/integration/oauth_auth_test.go (test GET /oauth2/auth with all required parameters per FR-009, test login form rendering, test POST with credentials, verify auth code generation, test redirect with code and state, test invalid client_id/redirect_uri per FR-017, FR-018, test user without role assignment denied per FR-006d)
-- [ ] T067 [P] [US2] Frontend unit test for ConsentScreen component in frontend/tests/unit/components/ConsentScreen.test.tsx (test consent approval/denial, test scope display)
-- [ ] T068 [P] [US2] Frontend unit test for useOAuth hook in frontend/tests/unit/hooks/useOAuth.test.ts (test authorization URL generation, test callback handling)
+- [x] T064 [P] [US2] Unit test for AuthorizationCode entity in backend/tests/unit/domain/authorization_code_test.go (test expiration, single-use validation)
+- [x] T065 [P] [US2] Unit test for AuthorizeClient use case in backend/tests/unit/usecase/authorize_client_test.go (mock ClientRepository, UserRepository, RoleRepository, AuthCodeRepository, test PKCE validation, test redirect URI matching per FR-010, test role-based access control per FR-006d, FR-012)
+- [x] T066 [US2] Integration test for OAuth authorization flow in backend/tests/integration/oauth_auth_test.go (test GET /oauth2/auth with all required parameters per FR-009, test login form rendering, test POST with credentials, verify auth code generation, test redirect with code and state, test invalid client_id/redirect_uri per FR-017, FR-018, test user without role assignment denied per FR-006d)
+- [x] T067 [P] [US2] Frontend unit test for ConsentScreen component in frontend/tests/unit/components/ConsentScreen.test.tsx (test consent approval/denial, test scope display)
+- [x] T068 [P] [US2] Frontend unit test for useOAuth hook in frontend/tests/unit/hooks/useOAuth.test.ts (test authorization URL generation, test callback handling)
 
 ### Implementation for User Story 2
 
-- [ ] T069 [US2] Implement AuthorizeClient use case in backend/usecase/auth/authorize_client.go (validates client_id per FR-017, validates redirect_uri per FR-010, checks user has role for client per FR-006d, FR-012, validates PKCE parameters per FR-009, creates session per FR-013, generates authorization code per FR-014, stores code_challenge per FR-015, returns redirect URI with code and state per FR-016)
-- [ ] T070 [US2] Implement ConsentDecision use case in backend/usecase/auth/consent_decision.go (handles user consent approval/denial, generates auth code on approval)
-- [ ] T071 [US2] Implement OAuthHandler in backend/interfaces/http/handlers/oauth_handler.go with GET /oauth2/auth endpoint (validates query params per FR-009, determines tenant from client_id per FR-010a, renders login form if unauthenticated, handles authentication, calls AuthorizeClient use case, returns 302 redirect with auth code per FR-016)
-- [ ] T072 [US2] Add OAuth routes to backend/interfaces/http/router.go: GET /oauth2/auth, POST /oauth2/auth (for login submission), with tenant context middleware
-- [ ] T073 [P] [US2] Create ConsentScreen component in frontend/src/components/auth/ConsentScreen.tsx (displays client name, requested scopes, approve/deny buttons, functional component with hooks)
-- [ ] T074 [P] [US2] Create OAuthCallback component in frontend/src/components/auth/OAuthCallback.tsx (extracts code and state from URL, sends to parent app via postMessage or callback)
-- [ ] T075 [P] [US2] Create useOAuth hook in frontend/src/hooks/useOAuth.ts (generates authorization URL with PKCE challenge, handles callback, stores code_verifier in sessionStorage)
-- [ ] T076 [P] [US2] Create usePKCE hook in frontend/src/hooks/usePKCE.ts (generates code_verifier and code_challenge using Web Crypto API, implements S256 hashing)
-- [ ] T077 [US2] Create oauthService API client in frontend/src/services/oauthService.ts (functions for buildAuthURL, handleCallback)
-- [ ] T078 [P] [US2] Create OAuth types in frontend/src/types/oauth.ts (AuthorizationRequest, AuthorizationResponse, TokenResponse)
-- [ ] T079 [P] [US2] Create PKCE utility in frontend/src/utils/pkce.ts (generateCodeVerifier, generateCodeChallenge, base64URLEncode)
+- [x] T069 [US2] Implement AuthorizeClient use case in backend/usecase/auth/authorize_client.go (validates client_id per FR-017, validates redirect_uri per FR-010, checks user has role for client per FR-006d, FR-012, validates PKCE parameters per FR-009, creates session per FR-013, generates authorization code per FR-014, stores code_challenge per FR-015, returns redirect URI with code and state per FR-016)
+- [x] T070 [US2] Implement ConsentDecision use case in backend/usecase/auth/consent_decision.go (handles user consent approval/denial, generates auth code on approval)
+- [x] T071 [US2] Implement OAuthHandler in backend/interfaces/http/handlers/oauth_handler.go with GET /oauth2/auth endpoint (validates query params per FR-009, determines tenant from client_id per FR-010a, renders login form if unauthenticated, handles authentication, calls AuthorizeClient use case, returns 302 redirect with auth code per FR-016)
+- [x] T072 [US2] Add OAuth routes to backend/interfaces/http/router.go: GET /oauth2/auth, POST /oauth2/auth (for login submission), with tenant context middleware
+- [x] T073 [P] [US2] Create ConsentScreen component in frontend/src/components/auth/ConsentScreen.tsx (displays client name, requested scopes, approve/deny buttons, functional component with hooks)
+- [x] T074 [P] [US2] Create OAuthCallback component in frontend/src/components/auth/OAuthCallback.tsx (extracts code and state from URL, sends to parent app via postMessage or callback)
+- [x] T075 [P] [US2] Create useOAuth hook in frontend/src/hooks/useOAuth.ts (generates authorization URL with PKCE challenge, handles callback, stores code_verifier in sessionStorage)
+- [x] T076 [P] [US2] Create usePKCE hook in frontend/src/hooks/usePKCE.ts (generates code_verifier and code_challenge using Web Crypto API, implements S256 hashing)
+- [x] T077 [US2] Create oauthService API client in frontend/src/services/oauthService.ts (functions for buildAuthURL, handleCallback)
+- [x] T078 [P] [US2] Create OAuth types in frontend/src/types/oauth.ts (AuthorizationRequest, AuthorizationResponse, TokenResponse)
+- [x] T079 [P] [US2] Create PKCE utility in frontend/src/utils/pkce.ts (generateCodeVerifier, generateCodeChallenge, base64URLEncode)
 
 **Checkpoint**: Users can successfully authenticate and receive authorization codes
 

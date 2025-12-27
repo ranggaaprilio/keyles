@@ -61,6 +61,8 @@ func main() {
 	auditRepo := postgresRepo.NewPostgresAuditRepository(db)
 	otpRepo := redisRepo.NewRedisOTPRepository(redisClient)
 	clientRepo := postgresRepo.NewPostgresClientRepository(db)
+	roleRepo := postgresRepo.NewPostgresRoleRepository(db)
+	authCodeRepo := redisRepo.NewRedisAuthCodeRepository(redisClient)
 
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
@@ -87,6 +89,9 @@ func main() {
 	listClientsUseCase := client.NewListClientsUseCase(clientRepo)
 	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService)
 
+	// Initialize OAuth use cases
+	authorizeClientUseCase := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
+
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
 	availabilityHandler := handlers.NewAvailabilityHandler(checkAvailabilityUseCase)
@@ -103,6 +108,7 @@ func main() {
 		listClientsUseCase,
 		rotateSecretUseCase,
 	)
+	oauthHandler := handlers.NewOAuthHandler(authorizeClientUseCase, clientRepo)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -118,6 +124,7 @@ func main() {
 		dashboardHandler,
 		healthHandler,
 		clientHandler,
+		oauthHandler,
 		jwtService,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,
