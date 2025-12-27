@@ -3,38 +3,41 @@
  * Displays OAuth consent screen for user approval/denial
  */
 
-import { useState } from 'react';
-import type { ConsentScreenProps } from '../../types/oauth';
+import { useState } from "react";
+import type { ConsentScreenProps } from "../../types/oauth";
 
 /**
  * Scope display names and descriptions
  */
-const SCOPE_INFO: Record<string, { name: string; description: string; icon: string }> = {
+const SCOPE_INFO: Record<
+  string,
+  { name: string; description: string; icon: string }
+> = {
   openid: {
-    name: 'OpenID',
-    description: 'Verify your identity',
-    icon: '🔐',
+    name: "OpenID",
+    description: "Verify your identity",
+    icon: "🔐",
   },
   profile: {
-    name: 'Profile',
-    description: 'Access your name and profile picture',
-    icon: '👤',
+    name: "Profile",
+    description: "Access your name and profile picture",
+    icon: "👤",
   },
   email: {
-    name: 'Email',
-    description: 'Access your email address',
-    icon: '✉️',
+    name: "Email",
+    description: "Access your email address",
+    icon: "✉️",
   },
   offline_access: {
-    name: 'Offline Access',
-    description: 'Access your data when you\'re not present',
-    icon: '🔄',
+    name: "Offline Access",
+    description: "Access your data when you're not present",
+    icon: "🔄",
   },
 };
 
 /**
  * ConsentScreen component for OAuth authorization
- * 
+ *
  * @example
  * ```tsx
  * <ConsentScreen
@@ -99,18 +102,15 @@ export function ConsentScreen({
               </div>
             )}
           </div>
-          <h1 className="text-xl font-bold mb-2">
-            {client.client_name}
-          </h1>
-          <p className="text-blue-100 text-sm">
-            wants to access your account
-          </p>
+          <h1 className="text-xl font-bold mb-2">{client.client_name}</h1>
+          <p className="text-blue-100 text-sm">wants to access your account</p>
         </div>
 
         {/* User info */}
         <div className="px-6 py-4 bg-gray-50 border-b">
           <p className="text-sm text-gray-600 text-center">
-            Signing in as <span className="font-medium text-gray-900">{user}</span>
+            Signing in as{" "}
+            <span className="font-medium text-gray-900">{user}</span>
           </p>
         </div>
 
@@ -119,13 +119,13 @@ export function ConsentScreen({
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
             This will allow {client.client_name} to:
           </h2>
-          
+
           <ul className="space-y-3">
             {scopes.map((scope) => {
               const info = SCOPE_INFO[scope] || {
                 name: scope,
                 description: `Access to ${scope}`,
-                icon: '🔷',
+                icon: "🔷",
               };
 
               return (
@@ -147,7 +147,7 @@ export function ConsentScreen({
         {/* Policy links */}
         {(client.policy_uri || client.tos_uri) && (
           <div className="px-6 py-3 bg-gray-50 border-t border-b text-center text-sm text-gray-500">
-            By clicking Allow, you agree to {client.client_name}'s{' '}
+            By clicking Allow, you agree to {client.client_name}'s{" "}
             {client.tos_uri && (
               <a
                 href={client.tos_uri}
@@ -158,7 +158,7 @@ export function ConsentScreen({
                 Terms of Service
               </a>
             )}
-            {client.tos_uri && client.policy_uri && ' and '}
+            {client.tos_uri && client.policy_uri && " and "}
             {client.policy_uri && (
               <a
                 href={client.policy_uri}
@@ -201,10 +201,10 @@ export function ConsentScreen({
                 Denying...
               </span>
             ) : (
-              'Deny'
+              "Deny"
             )}
           </button>
-          
+
           <button
             type="button"
             onClick={handleApprove}
@@ -232,7 +232,7 @@ export function ConsentScreen({
                 Allowing...
               </span>
             ) : (
-              'Allow'
+              "Allow"
             )}
           </button>
         </div>
@@ -240,7 +240,8 @@ export function ConsentScreen({
         {/* Security notice */}
         <div className="px-6 py-3 bg-amber-50 border-t">
           <p className="text-xs text-amber-800 text-center">
-            ⚠️ Only grant access to applications you trust. You can revoke access at any time.
+            ⚠️ Only grant access to applications you trust. You can revoke
+            access at any time.
           </p>
         </div>
       </div>

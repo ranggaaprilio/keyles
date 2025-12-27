@@ -3,22 +3,22 @@
  * Tests for OAuth consent screen functionality
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ConsentScreen } from '../../../src/components/auth/ConsentScreen';
-import type { ClientInfo } from '../../../src/types/oauth';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { ConsentScreen } from "../../../src/components/auth/ConsentScreen";
+import type { ClientInfo } from "../../../src/types/oauth";
 
-describe('ConsentScreen', () => {
+describe("ConsentScreen", () => {
   const mockClient: ClientInfo = {
-    client_id: 'test-client-123',
-    client_name: 'Test Application',
-    logo_uri: 'https://example.com/logo.png',
-    policy_uri: 'https://example.com/privacy',
-    tos_uri: 'https://example.com/terms',
+    client_id: "test-client-123",
+    client_name: "Test Application",
+    logo_uri: "https://example.com/logo.png",
+    policy_uri: "https://example.com/privacy",
+    tos_uri: "https://example.com/terms",
   };
 
-  const mockScopes = ['openid', 'profile', 'email'];
-  const mockUser = 'test@example.com';
+  const mockScopes = ["openid", "profile", "email"];
+  const mockUser = "test@example.com";
   let mockOnApprove: ReturnType<typeof vi.fn>;
   let mockOnDeny: ReturnType<typeof vi.fn>;
 
@@ -27,7 +27,7 @@ describe('ConsentScreen', () => {
     mockOnDeny = vi.fn();
   });
 
-  it('renders client name and logo', () => {
+  it("renders client name and logo", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -38,11 +38,11 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('Test Application')).toBeInTheDocument();
-    expect(screen.getByAltText('Test Application logo')).toBeInTheDocument();
+    expect(screen.getByText("Test Application")).toBeInTheDocument();
+    expect(screen.getByAltText("Test Application logo")).toBeInTheDocument();
   });
 
-  it('renders user email', () => {
+  it("renders user email", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -53,10 +53,10 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('test@example.com')).toBeInTheDocument();
+    expect(screen.getByText("test@example.com")).toBeInTheDocument();
   });
 
-  it('displays all requested scopes', () => {
+  it("displays all requested scopes", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -67,12 +67,12 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('OpenID')).toBeInTheDocument();
-    expect(screen.getByText('Profile')).toBeInTheDocument();
-    expect(screen.getByText('Email')).toBeInTheDocument();
+    expect(screen.getByText("OpenID")).toBeInTheDocument();
+    expect(screen.getByText("Profile")).toBeInTheDocument();
+    expect(screen.getByText("Email")).toBeInTheDocument();
   });
 
-  it('displays scope descriptions', () => {
+  it("displays scope descriptions", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -83,12 +83,14 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('Verify your identity')).toBeInTheDocument();
-    expect(screen.getByText('Access your name and profile picture')).toBeInTheDocument();
-    expect(screen.getByText('Access your email address')).toBeInTheDocument();
+    expect(screen.getByText("Verify your identity")).toBeInTheDocument();
+    expect(
+      screen.getByText("Access your name and profile picture")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Access your email address")).toBeInTheDocument();
   });
 
-  it('calls onApprove when Allow button is clicked', async () => {
+  it("calls onApprove when Allow button is clicked", async () => {
     mockOnApprove.mockResolvedValue(undefined);
 
     render(
@@ -101,14 +103,14 @@ describe('ConsentScreen', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Allow'));
+    fireEvent.click(screen.getByText("Allow"));
 
     await waitFor(() => {
       expect(mockOnApprove).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('calls onDeny when Deny button is clicked', async () => {
+  it("calls onDeny when Deny button is clicked", async () => {
     mockOnDeny.mockResolvedValue(undefined);
 
     render(
@@ -121,14 +123,14 @@ describe('ConsentScreen', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Deny'));
+    fireEvent.click(screen.getByText("Deny"));
 
     await waitFor(() => {
       expect(mockOnDeny).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('disables buttons while loading', () => {
+  it("disables buttons while loading", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -140,13 +142,15 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('Allow')).toBeDisabled();
-    expect(screen.getByText('Deny')).toBeDisabled();
+    expect(screen.getByText("Allow")).toBeDisabled();
+    expect(screen.getByText("Deny")).toBeDisabled();
   });
 
-  it('shows loading state during approval', async () => {
+  it("shows loading state during approval", async () => {
     // Make onApprove take some time
-    mockOnApprove.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+    mockOnApprove.mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 100))
+    );
 
     render(
       <ConsentScreen
@@ -158,19 +162,21 @@ describe('ConsentScreen', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Allow'));
+    fireEvent.click(screen.getByText("Allow"));
 
     await waitFor(() => {
-      expect(screen.getByText('Allowing...')).toBeInTheDocument();
+      expect(screen.getByText("Allowing...")).toBeInTheDocument();
     });
 
     await waitFor(() => {
-      expect(screen.queryByText('Allowing...')).not.toBeInTheDocument();
+      expect(screen.queryByText("Allowing...")).not.toBeInTheDocument();
     });
   });
 
-  it('shows loading state during denial', async () => {
-    mockOnDeny.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+  it("shows loading state during denial", async () => {
+    mockOnDeny.mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 100))
+    );
 
     render(
       <ConsentScreen
@@ -182,14 +188,14 @@ describe('ConsentScreen', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Deny'));
+    fireEvent.click(screen.getByText("Deny"));
 
     await waitFor(() => {
-      expect(screen.getByText('Denying...')).toBeInTheDocument();
+      expect(screen.getByText("Denying...")).toBeInTheDocument();
     });
   });
 
-  it('displays policy and terms links when provided', () => {
+  it("displays policy and terms links when provided", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -200,17 +206,17 @@ describe('ConsentScreen', () => {
       />
     );
 
-    const termsLink = screen.getByText('Terms of Service');
-    const privacyLink = screen.getByText('Privacy Policy');
+    const termsLink = screen.getByText("Terms of Service");
+    const privacyLink = screen.getByText("Privacy Policy");
 
-    expect(termsLink).toHaveAttribute('href', 'https://example.com/terms');
-    expect(privacyLink).toHaveAttribute('href', 'https://example.com/privacy');
+    expect(termsLink).toHaveAttribute("href", "https://example.com/terms");
+    expect(privacyLink).toHaveAttribute("href", "https://example.com/privacy");
   });
 
-  it('handles client without logo', () => {
+  it("handles client without logo", () => {
     const clientWithoutLogo: ClientInfo = {
-      client_id: 'test-client-123',
-      client_name: 'Test Application',
+      client_id: "test-client-123",
+      client_name: "Test Application",
     };
 
     render(
@@ -224,12 +230,12 @@ describe('ConsentScreen', () => {
     );
 
     // Should not crash and should show fallback
-    expect(screen.getByText('Test Application')).toBeInTheDocument();
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByText("Test Application")).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it('handles unknown scopes', () => {
-    const unknownScopes = ['openid', 'custom_scope'];
+  it("handles unknown scopes", () => {
+    const unknownScopes = ["openid", "custom_scope"];
 
     render(
       <ConsentScreen
@@ -241,12 +247,12 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('OpenID')).toBeInTheDocument();
-    expect(screen.getByText('custom_scope')).toBeInTheDocument();
-    expect(screen.getByText('Access to custom_scope')).toBeInTheDocument();
+    expect(screen.getByText("OpenID")).toBeInTheDocument();
+    expect(screen.getByText("custom_scope")).toBeInTheDocument();
+    expect(screen.getByText("Access to custom_scope")).toBeInTheDocument();
   });
 
-  it('displays security warning', () => {
+  it("displays security warning", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -262,7 +268,7 @@ describe('ConsentScreen', () => {
     ).toBeInTheDocument();
   });
 
-  it('displays Keyles branding', () => {
+  it("displays Keyles branding", () => {
     render(
       <ConsentScreen
         client={mockClient}
@@ -273,6 +279,6 @@ describe('ConsentScreen', () => {
       />
     );
 
-    expect(screen.getByText('Keyles SSO')).toBeInTheDocument();
+    expect(screen.getByText("Keyles SSO")).toBeInTheDocument();
   });
 });

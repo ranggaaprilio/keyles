@@ -4,8 +4,8 @@
  * Extracts code and state from URL, exchanges for tokens
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import type { TokenResponse, AuthorizationErrorCode } from '../../types/oauth';
+import { useEffect, useState, useCallback } from "react";
+import type { TokenResponse, AuthorizationErrorCode } from "../../types/oauth";
 
 /**
  * Props for OAuthCallback component
@@ -29,14 +29,14 @@ interface OAuthCallbackProps {
 
 /**
  * OAuth Callback handler component
- * 
+ *
  * @example
  * ```tsx
  * // In your callback route component:
  * function OAuthCallbackPage() {
  *   const navigate = useNavigate();
  *   const { service, handleCallback } = useOAuth({ config });
- * 
+ *
  *   return (
  *     <OAuthCallback
  *       completeCallback={handleCallback}
@@ -68,7 +68,7 @@ export function OAuthCallback({
       if (usePostMessage && window.opener) {
         window.opener.postMessage(
           {
-            type: 'oauth_callback',
+            type: "oauth_callback",
             success,
             data,
           },
@@ -87,12 +87,12 @@ export function OAuthCallback({
       try {
         // Check for error in URL first
         const url = new URL(window.location.href);
-        const errorParam = url.searchParams.get('error');
-        const errorDescription = url.searchParams.get('error_description');
+        const errorParam = url.searchParams.get("error");
+        const errorDescription = url.searchParams.get("error_description");
 
         if (errorParam) {
           const errorMessage = errorDescription || errorParam;
-          
+
           if (isMounted) {
             setError(errorMessage);
             setIsProcessing(false);
@@ -119,7 +119,8 @@ export function OAuthCallback({
           onSuccess(tokens);
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'OAuth callback failed';
+        const errorMessage =
+          err instanceof Error ? err.message : "OAuth callback failed";
 
         if (isMounted) {
           setError(errorMessage);
@@ -167,7 +168,7 @@ export function OAuthCallback({
               </h2>
               <p className="text-red-600">{error}</p>
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => (window.location.href = "/")}
                 className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
               >
                 Return Home
