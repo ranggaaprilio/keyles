@@ -20,6 +20,7 @@ type Router struct {
 	healthHandler        *handlers.HealthHandler
 	clientHandler        *handlers.ClientHandler
 	oauthHandler         *handlers.OAuthHandler
+	discoveryHandler     *handlers.DiscoveryHandler
 	jwtService           *services.JWTService
 }
 
@@ -35,6 +36,7 @@ func NewRouter(
 	healthHandler *handlers.HealthHandler,
 	clientHandler *handlers.ClientHandler,
 	oauthHandler *handlers.OAuthHandler,
+	discoveryHandler *handlers.DiscoveryHandler,
 	jwtService *services.JWTService,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
@@ -58,6 +60,7 @@ func NewRouter(
 		healthHandler:       healthHandler,
 		clientHandler:       clientHandler,
 		oauthHandler:        oauthHandler,
+		discoveryHandler:    discoveryHandler,
 		jwtService:          jwtService,
 	}
 }
@@ -68,11 +71,17 @@ func (r *Router) Setup() {
 	r.engine.GET("/health/db", r.healthHandler.HealthDB)
 	r.engine.GET("/health/redis", r.healthHandler.HealthRedis)
 
+	// OIDC Discovery endpoints (public - no auth required)
+	r.engine.GET("/.well-known/openid-configuration", r.discoveryHandler.OpenIDConfiguration)
+	r.engine.GET("/.well-known/jwks.json", r.discoveryHandler.JWKS)
+
 	// OAuth 2.0 routes (public - handles authentication)
 	oauth2 := r.engine.Group("/oauth2")
 	{
 		oauth2.GET("/auth", r.oauthHandler.Authorize)
 		oauth2.POST("/auth", r.oauthHandler.Authorize)
+		// Token endpoint with rate limiting (FR-057: 10 req/min per client_id)
+		oauth2.POST("/token", r.oauthHandler.Token)
 	}
 
 	// API v1 routes

@@ -46,6 +46,11 @@ type Config struct {
 	RateLimitOTPAttemptsPerOTP    int
 	RateLimitLoginAttemptsPer15Min int
 
+	// OAuth
+	OAuthIssuer          string
+	OAuthAccessTokenTTL  int
+	OAuthRefreshTokenTTL int
+
 	// OTP
 	OTPExpirationMinutes int
 	OTPLength            int
@@ -95,6 +100,11 @@ func Load() (*Config, error) {
 		RateLimitOTPRequestsPerHour:   getEnvAsInt("RATE_LIMIT_OTP_REQUESTS_PER_HOUR", 3),
 		RateLimitOTPAttemptsPerOTP:    getEnvAsInt("RATE_LIMIT_OTP_ATTEMPTS_PER_OTP", 5),
 		RateLimitLoginAttemptsPer15Min: getEnvAsInt("RATE_LIMIT_LOGIN_ATTEMPTS_PER_15MIN", 5),
+
+		// OAuth
+		OAuthIssuer:          getEnv("OAUTH_ISSUER", "https://sso.keyles.com"),
+		OAuthAccessTokenTTL:  getEnvAsInt("OAUTH_ACCESS_TOKEN_TTL", 900),   // 15 minutes
+		OAuthRefreshTokenTTL: getEnvAsInt("OAUTH_REFRESH_TOKEN_TTL", 604800), // 7 days
 
 		// OTP
 		OTPExpirationMinutes: getEnvAsInt("OTP_EXPIRATION_MINUTES", 10),

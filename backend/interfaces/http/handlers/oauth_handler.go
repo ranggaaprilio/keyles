@@ -12,16 +12,19 @@ import (
 // OAuthHandler handles OAuth 2.0 / OIDC endpoints
 type OAuthHandler struct {
 	authorizeClientUC *auth.AuthorizeClient
+	issueTokenUC      *auth.IssueToken
 	clientRepo        repositories.ClientRepository
 }
 
 // NewOAuthHandler creates a new OAuth handler
 func NewOAuthHandler(
 	authorizeClientUC *auth.AuthorizeClient,
+	issueTokenUC *auth.IssueToken,
 	clientRepo repositories.ClientRepository,
 ) *OAuthHandler {
 	return &OAuthHandler{
 		authorizeClientUC: authorizeClientUC,
+		issueTokenUC:      issueTokenUC,
 		clientRepo:        clientRepo,
 	}
 }
@@ -106,6 +109,64 @@ func (h *OAuthHandler) Authorize(c *gin.Context) {
 	c.Redirect(http.StatusFound, redirectURL.String())
 }
 
+// Token handles the OAuth 2.0 token endpoint (POST /oauth2/token)
+// Per RFC 6749 Section 4.1.3 (Authorization Code Exchange)
+func (h *OAuthHandler) Token(c *gin.Context) {
+	// Extract form parameters (application/x-www-form-urlencoded per RFC 6749)
+	grantType := c.PostForm("grant_type")
+	code := c.PostForm("code")
+	redirectURI := c.PostForm("redirect_uri")
+	clientID := c.PostForm("client_id")
+	clientSecret := c.PostForm("client_secret")
+	codeVerifier := c.PostForm("code_verifier")
+
+	// Support Basic Auth for client credentials
+	if clientID == "" || clientSecret == "" {
+		basicClientID, basicClientSecret, hasBasic := c.Request.BasicAuth()
+		if hasBasic {
+			if clientID == "" {
+				clientID = basicClientID
+			}
+			if clientSecret == "" {
+				clientSecret = basicClientSecret
+			}
+		}
+	}
+
+	// Build token request
+	req := auth.TokenRequest{
+		GrantType:    grantType,
+		Code:         code,
+		RedirectURI:  redirectURI,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		CodeVerifier: codeVerifier,
+	}
+
+	// Execute token exchange
+	resp, err := h.issueTokenUC.Execute(c.Request.Context(), req)
+	if err != nil {
+		// Handle OAuth errors
+		oauthErr, ok := err.(*auth.OAuthError)
+		if ok {
+			statusCode := mapOAuthErrorToStatus(oauthErr.Code)
+			c.JSON(statusCode, gin.H{
+				"error":             oauthErr.Code,
+				"error_description": oauthErr.Description,
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":             "server_error",
+			"error_description": err.Error(),
+		})
+		return
+	}
+
+	// Return token response per RFC 6749 Section 5.1
+	c.JSON(http.StatusOK, resp)
+}
+
 // mapOAuthErrorToStatus maps OAuth error codes to HTTP status codes
 func mapOAuthErrorToStatus(errorCode string) int {
 	switch errorCode {
@@ -122,8 +183,10 @@ func mapOAuthErrorToStatus(errorCode string) int {
 	case auth.ErrServerError:
 		return http.StatusInternalServerError
 	case auth.ErrInvalidClient:
-		return http.StatusBadRequest
+		return http.StatusUnauthorized
 	case auth.ErrInvalidGrant:
+		return http.StatusBadRequest
+	case auth.ErrUnsupportedGrantType:
 		return http.StatusBadRequest
 	default:
 		return http.StatusBadRequest

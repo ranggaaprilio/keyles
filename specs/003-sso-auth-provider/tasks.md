@@ -197,16 +197,16 @@
 
 ### Tests for User Story 3 (MANDATORY per constitution) ⚠️
 
-- [ ] T080 [P] [US3] Unit test for IssueToken use case in backend/tests/unit/usecase/issue_token_test.go (mock AuthCodeRepository, ClientRepository, RefreshTokenRepository, TokenService, test PKCE validation per FR-021, test authorization code expiration per FR-023, test one-time use per FR-024, test client credential validation per FR-025, test redirect_uri matching per FR-022)
-- [ ] T081 [US3] Integration test for token exchange in backend/tests/integration/oauth_token_test.go (test POST /oauth2/token with grant_type=authorization_code, verify JWT structure per FR-029-FR-032, test PKCE failure returns invalid_grant per FR-028, test expired code returns invalid_grant, test code reuse returns invalid_grant per FR-024, verify access token 15min expiry per FR-033, verify refresh token 7day expiry per FR-035, verify RS256 signature per FR-036)
+- [x] T080 [P] [US3] Unit test for IssueToken use case in backend/tests/unit/usecase/issue_token_test.go (mock AuthCodeRepository, ClientRepository, RefreshTokenRepository, TokenService, test PKCE validation per FR-021, test authorization code expiration per FR-023, test one-time use per FR-024, test client credential validation per FR-025, test redirect_uri matching per FR-022)
+- [x] T081 [US3] Integration test for token exchange in backend/tests/integration/oauth_token_test.go (test POST /oauth2/token with grant_type=authorization_code, verify JWT structure per FR-029-FR-032, test PKCE failure returns invalid_grant per FR-028, test expired code returns invalid_grant, test code reuse returns invalid_grant per FR-024, verify access token 15min expiry per FR-033, verify refresh token 7day expiry per FR-035, verify RS256 signature per FR-036)
 
 ### Implementation for User Story 3
 
-- [ ] T082 [US3] Implement IssueToken use case in backend/usecase/auth/issue_token.go (validates grant_type per FR-020, retrieves and validates auth code per FR-023, FR-024, validates PKCE code_verifier per FR-021, validates redirect_uri per FR-022, validates client credentials per FR-025, revokes auth code per FR-026, generates ID token per FR-030-FR-031, generates access token per FR-032-FR-033, generates refresh token per FR-034-FR-035, returns all three tokens per FR-027, returns invalid_grant on failure per FR-028)
-- [ ] T083 [US3] Add POST /oauth2/token endpoint to backend/interfaces/http/handlers/oauth_handler.go (handles token exchange requests, applies rate limiting middleware per FR-051, calls IssueToken use case, returns JSON with id_token, access_token, refresh_token, token_type=Bearer, expires_in)
-- [ ] T084 [US3] Update backend/interfaces/http/router.go to add POST /oauth2/token route with rate limiter middleware (10 req/min per client_id per FR-051)
-- [ ] T085 [P] [US3] Add exchangeCodeForTokens function to frontend/src/services/oauthService.ts (POST to /oauth2/token with code, code_verifier, client_id, client_secret, redirect_uri)
-- [ ] T086 [P] [US3] Create tokenStorage utility in frontend/src/utils/tokenStorage.ts (securely stores tokens in memory or secure storage, getAccessToken, getRefreshToken, clearTokens)
+- [x] T082 [US3] Implement IssueToken use case in backend/usecase/auth/issue_token.go (validates grant_type per FR-020, retrieves and validates auth code per FR-023, FR-024, validates PKCE code_verifier per FR-021, validates redirect_uri per FR-022, validates client credentials per FR-025, revokes auth code per FR-026, generates ID token per FR-030-FR-031, generates access token per FR-032-FR-033, generates refresh token per FR-034-FR-035, returns all three tokens per FR-027, returns invalid_grant on failure per FR-028)
+- [x] T083 [US3] Add POST /oauth2/token endpoint to backend/interfaces/http/handlers/oauth_handler.go (handles token exchange requests, applies rate limiting middleware per FR-051, calls IssueToken use case, returns JSON with id_token, access_token, refresh_token, token_type=Bearer, expires_in)
+- [x] T084 [US3] Update backend/interfaces/http/router.go to add POST /oauth2/token route with rate limiter middleware (10 req/min per client_id per FR-051)
+- [x] T085 [P] [US3] Add exchangeCodeForTokens function to frontend/src/services/oauthService.ts (POST to /oauth2/token with code, code_verifier, client_id, client_secret, redirect_uri)
+- [x] T086 [P] [US3] Create tokenStorage utility in frontend/src/utils/tokenStorage.ts (securely stores tokens in memory or secure storage, getAccessToken, getRefreshToken, clearTokens)
 
 **Checkpoint**: Complete OAuth flow works end-to-end - users can authenticate and clients receive JWT tokens
 
@@ -220,15 +220,15 @@
 
 ### Tests for User Story 4 (MANDATORY per constitution) ⚠️
 
-- [ ] T087 [P] [US4] Unit test for ValidateToken use case in backend/tests/unit/usecase/validate_token_test.go (mock TokenService, test signature validation, test expiration validation, test tenant_id validation)
-- [ ] T088 [US4] Integration test for JWKS discovery in backend/tests/integration/discovery_test.go (test GET /.well-known/openid-configuration returns OIDC metadata per FR-041, test GET /.well-known/jwks.json returns JWKS per FR-039, verify public key format, test signature validation using fetched public key)
+- [x] T087 [P] [US4] Unit test for ValidateToken use case in backend/tests/unit/usecase/validate_token_test.go (mock TokenService, test signature validation, test expiration validation, test tenant_id validation)
+- [x] T088 [US4] Integration test for JWKS discovery in backend/tests/integration/discovery_test.go (test GET /.well-known/openid-configuration returns OIDC metadata per FR-041, test GET /.well-known/jwks.json returns JWKS per FR-039, verify public key format, test signature validation using fetched public key)
 
 ### Implementation for User Story 4
 
-- [ ] T089 [US4] Implement ValidateToken use case in backend/usecase/auth/validate_token.go (parses JWT, validates signature using TokenService per FR-039, validates expiration, validates tenant_id, validates audience)
-- [ ] T090 [US4] Implement DiscoveryHandler in backend/interfaces/http/handlers/discovery_handler.go with GET /.well-known/openid-configuration endpoint (returns OIDC discovery metadata per FR-041: issuer, authorization_endpoint, token_endpoint, jwks_uri, userinfo_endpoint, supported scopes, response_types, grant_types, token_endpoint_auth_methods, code_challenge_methods_supported=[S256])
-- [ ] T091 [US4] Add GET /.well-known/jwks.json endpoint to DiscoveryHandler (returns JWKS per FR-039, includes all active public keys per FR-040, format: {"keys": [{"kty": "RSA", "kid": "...", "use": "sig", "alg": "RS256", "n": "...", "e": "..."}]})
-- [ ] T092 [US4] Add discovery routes to backend/interfaces/http/router.go: GET /.well-known/openid-configuration, GET /.well-known/jwks.json (public routes, no auth required)
+- [x] T089 [US4] Implement ValidateToken use case in backend/usecase/auth/validate_token.go (parses JWT, validates signature using TokenService per FR-039, validates expiration, validates tenant_id, validates audience)
+- [x] T090 [US4] Implement DiscoveryHandler in backend/interfaces/http/handlers/discovery_handler.go with GET /.well-known/openid-configuration endpoint (returns OIDC discovery metadata per FR-041: issuer, authorization_endpoint, token_endpoint, jwks_uri, userinfo_endpoint, supported scopes, response_types, grant_types, token_endpoint_auth_methods, code_challenge_methods_supported=[S256])
+- [x] T091 [US4] Add GET /.well-known/jwks.json endpoint to DiscoveryHandler (returns JWKS per FR-039, includes all active public keys per FR-040, format: {"keys": [{"kty": "RSA", "kid": "...", "use": "sig", "alg": "RS256", "n": "...", "e": "..."}]})
+- [x] T092 [US4] Add discovery routes to backend/interfaces/http/router.go: GET /.well-known/openid-configuration, GET /.well-known/jwks.json (public routes, no auth required)
 
 **Checkpoint**: OIDC discovery works, clients can validate JWT signatures offline
 

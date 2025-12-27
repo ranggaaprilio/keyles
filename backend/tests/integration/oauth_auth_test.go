@@ -151,7 +151,7 @@ func setupOAuthRouter(t *testing.T) (*gin.Engine, *MockIntegrationClientReposito
 	}
 
 	authorizeClientUC := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
-	oauthHandler := handlers.NewOAuthHandler(authorizeClientUC, clientRepo)
+	oauthHandler := handlers.NewOAuthHandler(authorizeClientUC, nil, clientRepo)
 
 	router.GET("/oauth2/auth", oauthHandler.Authorize)
 
@@ -216,7 +216,8 @@ func TestOAuthHandler_Authorize_InvalidClientID(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	// Per OAuth 2.0 RFC, invalid_client returns 401 Unauthorized
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid_client")
 }
 

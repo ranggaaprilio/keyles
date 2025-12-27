@@ -63,6 +63,8 @@ func main() {
 	clientRepo := postgresRepo.NewPostgresClientRepository(db)
 	roleRepo := postgresRepo.NewPostgresRoleRepository(db)
 	authCodeRepo := redisRepo.NewRedisAuthCodeRepository(redisClient)
+	refreshTokenRepo := postgresRepo.NewPostgresRefreshTokenRepository(db)
+	signingKeyRepo := postgresRepo.NewPostgresSigningKeyRepositoryGorm(db)
 
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
@@ -70,6 +72,9 @@ func main() {
 	passwordService := infraServices.NewBcryptPasswordService() // Returns concrete type now
 	jwtService := infraServices.NewJWTService(cfg.JWTSecret, cfg.JWTExpirationHours)
 	authJWTService := infraServices.NewAuthJWTServiceAdapter(jwtService)
+
+	// Initialize OAuth token service
+	tokenService := infraServices.NewRSATokenService(signingKeyRepo)
 
 	// Initialize use cases
 	registerTenantUseCase := tenant.NewRegisterTenantUseCase(
@@ -91,6 +96,7 @@ func main() {
 
 	// Initialize OAuth use cases
 	authorizeClientUseCase := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
+	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, cfg.OAuthIssuer)
 
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
@@ -108,7 +114,8 @@ func main() {
 		listClientsUseCase,
 		rotateSecretUseCase,
 	)
-	oauthHandler := handlers.NewOAuthHandler(authorizeClientUseCase, clientRepo)
+	oauthHandler := handlers.NewOAuthHandler(authorizeClientUseCase, issueTokenUseCase, clientRepo)
+	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -125,6 +132,7 @@ func main() {
 		healthHandler,
 		clientHandler,
 		oauthHandler,
+		discoveryHandler,
 		jwtService,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,
