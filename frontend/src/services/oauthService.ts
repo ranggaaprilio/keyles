@@ -330,6 +330,38 @@ export class OAuthService {
   }
 
   /**
+   * Revokes a token (refresh token or access token)
+   * Per RFC 7009 - OAuth 2.0 Token Revocation
+   * 
+   * @param token - The token to revoke
+   * @param tokenTypeHint - Optional hint about the token type ('refresh_token' or 'access_token')
+   * @returns Promise that resolves on success, rejects on error
+   */
+  async revokeToken(token: string, tokenTypeHint?: 'refresh_token' | 'access_token'): Promise<void> {
+    const params = new URLSearchParams();
+    params.set('token', token);
+    if (tokenTypeHint) {
+      params.set('token_type_hint', tokenTypeHint);
+    }
+    params.set('client_id', this.config.clientId);
+
+    const response = await fetch(`${this.config.issuer}/oauth2/revoke`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params,
+    });
+
+    // Per RFC 7009, server always returns 200 OK for valid requests
+    // Only throw if there's a network error or server returns 4xx/5xx
+    if (!response.ok && response.status !== 200) {
+      const errorText = await response.text();
+      throw new Error(`Token revocation failed: ${errorText}`);
+    }
+  }
+
+  /**
    * Clears stored OAuth state
    */
   clearState(): void {

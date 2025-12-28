@@ -13,6 +13,8 @@ import (
 type OAuthHandler struct {
 	authorizeClientUC *auth.AuthorizeClient
 	issueTokenUC      *auth.IssueToken
+	refreshTokenUC    *auth.RefreshToken
+	revokeTokenUC     *auth.RevokeToken
 	clientRepo        repositories.ClientRepository
 }
 
@@ -25,6 +27,53 @@ func NewOAuthHandler(
 	return &OAuthHandler{
 		authorizeClientUC: authorizeClientUC,
 		issueTokenUC:      issueTokenUC,
+		clientRepo:        clientRepo,
+	}
+}
+
+// NewOAuthHandlerWithRefresh creates a new OAuth handler with refresh token support
+func NewOAuthHandlerWithRefresh(
+	authorizeClientUC *auth.AuthorizeClient,
+	issueTokenUC *auth.IssueToken,
+	clientRepo repositories.ClientRepository,
+	refreshTokenUC *auth.RefreshToken,
+) *OAuthHandler {
+	return &OAuthHandler{
+		authorizeClientUC: authorizeClientUC,
+		issueTokenUC:      issueTokenUC,
+		refreshTokenUC:    refreshTokenUC,
+		clientRepo:        clientRepo,
+	}
+}
+
+// NewOAuthHandlerWithRevoke creates a new OAuth handler with revoke token support
+func NewOAuthHandlerWithRevoke(
+	authorizeClientUC *auth.AuthorizeClient,
+	issueTokenUC *auth.IssueToken,
+	clientRepo repositories.ClientRepository,
+	revokeTokenUC *auth.RevokeToken,
+) *OAuthHandler {
+	return &OAuthHandler{
+		authorizeClientUC: authorizeClientUC,
+		issueTokenUC:      issueTokenUC,
+		revokeTokenUC:     revokeTokenUC,
+		clientRepo:        clientRepo,
+	}
+}
+
+// NewOAuthHandlerFull creates a new OAuth handler with all features
+func NewOAuthHandlerFull(
+	authorizeClientUC *auth.AuthorizeClient,
+	issueTokenUC *auth.IssueToken,
+	clientRepo repositories.ClientRepository,
+	refreshTokenUC *auth.RefreshToken,
+	revokeTokenUC *auth.RevokeToken,
+) *OAuthHandler {
+	return &OAuthHandler{
+		authorizeClientUC: authorizeClientUC,
+		issueTokenUC:      issueTokenUC,
+		refreshTokenUC:    refreshTokenUC,
+		revokeTokenUC:     revokeTokenUC,
 		clientRepo:        clientRepo,
 	}
 }
@@ -110,15 +159,12 @@ func (h *OAuthHandler) Authorize(c *gin.Context) {
 }
 
 // Token handles the OAuth 2.0 token endpoint (POST /oauth2/token)
-// Per RFC 6749 Section 4.1.3 (Authorization Code Exchange)
+// Per RFC 6749 Section 4.1.3 (Authorization Code Exchange) and Section 6 (Refresh Token)
 func (h *OAuthHandler) Token(c *gin.Context) {
 	// Extract form parameters (application/x-www-form-urlencoded per RFC 6749)
 	grantType := c.PostForm("grant_type")
-	code := c.PostForm("code")
-	redirectURI := c.PostForm("redirect_uri")
 	clientID := c.PostForm("client_id")
 	clientSecret := c.PostForm("client_secret")
-	codeVerifier := c.PostForm("code_verifier")
 
 	// Support Basic Auth for client credentials
 	if clientID == "" || clientSecret == "" {
@@ -133,9 +179,29 @@ func (h *OAuthHandler) Token(c *gin.Context) {
 		}
 	}
 
+	// Route based on grant_type
+	switch grantType {
+	case "authorization_code":
+		h.handleAuthorizationCodeGrant(c, clientID, clientSecret)
+	case "refresh_token":
+		h.handleRefreshTokenGrant(c, clientID, clientSecret)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":             auth.ErrUnsupportedGrantType,
+			"error_description": "only grant_type=authorization_code and grant_type=refresh_token are supported",
+		})
+	}
+}
+
+// handleAuthorizationCodeGrant handles the authorization_code grant type
+func (h *OAuthHandler) handleAuthorizationCodeGrant(c *gin.Context, clientID, clientSecret string) {
+	code := c.PostForm("code")
+	redirectURI := c.PostForm("redirect_uri")
+	codeVerifier := c.PostForm("code_verifier")
+
 	// Build token request
 	req := auth.TokenRequest{
-		GrantType:    grantType,
+		GrantType:    "authorization_code",
 		Code:         code,
 		RedirectURI:  redirectURI,
 		ClientID:     clientID,
@@ -146,25 +212,62 @@ func (h *OAuthHandler) Token(c *gin.Context) {
 	// Execute token exchange
 	resp, err := h.issueTokenUC.Execute(c.Request.Context(), req)
 	if err != nil {
-		// Handle OAuth errors
-		oauthErr, ok := err.(*auth.OAuthError)
-		if ok {
-			statusCode := mapOAuthErrorToStatus(oauthErr.Code)
-			c.JSON(statusCode, gin.H{
-				"error":             oauthErr.Code,
-				"error_description": oauthErr.Description,
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":             "server_error",
-			"error_description": err.Error(),
-		})
+		h.handleOAuthError(c, err)
 		return
 	}
 
 	// Return token response per RFC 6749 Section 5.1
 	c.JSON(http.StatusOK, resp)
+}
+
+// handleRefreshTokenGrant handles the refresh_token grant type (FR-043 through FR-047)
+func (h *OAuthHandler) handleRefreshTokenGrant(c *gin.Context, clientID, clientSecret string) {
+	refreshToken := c.PostForm("refresh_token")
+	scope := c.PostForm("scope") // Optional: can request reduced scope
+
+	// Check if refresh token use case is available
+	if h.refreshTokenUC == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":             auth.ErrUnsupportedGrantType,
+			"error_description": "refresh_token grant type is not enabled",
+		})
+		return
+	}
+
+	// Build refresh token request
+	req := auth.RefreshTokenRequest{
+		RefreshToken: refreshToken,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		Scope:        scope,
+	}
+
+	// Execute refresh token exchange
+	resp, err := h.refreshTokenUC.Execute(c.Request.Context(), req)
+	if err != nil {
+		h.handleOAuthError(c, err)
+		return
+	}
+
+	// Return token response
+	c.JSON(http.StatusOK, resp)
+}
+
+// handleOAuthError handles OAuth errors and returns appropriate HTTP response
+func (h *OAuthHandler) handleOAuthError(c *gin.Context, err error) {
+	oauthErr, ok := err.(*auth.OAuthError)
+	if ok {
+		statusCode := mapOAuthErrorToStatus(oauthErr.Code)
+		c.JSON(statusCode, gin.H{
+			"error":             oauthErr.Code,
+			"error_description": oauthErr.Description,
+		})
+		return
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"error":             "server_error",
+		"error_description": err.Error(),
+	})
 }
 
 // mapOAuthErrorToStatus maps OAuth error codes to HTTP status codes
@@ -191,4 +294,37 @@ func mapOAuthErrorToStatus(errorCode string) int {
 	default:
 		return http.StatusBadRequest
 	}
+}
+
+// Revoke handles the OAuth 2.0 token revocation endpoint (POST /oauth2/revoke)
+// Per RFC 7009 - OAuth 2.0 Token Revocation
+func (h *OAuthHandler) Revoke(c *gin.Context) {
+	// Extract form parameters
+	token := c.PostForm("token")
+	tokenTypeHint := c.PostForm("token_type_hint")
+
+	// Check if revoke token use case is available
+	if h.revokeTokenUC == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":             auth.ErrServerError,
+			"error_description": "token revocation is not enabled",
+		})
+		return
+	}
+
+	// Build revoke token request
+	req := auth.RevokeTokenRequest{
+		Token:         token,
+		TokenTypeHint: tokenTypeHint,
+	}
+
+	// Execute token revocation
+	err := h.revokeTokenUC.Execute(c.Request.Context(), req)
+	if err != nil {
+		h.handleOAuthError(c, err)
+		return
+	}
+
+	// Per RFC 7009, return HTTP 200 OK with empty body on success
+	c.Status(http.StatusOK)
 }

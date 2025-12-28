@@ -82,6 +82,8 @@ func (r *Router) Setup() {
 		oauth2.POST("/auth", r.oauthHandler.Authorize)
 		// Token endpoint with rate limiting (FR-057: 10 req/min per client_id)
 		oauth2.POST("/token", r.oauthHandler.Token)
+		// Revocation endpoint per RFC 7009 (FR-051)
+		oauth2.POST("/revoke", r.oauthHandler.Revoke)
 	}
 
 	// API v1 routes

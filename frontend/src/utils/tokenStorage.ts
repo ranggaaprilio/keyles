@@ -288,3 +288,136 @@ function restoreFromSessionStorage(): TokenSet | null {
     return null;
   }
 }
+/**
+ * Token refresh callback type
+ */
+export type RefreshTokenCallback = (refreshToken: string) => Promise<{
+  access_token: string;
+  refresh_token?: string;
+  id_token?: string;
+  expires_in: number;
+  token_type: string;
+  scope?: string;
+}>;
+
+// Refresh callback storage
+let refreshCallback: RefreshTokenCallback | null = null;
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Set the refresh token callback
+ * This callback will be called when automatic token refresh is needed
+ * @param callback - Function that refreshes tokens using the refresh token
+ */
+export function setRefreshCallback(callback: RefreshTokenCallback): void {
+  refreshCallback = callback;
+}
+
+/**
+ * Attempt to refresh access token using the refresh token
+ * This function coalesces multiple concurrent refresh requests
+ * @returns true if refresh was successful, false otherwise
+ */
+export async function refreshAccessToken(): Promise<boolean> {
+  // If already refreshing, wait for that to complete
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken || !refreshCallback) {
+    return false;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const newTokens = await refreshCallback(refreshToken);
+      
+      // Update stored tokens
+      const tokenSet: TokenSet = {
+        accessToken: newTokens.access_token,
+        refreshToken: newTokens.refresh_token || refreshToken, // Use new if rotated, else keep old
+        idToken: newTokens.id_token,
+        tokenType: newTokens.token_type,
+        expiresIn: newTokens.expires_in,
+        scope: newTokens.scope,
+        issuedAt: Date.now(),
+      };
+
+      // Persist with same settings as before
+      const wasPersisted = sessionStorage.getItem(ACCESS_TOKEN_KEY) !== null;
+      storeTokens(tokenSet, wasPersisted);
+
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+/**
+ * Get a valid access token, refreshing if necessary
+ * @returns The access token or null if unable to get a valid token
+ */
+export async function getValidAccessToken(): Promise<string | null> {
+  // Check if current token is valid
+  let accessToken = getAccessToken();
+  if (accessToken) {
+    return accessToken;
+  }
+
+  // Try to refresh if we have a refresh token
+  if (canRefreshToken()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return getAccessToken();
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Create a fetch wrapper that automatically refreshes tokens on 401
+ * @param fetchFn - Optional custom fetch function (default: window.fetch)
+ * @returns Wrapped fetch function
+ */
+export function createAuthenticatedFetch(
+  fetchFn: typeof fetch = fetch.bind(window)
+): typeof fetch {
+  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    // Get valid access token
+    const accessToken = await getValidAccessToken();
+    
+    // Prepare headers with authorization
+    const headers = new Headers(init?.headers);
+    if (accessToken) {
+      headers.set('Authorization', `Bearer ${accessToken}`);
+    }
+
+    // Make the request
+    const response = await fetchFn(input, { ...init, headers });
+
+    // If 401 and we have a refresh token, try to refresh and retry
+    if (response.status === 401 && canRefreshToken()) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        const newAccessToken = getAccessToken();
+        if (newAccessToken) {
+          headers.set('Authorization', `Bearer ${newAccessToken}`);
+          return fetchFn(input, { ...init, headers });
+        }
+      }
+    }
+
+    return response;
+  };
+}

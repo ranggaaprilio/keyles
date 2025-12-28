@@ -242,15 +242,15 @@
 
 ### Tests for User Story 5 (MANDATORY per constitution) ⚠️
 
-- [ ] T093 [P] [US5] Unit test for RefreshToken use case in backend/tests/unit/usecase/refresh_token_test.go (mock RefreshTokenRepository, ClientRepository, TokenService, test revoked token rejection per FR-046, test client_id mismatch rejection per FR-047, test expired token handling)
-- [ ] T094 [US5] Integration test for token refresh in backend/tests/integration/oauth_refresh_test.go (test POST /oauth2/token with grant_type=refresh_token, verify new access token returned per FR-043, test invalid_grant on revoked token per FR-046, test client_id validation per FR-047, verify optional refresh token rotation)
+- [x] T093 [P] [US5] Unit test for RefreshToken use case in backend/tests/unit/usecase/refresh_token_test.go (mock RefreshTokenRepository, ClientRepository, TokenService, test revoked token rejection per FR-046, test client_id mismatch rejection per FR-047, test expired token handling)
+- [x] T094 [US5] Integration test for token refresh in backend/tests/integration/oauth_refresh_test.go (test POST /oauth2/token with grant_type=refresh_token, verify new access token returned per FR-043, test invalid_grant on revoked token per FR-046, test client_id validation per FR-047, verify optional refresh token rotation)
 
 ### Implementation for User Story 5
 
-- [ ] T095 [US5] Implement RefreshToken use case in backend/usecase/auth/refresh_token.go (validates grant_type=refresh_token, retrieves refresh token from database, validates not revoked per FR-046, validates not expired, validates client_id matches per FR-047, generates new access token per FR-043, optionally rotates refresh token, returns new tokens)
-- [ ] T096 [US5] Update POST /oauth2/token endpoint in backend/interfaces/http/handlers/oauth_handler.go to handle grant_type=refresh_token (calls RefreshToken use case, returns new access token and optionally new refresh token)
-- [ ] T097 [P] [US5] Add refreshAccessToken function to frontend/src/services/oauthService.ts (POST to /oauth2/token with grant_type=refresh_token, refresh_token, client_id, client_secret)
-- [ ] T098 [P] [US5] Update tokenStorage utility to implement automatic token refresh logic (intercepts 401 responses, refreshes token, retries original request)
+- [x] T095 [US5] Implement RefreshToken use case in backend/usecase/auth/refresh_token.go (validates grant_type=refresh_token, retrieves refresh token from database, validates not revoked per FR-046, validates not expired, validates client_id matches per FR-047, generates new access token per FR-043, optionally rotates refresh token, returns new tokens)
+- [x] T096 [US5] Update POST /oauth2/token endpoint in backend/interfaces/http/handlers/oauth_handler.go to handle grant_type=refresh_token (calls RefreshToken use case, returns new access token and optionally new refresh token)
+- [x] T097 [P] [US5] Add refreshAccessToken function to frontend/src/services/oauthService.ts (POST to /oauth2/token with grant_type=refresh_token, refresh_token, client_id, client_secret)
+- [x] T098 [P] [US5] Update tokenStorage utility to implement automatic token refresh logic (intercepts 401 responses, refreshes token, retries original request)
 
 **Checkpoint**: Token refresh works, sessions can be maintained without re-authentication
 
@@ -264,16 +264,16 @@
 
 ### Tests for User Story 6 (MANDATORY per constitution) ⚠️
 
-- [ ] T099 [P] [US6] Unit test for RevokeToken use case in backend/tests/unit/usecase/revoke_token_test.go (mock RefreshTokenRepository, test token revocation, test cascade revocation for user-client pair)
-- [ ] T100 [US6] Integration test for token revocation in backend/tests/integration/oauth_revoke_test.go (test POST /oauth2/revoke, verify token marked as revoked per FR-048, verify subsequent refresh fails per FR-050, test admin revocation via admin portal per FR-049)
+- [x] T099 [P] [US6] Unit test for RevokeToken use case in backend/tests/unit/usecase/revoke_token_test.go (mock RefreshTokenRepository, test token revocation, test cascade revocation for user-client pair)
+- [x] T100 [US6] Integration test for token revocation in backend/tests/integration/oauth_revoke_test.go (test POST /oauth2/revoke, verify token marked as revoked per FR-048, verify subsequent refresh fails per FR-050, test admin revocation via admin portal per FR-049)
 
 ### Implementation for User Story 6
 
-- [ ] T101 [US6] Implement RevokeToken use case in backend/usecase/auth/revoke_token.go (marks refresh token as revoked per FR-048, optionally revokes all tokens for user-client pair, records revocation timestamp)
-- [ ] T102 [US6] Add POST /oauth2/revoke endpoint to backend/interfaces/http/handlers/oauth_handler.go (implements FR-051: revocation endpoint, accepts token and token_type_hint parameters, calls RevokeToken use case, returns 200 OK per RFC 7009)
-- [ ] T103 [US6] Add token revocation to admin portal in existing or new handler (implements FR-052: admin revocation, allows admins to revoke user sessions, lists active refresh tokens, provides revoke button)
-- [ ] T104 [US6] Update backend/interfaces/http/router.go to add POST /oauth2/revoke route
-- [ ] T105 [P] [US6] Add revokeToken function to frontend/src/services/oauthService.ts (POST to /oauth2/revoke with token parameter)
+- [x] T101 [US6] Implement RevokeToken use case in backend/usecase/auth/revoke_token.go (marks refresh token as revoked per FR-048, optionally revokes all tokens for user-client pair, records revocation timestamp)
+- [x] T102 [US6] Add POST /oauth2/revoke endpoint to backend/interfaces/http/handlers/oauth_handler.go (implements FR-051: revocation endpoint, accepts token and token_type_hint parameters, calls RevokeToken use case, returns 200 OK per RFC 7009)
+- [x] T103 [US6] Add token revocation to admin portal in existing or new handler (implements FR-052: admin revocation, allows admins to revoke user sessions, lists active refresh tokens, provides revoke button)
+- [x] T104 [US6] Update backend/interfaces/http/router.go to add POST /oauth2/revoke route
+- [x] T105 [P] [US6] Add revokeToken function to frontend/src/services/oauthService.ts (POST to /oauth2/revoke with token parameter)
 
 **Checkpoint**: Token revocation works, administrators can terminate sessions remotely
 
@@ -287,18 +287,18 @@
 
 ### Tests for User Story 8 (MANDATORY per constitution) ⚠️
 
-- [ ] T106 [P] [US8] Unit test for UserRole entity in backend/tests/unit/domain/user_role_test.go (test role validation, test active/inactive states)
-- [ ] T107 [P] [US8] Unit test for AssignRole use case in backend/tests/unit/usecase/assign_role_test.go (mock RoleRepository, test role assignment, test duplicate prevention)
-- [ ] T108 [P] [US8] Unit test for RevokeRole use case in backend/tests/unit/usecase/revoke_role_test.go (mock RoleRepository, RefreshTokenRepository, test role revocation, test cascade refresh token revocation per FR-006e)
+- [x] T106 [P] [US8] Unit test for UserRole entity in backend/tests/unit/domain/user_role_test.go (test role validation, test active/inactive states)
+- [x] T107 [P] [US8] Unit test for AssignRole use case in backend/tests/unit/usecase/assign_role_test.go (mock RoleRepository, test role assignment, test duplicate prevention)
+- [x] T108 [P] [US8] Unit test for RevokeRole use case in backend/tests/unit/usecase/revoke_role_test.go (mock RoleRepository, RefreshTokenRepository, test role revocation, test cascade refresh token revocation per FR-006e)
 - [ ] T109 [US8] Integration test for role management in backend/tests/integration/role_management_test.go (test POST /api/admin/roles/assign, test POST /api/admin/roles/revoke, test GET /api/admin/roles/users/:userId, verify authentication denied without role per FR-006d, verify refresh tokens revoked on role revocation per FR-006e)
 - [ ] T110 [P] [US8] Frontend unit test for RoleManagement component in frontend/tests/unit/components/RoleManagement.test.tsx
 
 ### Implementation for User Story 8
 
-- [ ] T111 [US8] Implement AssignRole use case in backend/usecase/role/assign_role.go (validates user exists, validates client exists, creates role assignment per FR-006a, prevents duplicates, records assigned_by)
-- [ ] T112 [US8] Implement RevokeRole use case in backend/usecase/role/revoke_role.go (marks role as inactive per FR-006b, revokes all refresh tokens for user-client pair per FR-006e, records revocation)
-- [ ] T113 [US8] Implement ListUserRoles use case in backend/usecase/role/list_user_roles.go (returns all active roles for user per FR-006b, supports filtering by client)
-- [ ] T114 [US8] Implement RoleHandler in backend/interfaces/http/handlers/role_handler.go with routes: POST /api/admin/roles/assign (assign role per FR-006a), POST /api/admin/roles/revoke (revoke role per FR-006b), GET /api/admin/roles/users/:userId (list user roles), GET /api/admin/roles/clients/:clientId (list client roles), requires admin authentication
+- [x] T111 [US8] Implement AssignRole use case in backend/usecase/role/assign_role.go (validates user exists, validates client exists, creates role assignment per FR-006a, prevents duplicates, records assigned_by)
+- [x] T112 [US8] Implement RevokeRole use case in backend/usecase/role/revoke_role.go (marks role as inactive per FR-006b, revokes all refresh tokens for user-client pair per FR-006e, records revocation)
+- [x] T113 [US8] Implement ListUserRoles use case in backend/usecase/role/list_user_roles.go (returns all active roles for user per FR-006b, supports filtering by client)
+- [x] T114 [US8] Implement RoleHandler in backend/interfaces/http/handlers/role_handler.go with routes: POST /api/admin/roles/assign (assign role per FR-006a), POST /api/admin/roles/revoke (revoke role per FR-006b), GET /api/admin/roles/users/:userId (list user roles), GET /api/admin/roles/clients/:clientId (list client roles), requires admin authentication
 - [ ] T115 [US8] Add role management routes to backend/interfaces/http/router.go in /api/admin/\* group
 - [ ] T116 [US8] Update AuthorizeClient use case (T069) to check user has active role for client per FR-006d, FR-012 (if not already implemented)
 - [ ] T117 [P] [US8] Create RoleManagement component in frontend/src/components/admin/RoleManagement.tsx (displays user-client role matrix, assign/revoke buttons)
