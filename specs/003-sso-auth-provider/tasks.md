@@ -290,8 +290,8 @@
 - [x] T106 [P] [US8] Unit test for UserRole entity in backend/tests/unit/domain/user_role_test.go (test role validation, test active/inactive states)
 - [x] T107 [P] [US8] Unit test for AssignRole use case in backend/tests/unit/usecase/assign_role_test.go (mock RoleRepository, test role assignment, test duplicate prevention)
 - [x] T108 [P] [US8] Unit test for RevokeRole use case in backend/tests/unit/usecase/revoke_role_test.go (mock RoleRepository, RefreshTokenRepository, test role revocation, test cascade refresh token revocation per FR-006e)
-- [ ] T109 [US8] Integration test for role management in backend/tests/integration/role_management_test.go (test POST /api/admin/roles/assign, test POST /api/admin/roles/revoke, test GET /api/admin/roles/users/:userId, verify authentication denied without role per FR-006d, verify refresh tokens revoked on role revocation per FR-006e)
-- [ ] T110 [P] [US8] Frontend unit test for RoleManagement component in frontend/tests/unit/components/RoleManagement.test.tsx
+- [x] T109 [US8] Integration test for role management in backend/tests/integration/role_management_test.go (test POST /api/admin/roles/assign, test POST /api/admin/roles/revoke, test GET /api/admin/roles/users/:userId, verify authentication denied without role per FR-006d, verify refresh tokens revoked on role revocation per FR-006e)
+- [x] T110 [P] [US8] Frontend unit test for RoleManagement component in frontend/tests/unit/components/RoleManagement.test.tsx
 
 ### Implementation for User Story 8
 
@@ -299,12 +299,12 @@
 - [x] T112 [US8] Implement RevokeRole use case in backend/usecase/role/revoke_role.go (marks role as inactive per FR-006b, revokes all refresh tokens for user-client pair per FR-006e, records revocation)
 - [x] T113 [US8] Implement ListUserRoles use case in backend/usecase/role/list_user_roles.go (returns all active roles for user per FR-006b, supports filtering by client)
 - [x] T114 [US8] Implement RoleHandler in backend/interfaces/http/handlers/role_handler.go with routes: POST /api/admin/roles/assign (assign role per FR-006a), POST /api/admin/roles/revoke (revoke role per FR-006b), GET /api/admin/roles/users/:userId (list user roles), GET /api/admin/roles/clients/:clientId (list client roles), requires admin authentication
-- [ ] T115 [US8] Add role management routes to backend/interfaces/http/router.go in /api/admin/\* group
-- [ ] T116 [US8] Update AuthorizeClient use case (T069) to check user has active role for client per FR-006d, FR-012 (if not already implemented)
-- [ ] T117 [P] [US8] Create RoleManagement component in frontend/src/components/admin/RoleManagement.tsx (displays user-client role matrix, assign/revoke buttons)
-- [ ] T118 [P] [US8] Create UserRoles component in frontend/src/components/admin/UserRoles.tsx (shows roles for specific user across all clients)
-- [ ] T119 [US8] Create roleService API client in frontend/src/services/roleService.ts (assignRole, revokeRole, listUserRoles, listClientRoles)
-- [ ] T120 [P] [US8] Create Role types in frontend/src/types/role.ts (UserRole, AssignRoleRequest, RevokeRoleRequest)
+- [x] T115 [US8] Add role management routes to backend/interfaces/http/router.go in /api/admin/\* group
+- [x] T116 [US8] Update AuthorizeClient use case (T069) to check user has active role for client per FR-006d, FR-012 (if not already implemented)
+- [x] T117 [P] [US8] Create RoleManagement component in frontend/src/components/admin/RoleManagement.tsx (displays user-client role matrix, assign/revoke buttons)
+- [x] T118 [P] [US8] Create UserRoles component in frontend/src/components/admin/UserRoles.tsx (shows roles for specific user across all clients)
+- [x] T119 [US8] Create roleService API client in frontend/src/services/roleService.ts (assignRole, revokeRole, listUserRoles, listClientRoles)
+- [x] T120 [P] [US8] Create Role types in frontend/src/types/role.ts (UserRole, AssignRoleRequest, RevokeRoleRequest)
 
 **Checkpoint**: RBAC works, administrators can control user access to clients
 
@@ -337,14 +337,14 @@
 
 ### UserInfo Endpoint
 
-- [ ] T126 [P] Unit test for GetUserInfo use case in backend/tests/unit/usecase/get_userinfo_test.go
-- [ ] T127 Implement GetUserInfo use case in backend/usecase/auth/get_userinfo.go (extracts user ID from access token, returns user profile claims)
-- [ ] T128 Implement UserinfoHandler in backend/interfaces/http/handlers/userinfo_handler.go with GET /oauth2/userinfo endpoint (requires valid access token, returns user profile per FR-052)
-- [ ] T129 Add GET /oauth2/userinfo route to backend/interfaces/http/router.go with JWT validation middleware
+- [x] T126 [P] Unit test for GetUserInfo use case in backend/tests/unit/usecase/get_userinfo_test.go
+- [x] T127 Implement GetUserInfo use case in backend/usecase/auth/get_userinfo.go (extracts user ID from access token, returns user profile claims)
+- [x] T128 Implement UserinfoHandler in backend/interfaces/http/handlers/userinfo_handler.go with GET /oauth2/userinfo endpoint (requires valid access token, returns user profile per FR-052)
+- [x] T129 Add GET /oauth2/userinfo route to backend/interfaces/http/router.go with JWT validation middleware
 
 ### Session Management
 
-- [ ] T130 Implement session cleanup job in backend/cmd/cleanup/main.go (cron job to delete expired sessions, expired refresh tokens, used authorization codes)
+- [x] T130 Implement session cleanup job in backend/cmd/cleanup/main.go (cron job to delete expired sessions, expired refresh tokens, used authorization codes)
 
 ### Rate Limiting
 

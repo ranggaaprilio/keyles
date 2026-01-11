@@ -24,6 +24,7 @@ import (
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
 	"github.com/ranggaaprilio/keyles/usecase/client"
+	"github.com/ranggaaprilio/keyles/usecase/role"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 )
 
@@ -94,9 +95,15 @@ func main() {
 	listClientsUseCase := client.NewListClientsUseCase(clientRepo)
 	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService)
 
+	// Initialize role management use cases
+	assignRoleUseCase := role.NewAssignRole(roleRepo, userRepo, clientRepo)
+	revokeRoleUseCase := role.NewRevokeRole(roleRepo, refreshTokenRepo)
+	listUserRolesUseCase := role.NewListUserRoles(roleRepo)
+
 	// Initialize OAuth use cases
 	authorizeClientUseCase := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
 	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, cfg.OAuthIssuer)
+	getUserInfoUseCase := auth.NewGetUserInfo(userRepo)
 
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
@@ -116,6 +123,8 @@ func main() {
 	)
 	oauthHandler := handlers.NewOAuthHandler(authorizeClientUseCase, issueTokenUseCase, clientRepo)
 	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
+	roleHandler := handlers.NewRoleHandler(assignRoleUseCase, revokeRoleUseCase, listUserRolesUseCase)
+	userinfoHandler := handlers.NewUserinfoHandler(getUserInfoUseCase)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -133,6 +142,8 @@ func main() {
 		clientHandler,
 		oauthHandler,
 		discoveryHandler,
+		roleHandler,
+		userinfoHandler,
 		jwtService,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,

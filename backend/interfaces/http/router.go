@@ -21,6 +21,8 @@ type Router struct {
 	clientHandler        *handlers.ClientHandler
 	oauthHandler         *handlers.OAuthHandler
 	discoveryHandler     *handlers.DiscoveryHandler
+	roleHandler          *handlers.RoleHandler
+	userinfoHandler      *handlers.UserinfoHandler
 	jwtService           *services.JWTService
 }
 
@@ -37,6 +39,8 @@ func NewRouter(
 	clientHandler *handlers.ClientHandler,
 	oauthHandler *handlers.OAuthHandler,
 	discoveryHandler *handlers.DiscoveryHandler,
+	roleHandler *handlers.RoleHandler,
+	userinfoHandler *handlers.UserinfoHandler,
 	jwtService *services.JWTService,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
@@ -61,6 +65,8 @@ func NewRouter(
 		clientHandler:       clientHandler,
 		oauthHandler:        oauthHandler,
 		discoveryHandler:    discoveryHandler,
+		roleHandler:         roleHandler,
+		userinfoHandler:     userinfoHandler,
 		jwtService:          jwtService,
 	}
 }
@@ -84,6 +90,8 @@ func (r *Router) Setup() {
 		oauth2.POST("/token", r.oauthHandler.Token)
 		// Revocation endpoint per RFC 7009 (FR-051)
 		oauth2.POST("/revoke", r.oauthHandler.Revoke)
+		// UserInfo endpoint per OIDC spec (FR-052) - requires valid access token
+		oauth2.GET("/userinfo", middleware.AuthMiddleware(r.jwtService), r.userinfoHandler.UserInfo)
 	}
 
 	// API v1 routes
@@ -125,6 +133,15 @@ func (r *Router) Setup() {
 				clients.PUT("/:clientId", r.clientHandler.Update)
 				clients.DELETE("/:clientId", r.clientHandler.Delete)
 				clients.POST("/:clientId/rotate-secret", r.clientHandler.RotateSecret)
+			}
+
+			// Role management routes (FR-006a, FR-006b)
+			roles := admin.Group("/roles")
+			{
+				roles.POST("/assign", r.roleHandler.AssignRole)
+				roles.POST("/revoke", r.roleHandler.RevokeRole)
+				roles.GET("/users/:userId", r.roleHandler.ListUserRoles)
+				roles.GET("/clients/:clientId", r.roleHandler.ListClientRoles)
 			}
 		}
 	}
