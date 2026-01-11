@@ -4,19 +4,19 @@
  * Implements FR-006: Role-based Access Control
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   assignRole,
   revokeRole,
   listUserRoles,
   listClientRoles,
-} from '../../services/roleService';
+} from "../../services/roleService";
 import type {
   UserRole,
   AssignRoleRequest,
   RevokeRoleRequest,
   AVAILABLE_ROLES,
-} from '../../types/role';
+} from "../../types/role";
 
 interface RoleManagementProps {
   tenantId: string;
@@ -35,12 +35,12 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [showAssignForm, setShowAssignForm] = useState(false);
   const [formData, setFormData] = useState<RoleFormState>({
-    userId: '',
-    clientId: '',
-    role: 'user',
+    userId: "",
+    clientId: "",
+    role: "user",
   });
-  const [filterBy, setFilterBy] = useState<'user' | 'client'>('user');
-  const [filterId, setFilterId] = useState('');
+  const [filterBy, setFilterBy] = useState<"user" | "client">("user");
+  const [filterId, setFilterId] = useState("");
 
   useEffect(() => {
     if (filterId) {
@@ -54,7 +54,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
       setError(null);
 
       let response;
-      if (filterBy === 'user') {
+      if (filterBy === "user") {
         response = await listUserRoles(filterId);
       } else {
         response = await listClientRoles(filterId);
@@ -62,7 +62,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
 
       setRoles(response.roles);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load roles');
+      setError(err.response?.data?.message || "Failed to load roles");
     } finally {
       setLoading(false);
     }
@@ -82,26 +82,30 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
       };
 
       await assignRole(request);
-      setSuccess('Role assigned successfully');
+      setSuccess("Role assigned successfully");
       setShowAssignForm(false);
-      setFormData({ userId: '', clientId: '', role: 'user' });
+      setFormData({ userId: "", clientId: "", role: "user" });
 
       // Reload roles if currently viewing this user or client
       if (
-        (filterBy === 'user' && filterId === formData.userId) ||
-        (filterBy === 'client' && filterId === formData.clientId)
+        (filterBy === "user" && filterId === formData.userId) ||
+        (filterBy === "client" && filterId === formData.clientId)
       ) {
         loadRoles();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to assign role');
+      setError(err.response?.data?.message || "Failed to assign role");
     } finally {
       setLoading(false);
     }
   };
 
   const handleRevokeRole = async (role: UserRole) => {
-    if (!confirm(`Revoke ${role.role} role for this user? This will also revoke all their refresh tokens for this client.`)) {
+    if (
+      !confirm(
+        `Revoke ${role.role} role for this user? This will also revoke all their refresh tokens for this client.`
+      )
+    ) {
       return;
     }
 
@@ -116,10 +120,10 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
       };
 
       await revokeRole(request);
-      setSuccess('Role revoked successfully (refresh tokens invalidated)');
+      setSuccess("Role revoked successfully (refresh tokens invalidated)");
       loadRoles();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to revoke role');
+      setError(err.response?.data?.message || "Failed to revoke role");
     } finally {
       setLoading(false);
     }
@@ -133,7 +137,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
           onClick={() => setShowAssignForm(!showAssignForm)}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
         >
-          {showAssignForm ? 'Cancel' : 'Assign Role'}
+          {showAssignForm ? "Cancel" : "Assign Role"}
         </button>
       </div>
 
@@ -146,7 +150,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
             </label>
             <select
               value={filterBy}
-              onChange={(e) => setFilterBy(e.target.value as 'user' | 'client')}
+              onChange={(e) => setFilterBy(e.target.value as "user" | "client")}
               className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="user">User</option>
@@ -155,7 +159,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {filterBy === 'user' ? 'User ID' : 'Client ID'}
+              {filterBy === "user" ? "User ID" : "Client ID"}
             </label>
             <div className="flex gap-2">
               <input
@@ -179,7 +183,10 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
 
       {/* Assign Role Form */}
       {showAssignForm && (
-        <form onSubmit={handleAssignRole} className="mb-6 p-4 border rounded bg-gray-50">
+        <form
+          onSubmit={handleAssignRole}
+          className="mb-6 p-4 border rounded bg-gray-50"
+        >
           <h3 className="text-lg font-semibold mb-4">Assign New Role</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -190,7 +197,9 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
                 type="text"
                 required
                 value={formData.userId}
-                onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, userId: e.target.value })
+                }
                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="user-uuid"
               />
@@ -203,7 +212,9 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
                 type="text"
                 required
                 value={formData.clientId}
-                onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, clientId: e.target.value })
+                }
                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="client-id"
               />
@@ -215,7 +226,9 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
               <select
                 required
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, role: e.target.value })
+                }
                 className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="user">user</option>
@@ -231,7 +244,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
               disabled={loading}
               className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition"
             >
-              {loading ? 'Assigning...' : 'Assign Role'}
+              {loading ? "Assigning..." : "Assign Role"}
             </button>
           </div>
         </form>
@@ -254,7 +267,8 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
         <div className="text-center py-8 text-gray-500">Loading roles...</div>
       ) : roles.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No roles found. {filterId ? 'Try a different search.' : 'Enter a filter to search.'}
+          No roles found.{" "}
+          {filterId ? "Try a different search." : "Enter a filter to search."}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -302,11 +316,11 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         role.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {role.is_active ? 'Active' : 'Inactive'}
+                      {role.is_active ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -330,8 +344,8 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
       <div className="mt-4 text-sm text-gray-500">
         <p>Total roles: {roles.length}</p>
         <p className="mt-2">
-          <strong>Note:</strong> Revoking a role will also invalidate all refresh tokens for
-          that user-client combination (FR-006e).
+          <strong>Note:</strong> Revoking a role will also invalidate all
+          refresh tokens for that user-client combination (FR-006e).
         </p>
       </div>
     </div>

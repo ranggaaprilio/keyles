@@ -4,9 +4,9 @@
  * Implements FR-006: Role-based Access Control
  */
 
-import React, { useState, useEffect } from 'react';
-import { listUserRoles, revokeRole } from '../../services/roleService';
-import type { UserRole, RevokeRoleRequest } from '../../types/role';
+import React, { useState, useEffect } from "react";
+import { listUserRoles, revokeRole } from "../../services/roleService";
+import type { UserRole, RevokeRoleRequest } from "../../types/role";
 
 interface UserRolesProps {
   userId: string;
@@ -35,7 +35,7 @@ export const UserRoles: React.FC<UserRolesProps> = ({
       const response = await listUserRoles(userId);
       setRoles(response.roles);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load user roles');
+      setError(err.response?.data?.message || "Failed to load user roles");
     } finally {
       setLoading(false);
     }
@@ -45,7 +45,7 @@ export const UserRoles: React.FC<UserRolesProps> = ({
     if (
       !confirm(
         `Revoke ${role.role} role for client "${role.client_name || role.client_id}"? ` +
-        `This will invalidate all refresh tokens for this user-client combination.`
+          `This will invalidate all refresh tokens for this user-client combination.`
       )
     ) {
       return;
@@ -62,32 +62,30 @@ export const UserRoles: React.FC<UserRolesProps> = ({
       };
 
       await revokeRole(request);
-      setSuccess('Role revoked successfully');
-      
+      setSuccess("Role revoked successfully");
+
       // Reload roles
       await loadUserRoles();
-      
+
       // Notify parent component
       if (onRoleRevoked) {
         onRoleRevoked();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to revoke role');
+      setError(err.response?.data?.message || "Failed to revoke role");
     } finally {
       setLoading(false);
     }
   };
 
-  const activeRoles = roles.filter(r => r.is_active);
-  const inactiveRoles = roles.filter(r => !r.is_active);
+  const activeRoles = roles.filter((r) => r.is_active);
+  const inactiveRoles = roles.filter((r) => !r.is_active);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="mb-4">
         <h3 className="text-xl font-semibold text-gray-800">User Roles</h3>
-        {userEmail && (
-          <p className="text-sm text-gray-600 mt-1">{userEmail}</p>
-        )}
+        {userEmail && <p className="text-sm text-gray-600 mt-1">{userEmail}</p>}
         <p className="text-xs text-gray-500 mt-1">User ID: {userId}</p>
       </div>
 
@@ -136,7 +134,8 @@ export const UserRoles: React.FC<UserRolesProps> = ({
                         Client ID: {role.client_id}
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        Assigned {new Date(role.assigned_at).toLocaleDateString()} by{' '}
+                        Assigned{" "}
+                        {new Date(role.assigned_at).toLocaleDateString()} by{" "}
                         {role.assigned_by}
                       </div>
                     </div>
@@ -178,7 +177,8 @@ export const UserRoles: React.FC<UserRolesProps> = ({
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-gray-500">
-                        Assigned {new Date(role.assigned_at).toLocaleDateString()}
+                        Assigned{" "}
+                        {new Date(role.assigned_at).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
@@ -193,8 +193,8 @@ export const UserRoles: React.FC<UserRolesProps> = ({
       {roles.length > 0 && (
         <div className="mt-6 pt-4 border-t text-sm text-gray-600">
           <p>
-            <strong>Summary:</strong> {activeRoles.length} active role(s) across{' '}
-            {new Set(activeRoles.map(r => r.client_id)).size} client(s)
+            <strong>Summary:</strong> {activeRoles.length} active role(s) across{" "}
+            {new Set(activeRoles.map((r) => r.client_id)).size} client(s)
           </p>
           {inactiveRoles.length > 0 && (
             <p className="mt-1">
@@ -202,8 +202,8 @@ export const UserRoles: React.FC<UserRolesProps> = ({
             </p>
           )}
           <p className="mt-2 text-xs">
-            <strong>Note:</strong> Revoking a role will invalidate all refresh tokens for
-            this user-client combination (FR-006e).
+            <strong>Note:</strong> Revoking a role will invalidate all refresh
+            tokens for this user-client combination (FR-006e).
           </p>
         </div>
       )}
