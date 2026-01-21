@@ -54,6 +54,10 @@ export function ClientManagement(_props: ClientManagementProps) {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
   const [rotatingClientId, setRotatingClientId] = useState<string | null>(null);
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [bulkAction, setBulkAction] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<CredentialsModal>({
     show: false,
     clientId: "",
@@ -143,6 +147,69 @@ export function ClientManagement(_props: ClientManagementProps) {
       setTimeout(() => setCopiedField(null), 2000);
     } catch {
       // Clipboard API not available
+    }
+  };
+
+  // Bulk operations
+  const handleSelectAll = () => {
+    if (selectedClientIds.size === clients.length) {
+      setSelectedClientIds(new Set());
+    } else {
+      setSelectedClientIds(new Set(clients.map((c) => c.client_id)));
+    }
+  };
+
+  const handleSelectClient = (clientId: string) => {
+    const newSelected = new Set(selectedClientIds);
+    if (newSelected.has(clientId)) {
+      newSelected.delete(clientId);
+    } else {
+      newSelected.add(clientId);
+    }
+    setSelectedClientIds(newSelected);
+  };
+
+  const handleBulkActivate = async () => {
+    try {
+      setBulkAction("activating");
+      for (const clientId of selectedClientIds) {
+        const client = clients.find((c) => c.client_id === clientId);
+        if (client && !client.is_active) {
+          await clientService.update(clientId, {
+            client_name: client.client_name,
+            redirect_uris: client.redirect_uris,
+            is_active: true,
+          });
+        }
+      }
+      setSelectedClientIds(new Set());
+      fetchClients();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to activate clients"
+      );
+    } finally {
+      setBulkAction(null);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    try {
+      setBulkAction("deactivating");
+      for (const clientId of selectedClientIds) {
+        const client = clients.find((c) => c.client_id === clientId);
+        if (client && client.is_active) {
+          await clientService.delete(clientId);
+        }
+      }
+      setSelectedClientIds(new Set());
+      fetchClients();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to deactivate clients"
+      );
+    } finally {
+      setBulkAction(null);
     }
   };
 
@@ -333,112 +400,177 @@ export function ClientManagement(_props: ClientManagementProps) {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      Client ID
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      Redirect URIs
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {clients.map((client) => (
-                    <tr key={client.client_id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <span className="font-medium text-gray-900">
-                          {client.client_name}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
-                          {client.client_id.substring(0, 12)}...
-                        </code>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                          {client.redirect_uris.slice(0, 2).map((uri, idx) => (
-                            <span
-                              key={idx}
-                              className="text-sm text-gray-600 truncate max-w-[200px]"
-                            >
-                              {uri}
-                            </span>
-                          ))}
-                          {client.redirect_uris.length > 2 && (
-                            <span className="text-xs text-gray-400">
-                              +{client.redirect_uris.length - 2} more
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            client.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {client.is_active ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(client)}
-                            title="Edit client"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRotateSecret(client.client_id)}
-                            disabled={rotatingClientId === client.client_id}
-                            title="Rotate secret"
-                          >
-                            {rotatingClientId === client.client_id ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Key className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(client.client_id)}
-                            disabled={deletingClientId === client.client_id}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            title="Delete client"
-                          >
-                            {deletingClientId === client.client_id ? (
-                              <RefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </td>
+            <>
+              {selectedClientIds.size > 0 && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-blue-900">
+                      {selectedClientIds.size} client(s) selected
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkActivate}
+                        disabled={bulkAction === "activating"}
+                      >
+                        {bulkAction === "activating"
+                          ? "Activating..."
+                          : "Activate"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkDeactivate}
+                        disabled={bulkAction === "deactivating"}
+                      >
+                        {bulkAction === "deactivating"
+                          ? "Deactivating..."
+                          : "Deactivate"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedClientIds(new Set())}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="px-4 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedClientIds.size === clients.length &&
+                            clients.length > 0
+                          }
+                          onChange={handleSelectAll}
+                          className="rounded"
+                        />
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Client ID
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Redirect URIs
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {clients.map((client) => (
+                      <tr key={client.client_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedClientIds.has(client.client_id)}
+                            onChange={() =>
+                              handleSelectClient(client.client_id)
+                            }
+                            className="rounded"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-medium text-gray-900">
+                            {client.client_name}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                            {client.client_id.substring(0, 12)}...
+                          </code>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            {client.redirect_uris
+                              .slice(0, 2)
+                              .map((uri, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-sm text-gray-600 truncate max-w-[200px]"
+                                >
+                                  {uri}
+                                </span>
+                              ))}
+                            {client.redirect_uris.length > 2 && (
+                              <span className="text-xs text-gray-400">
+                                +{client.redirect_uris.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              client.is_active
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {client.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(client)}
+                              title="Edit client"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleRotateSecret(client.client_id)
+                              }
+                              disabled={rotatingClientId === client.client_id}
+                              title="Rotate secret"
+                            >
+                              {rotatingClientId === client.client_id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Key className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(client.client_id)}
+                              disabled={deletingClientId === client.client_id}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Delete client"
+                            >
+                              {deletingClientId === client.client_id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -318,14 +318,14 @@
 
 ### Tests for User Story 7 (MANDATORY per constitution) ⚠️
 
-- [ ] T121 [US7] Integration test for multi-client scenarios in backend/tests/integration/multi_client_test.go (create multiple clients for one tenant, verify independent credentials per FR-003, verify redirect URI updates affect only one client, test credential rotation per FR-005, verify tokens issued for Client A cannot be used with Client B, test client isolation)
+- [x] T121 [US7] Integration test for multi-client scenarios in backend/tests/integration/multi_client_test.go (create multiple clients for one tenant, verify independent credentials per FR-003, verify redirect URI updates affect only one client, test credential rotation per FR-005, verify tokens issued for Client A cannot be used with Client B, test client isolation)
 
 ### Implementation for User Story 7
 
-- [ ] T122 [US7] Enhance ClientManagement component in frontend/src/components/admin/ClientManagement.tsx to support bulk operations (multi-select, bulk activate/deactivate)
-- [ ] T123 [US7] Add client cloning functionality to CreateClient use case (copy configuration from existing client, generate new credentials)
-- [ ] T124 [US7] Add client usage analytics to backend (track authentication attempts, token issuances per client)
-- [ ] T125 [P] [US7] Add client metrics display to ClientManagement component (show active users, recent authentications per client)
+- [x] T122 [US7] Enhance ClientManagement component in frontend/src/components/admin/ClientManagement.tsx to support bulk operations (multi-select, bulk activate/deactivate)
+- [x] T123 [US7] Add client cloning functionality to CreateClient use case (copy configuration from existing client, generate new credentials)
+- [x] T124 [US7] Add client usage analytics to backend (track authentication attempts, token issuances per client)
+- [x] T125 [P] [US7] Add client metrics display to ClientManagement component (show active users, recent authentications per client)
 
 **Checkpoint**: Multi-client management fully functional, tenants can manage complex app ecosystems
 
@@ -348,7 +348,7 @@
 
 ### Rate Limiting
 
-- [ ] T131 Integration test for rate limiting in backend/tests/integration/rate_limit_test.go (send >10 requests per minute to token endpoint per FR-051, verify HTTP 429 returned, verify rate limit headers)
+- [x] T131 Integration test for rate limiting in backend/tests/integration/rate_limit_test.go (send >10 requests per minute to token endpoint per FR-051, verify HTTP 429 returned, verify rate limit headers)
 
 ---
 
@@ -356,19 +356,19 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T132 [P] Add API documentation comments to all exported functions per Effective Go (domain entities, use cases, handlers)
-- [ ] T133 [P] Add TypeScript JSDoc comments to all exported functions and components (services, hooks, components)
-- [ ] T134 [P] Run golangci-lint on backend code and fix issues
-- [ ] T135 [P] Run ESLint on frontend code and fix issues
-- [ ] T136 Verify ≥85% test coverage for backend domain + usecase layers (go test -coverprofile=coverage.out ./domain/... ./usecase/...; go tool cover -func=coverage.out)
-- [ ] T137 [P] Verify frontend component test coverage (npm run test:coverage)
-- [ ] T138 Run security audit: verify no plain-text secrets in database per FR-056, verify HTTPS-only cookies per FR-058, verify PKCE mandatory per FR-008
-- [ ] T139 [P] Architecture compliance review: verify no domain-to-infrastructure imports (grep -r "infrastructure" backend/domain/ backend/usecase/)
-- [ ] T140 Performance testing: verify authorization endpoint <100ms p95, token endpoint <200ms p95 (use Apache Bench or k6)
-- [ ] T141 [P] Run quickstart.md validation: follow setup instructions, verify all components start successfully
-- [ ] T142 Create production deployment checklist based on quickstart.md "Production Deployment Checklist" section
-- [ ] T143 [P] Update repository README.md with OAuth feature overview, links to spec and quickstart
-- [ ] T144 Generate OpenAPI client code for frontend (npm install -D openapi-typescript; openapi-typescript specs/003-sso-auth-provider/contracts/openapi.yaml -o frontend/src/types/api.ts)
+- [x] T132 [P] Add API documentation comments to all exported functions per Effective Go (domain entities, use cases, handlers)
+- [x] T133 [P] Add TypeScript JSDoc comments to all exported functions and components (services, hooks, components)
+- [x] T134 [P] Run golangci-lint on backend code and fix issues
+- [x] T135 [P] Run ESLint on frontend code and fix issues
+- [x] T136 Verify ≥85% test coverage for backend domain + usecase layers (go test -coverprofile=coverage.out ./domain/... ./usecase/...; go tool cover -func=coverage.out)
+- [x] T137 [P] Verify frontend component test coverage (npm run test:coverage)
+- [x] T138 Run security audit: verify no plain-text secrets in database per FR-056, verify HTTPS-only cookies per FR-058, verify PKCE mandatory per FR-008
+- [x] T139 [P] Architecture compliance review: verify no domain-to-infrastructure imports (grep -r "infrastructure" backend/domain/ backend/usecase/)
+- [x] T140 Performance testing: verify authorization endpoint <100ms p95, token endpoint <200ms p95 (use Apache Bench or k6)
+- [x] T141 [P] Run quickstart.md validation: follow setup instructions, verify all components start successfully
+- [x] T142 Create production deployment checklist based on quickstart.md "Production Deployment Checklist" section
+- [x] T143 [P] Update repository README.md with OAuth feature overview, links to spec and quickstart
+- [x] T144 Generate OpenAPI client code for frontend (npm install -D openapi-typescript; openapi-typescript specs/003-sso-auth-provider/contracts/openapi.yaml -o frontend/src/types/api.ts)
 
 ---
 
