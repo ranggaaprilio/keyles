@@ -978,3 +978,22 @@ export interface operations {
         };
     };
 }
+
+/**
+ * Tenant status enum - represents the lifecycle status of a tenant
+ */
+export type TenantStatus = 'pending_verification' | 'active' | 'suspended' | 'deleted';
+
+/**
+ * API Exception class for handling API errors
+ */
+export class ApiException extends Error {
+  constructor(
+    public status: number,
+    public message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'ApiException';
+  }
+}

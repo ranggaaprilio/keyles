@@ -339,10 +339,10 @@ export async function refreshAccessToken(): Promise<boolean> {
       const tokenSet: TokenSet = {
         accessToken: newTokens.access_token,
         refreshToken: newTokens.refresh_token || refreshToken, // Use new if rotated, else keep old
-        idToken: newTokens.id_token,
+        ...(newTokens.id_token && { idToken: newTokens.id_token }),
         tokenType: newTokens.token_type,
         expiresIn: newTokens.expires_in,
-        scope: newTokens.scope,
+        ...(newTokens.scope && { scope: newTokens.scope }),
         issuedAt: Date.now(),
       };
 

@@ -15,7 +15,6 @@ import type {
   UserRole,
   AssignRoleRequest,
   RevokeRoleRequest,
-  AVAILABLE_ROLES,
 } from "../../types/role";
 
 interface RoleManagementProps {
@@ -28,7 +27,7 @@ interface RoleFormState {
   role: string;
 }
 
-export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
+export const RoleManagement: React.FC<RoleManagementProps> = () => {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +102,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = ({ tenantId }) => {
   const handleRevokeRole = async (role: UserRole) => {
     if (
       !confirm(
-        `Revoke ${role.role} role for this user? This will also revoke all their refresh tokens for this client.`
+        `Revoke ${role.role} role for this user? This will also revoke all their refresh tokens for this client.`,
       )
     ) {
       return;

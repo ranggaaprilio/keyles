@@ -3,7 +3,6 @@
  * Tests for user role assignment and management UI
  */
 
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { describe, test, expect, beforeEach, vi } from "vitest";
@@ -85,7 +84,7 @@ describe("RoleManagement Component", () => {
 
   test("loads and displays client roles when filter is changed", async () => {
     vi.mocked(roleService.listClientRoles).mockResolvedValue({
-      roles: [mockRoles[0]],
+      roles: [mockRoles[0]!],
       total: 1,
     });
 
@@ -152,7 +151,7 @@ describe("RoleManagement Component", () => {
 
     fireEvent.change(userIdInput, { target: { value: "user-2" } });
     fireEvent.change(clientIdInput, { target: { value: "client-1" } });
-    fireEvent.change(roleSelect, { target: { value: "editor" } });
+    fireEvent.change(roleSelect!, { target: { value: "editor" } });
 
     // Submit form
     const submitButton = screen.getByText("Assign Role");
@@ -166,7 +165,7 @@ describe("RoleManagement Component", () => {
         role: "editor",
       });
       expect(
-        screen.getByText("Role assigned successfully")
+        screen.getByText("Role assigned successfully"),
       ).toBeInTheDocument();
     });
   });
@@ -228,7 +227,7 @@ describe("RoleManagement Component", () => {
 
     // Click revoke button
     const revokeButtons = screen.getAllByText("Revoke");
-    fireEvent.click(revokeButtons[0]);
+    fireEvent.click(revokeButtons[0]!);
 
     // Verify confirmation and service call
     await waitFor(() => {
@@ -267,7 +266,7 @@ describe("RoleManagement Component", () => {
 
     // Click revoke button
     const revokeButtons = screen.getAllByText("Revoke");
-    fireEvent.click(revokeButtons[0]);
+    fireEvent.click(revokeButtons[0]!);
 
     // Verify revoke was NOT called
     expect(roleService.revokeRole).not.toHaveBeenCalled();
@@ -295,7 +294,7 @@ describe("RoleManagement Component", () => {
 
   test("displays loading state", () => {
     vi.mocked(roleService.listUserRoles).mockImplementation(
-      () => new Promise(() => {})
+      () => new Promise(() => {}),
     );
 
     render(<RoleManagement tenantId={mockTenantId} />);
@@ -310,8 +309,8 @@ describe("RoleManagement Component", () => {
 
   test("displays role status badges correctly", async () => {
     const mixedRoles = [
-      { ...mockRoles[0], is_active: true },
-      { ...mockRoles[1], is_active: false },
+      { ...mockRoles[0]!, is_active: true },
+      { ...mockRoles[1]!, is_active: false },
     ];
 
     vi.mocked(roleService.listUserRoles).mockResolvedValue({
@@ -337,8 +336,8 @@ describe("RoleManagement Component", () => {
 
     expect(
       screen.getByText(
-        /Revoking a role will also invalidate all refresh tokens/
-      )
+        /Revoking a role will also invalidate all refresh tokens/,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/FR-006e/)).toBeInTheDocument();
   });
