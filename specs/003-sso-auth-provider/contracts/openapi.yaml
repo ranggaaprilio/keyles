@@ -1,0 +1,857 @@
+openapi: 3.0.3
+info:
+  title: Keyles SSO Auth Provider API
+  description: |
+    OpenID Connect (OIDC) and OAuth 2.0 authentication provider for multi-tenant SaaS platform.
+    
+    **Authentication Flows**:
+    - Authorization Code Flow with PKCE (RFC 7636)
+    - Refresh Token Flow
+    - Token Revocation (RFC 7009)
+    
+    **Security**:
+    - RS256 JWT signing
+    - Multi-tenant isolation
+    - Role-based access control
+    - Rate limiting (10 req/min per client)
+    
+  version: 1.0.0
+  contact:
+    name: Keyles Engineering
+    email: eng@keyles.com
+
+servers:
+  - url: https://sso.keyles.com
+    description: Production server
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: OAuth 2.0
+    description: OAuth 2.0 / OIDC authentication endpoints
+  - name: Discovery
+    description: OIDC discovery and key management
+  - name: Admin - Clients
+    description: Client application management (admin only)
+  - name: Admin - Roles
+    description: User role management (admin only)
+
+paths:
+  /.well-known/openid-configuration:
+    get:
+      tags:
+        - Discovery
+      summary: OpenID Connect Discovery
+      description: Returns OIDC configuration metadata (RFC 8414)
+      operationId: getDiscoveryDocument
+      responses:
+        '200':
+          description: OIDC discovery document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OIDCDiscovery'
+              example:
+                issuer: "https://sso.keyles.com"
+                authorization_endpoint: "https://sso.keyles.com/oauth2/auth"
+                token_endpoint: "https://sso.keyles.com/oauth2/token"
+                jwks_uri: "https://sso.keyles.com/.well-known/jwks.json"
+                userinfo_endpoint: "https://sso.keyles.com/oauth2/userinfo"
+                revocation_endpoint: "https://sso.keyles.com/oauth2/revoke"
+                scopes_supported: ["openid", "profile", "email"]
+                response_types_supported: ["code"]
+                grant_types_supported: ["authorization_code", "refresh_token"]
+                code_challenge_methods_supported: ["S256"]
+                token_endpoint_auth_methods_supported: ["client_secret_post"]
+
+  /.well-known/jwks.json:
+    get:
+      tags:
+        - Discovery
+      summary: JSON Web Key Set (JWKS)
+      description: Returns public keys for JWT signature verification (RFC 7517)
+      operationId: getJWKS
+      responses:
+        '200':
+          description: JWKS document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKS'
+              example:
+                keys:
+                  - kty: "RSA"
+                    use: "sig"
+                    kid: "key_2025_01"
+                    alg: "RS256"
+                    n: "modulus_base64url"
+                    e: "AQAB"
+
+  /oauth2/auth:
+    get:
+      tags:
+        - OAuth 2.0
+      summary: Authorization Endpoint
+      description: |
+        Initiates OAuth 2.0 Authorization Code Flow with PKCE.
+        Redirects to login page if user not authenticated.
+      operationId: authorize
+      parameters:
+        - name: client_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Client identifier
+          example: "abc123xyz"
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          description: Callback URI (must match registered URI)
+          example: "https://client-app.example.com/callback"
+        - name: response_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [code]
+          description: Must be "code"
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Space-separated scopes (must include "openid")
+          example: "openid profile email"
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+          description: CSRF protection token
+          example: "random-csrf-token-12345"
+        - name: code_challenge
+          in: query
+          required: true
+          schema:
+            type: string
+          description: PKCE code challenge (BASE64URL(SHA256(code_verifier)))
+          example: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+        - name: code_challenge_method
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [S256]
+          description: Must be "S256"
+      responses:
+        '302':
+          description: Redirect to login page or back to client with authorization code
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Redirect URL
+              examples:
+                success:
+                  value: "https://client-app.example.com/callback?code=auth_code_xyz&state=random-csrf-token-12345"
+                login_required:
+                  value: "https://sso.keyles.com/login?client_id=abc123xyz&..."
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuth2Error'
+
+  /oauth2/token:
+    post:
+      tags:
+        - OAuth 2.0
+      summary: Token Endpoint
+      description: |
+        Exchanges authorization code for tokens or refreshes access token.
+        
+        **Grant Types**:
+        - authorization_code: Exchange code for tokens
+        - refresh_token: Get new access token
+        
+        **Rate Limit**: 10 requests/minute per client_id
+      operationId: token
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/AuthorizationCodeGrant'
+                - $ref: '#/components/schemas/RefreshTokenGrant'
+            examples:
+              authorization_code:
+                summary: Authorization Code Grant
+                value:
+                  grant_type: "authorization_code"
+                  code: "auth_code_a1b2c3d4e5f6g7h8"
+                  redirect_uri: "https://client-app.example.com/callback"
+                  code_verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+                  client_id: "abc123xyz"
+                  client_secret: "secret_98765zyxwvut"
+              refresh_token:
+                summary: Refresh Token Grant
+                value:
+                  grant_type: "refresh_token"
+                  refresh_token: "refresh_9z8y7x6w5v4u3t2s1r0q"
+                  client_id: "abc123xyz"
+                  client_secret: "secret_98765zyxwvut"
+      responses:
+        '200':
+          description: Tokens issued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              example:
+                access_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0..."
+                token_type: "Bearer"
+                expires_in: 900
+                id_token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImtleV8yMDI1XzAxIn0..."
+                refresh_token: "refresh_9z8y7x6w5v4u3t2s1r0q"
+                scope: "openid profile email"
+        '400':
+          description: Invalid grant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuth2Error'
+              example:
+                error: "invalid_grant"
+                error_description: "The authorization code is invalid, expired, or has already been used"
+        '429':
+          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              example: 10
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              example: 0
+            Retry-After:
+              schema:
+                type: integer
+              example: 60
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuth2Error'
+              example:
+                error: "too_many_requests"
+                error_description: "Rate limit exceeded. Try again in 60 seconds."
+
+  /oauth2/revoke:
+    post:
+      tags:
+        - OAuth 2.0
+      summary: Token Revocation
+      description: |
+        Revokes a refresh token (RFC 7009).
+        Returns 200 OK even if token doesn't exist (security best practice).
+      operationId: revokeToken
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - token
+                - client_id
+                - client_secret
+              properties:
+                token:
+                  type: string
+                  description: Token to revoke
+                token_type_hint:
+                  type: string
+                  enum: [refresh_token]
+                  description: Type of token (optional)
+                client_id:
+                  type: string
+                  description: Client identifier
+                client_secret:
+                  type: string
+                  description: Client secret
+      responses:
+        '200':
+          description: Token revoked successfully (or didn't exist)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "revoked"
+        '401':
+          description: Invalid client credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuth2Error'
+
+  /oauth2/userinfo:
+    get:
+      tags:
+        - OAuth 2.0
+      summary: UserInfo Endpoint
+      description: Returns user profile information (OIDC UserInfo endpoint)
+      operationId: getUserInfo
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+              example:
+                sub: "user_12345"
+                email: "user@tenant-a.com"
+                email_verified: true
+                name: "John Doe"
+                given_name: "John"
+                family_name: "Doe"
+                tenant_id: "tenant_a"
+        '401':
+          description: Invalid or expired access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuth2Error'
+
+  /admin/clients:
+    get:
+      tags:
+        - Admin - Clients
+      summary: List Clients
+      description: Lists all client applications for the authenticated tenant
+      operationId: listClients
+      security:
+        - SessionAuth: []
+      responses:
+        '200':
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Client'
+              example:
+                clients:
+                  - client_id: "abc123xyz"
+                    client_name: "Mobile App"
+                    redirect_uris: ["https://app.example.com/callback"]
+                    is_active: true
+                    created_at: "2025-12-26T10:00:00Z"
+        '401':
+          description: Unauthorized - session required
+    post:
+      tags:
+        - Admin - Clients
+      summary: Create Client
+      description: Registers a new client application for the tenant
+      operationId: createClient
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClientRequest'
+            example:
+              client_name: "Mobile App"
+              redirect_uris:
+                - "https://app.example.com/callback"
+                - "https://app.example.com/auth/callback"
+      responses:
+        '201':
+          description: Client created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientCredentials'
+              example:
+                client_id: "abc123xyz"
+                client_secret: "secret_98765zyxwvut"
+                client_name: "Mobile App"
+                redirect_uris: ["https://app.example.com/callback"]
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/clients/{client_id}:
+    get:
+      tags:
+        - Admin - Clients
+      summary: Get Client
+      description: Retrieves details of a specific client
+      operationId: getClient
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '404':
+          description: Client not found
+    put:
+      tags:
+        - Admin - Clients
+      summary: Update Client
+      description: Updates client application settings
+      operationId: updateClient
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClientRequest'
+      responses:
+        '200':
+          description: Client updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '404':
+          description: Client not found
+    delete:
+      tags:
+        - Admin - Clients
+      summary: Delete Client
+      description: Deletes a client application (revokes all tokens)
+      operationId: deleteClient
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Client deleted successfully
+        '404':
+          description: Client not found
+
+  /admin/clients/{client_id}/secret:
+    post:
+      tags:
+        - Admin - Clients
+      summary: Regenerate Client Secret
+      description: Generates a new client secret (invalidates old one)
+      operationId: regenerateClientSecret
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: client_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: New client secret generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_secret:
+                    type: string
+                example:
+                  client_secret: "secret_new_98765zyxwvut"
+        '404':
+          description: Client not found
+
+  /admin/roles:
+    get:
+      tags:
+        - Admin - Roles
+      summary: List Role Assignments
+      description: Lists all user role assignments for the tenant
+      operationId: listRoleAssignments
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: client_id
+          in: query
+          schema:
+            type: string
+          description: Filter by client
+        - name: user_id
+          in: query
+          schema:
+            type: string
+          description: Filter by user
+      responses:
+        '200':
+          description: List of role assignments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  role_assignments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoleAssignment'
+    post:
+      tags:
+        - Admin - Roles
+      summary: Assign Role
+      description: Grants a user access to a client application with a specific role
+      operationId: assignRole
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRoleRequest'
+            example:
+              user_id: "user_12345"
+              client_id: "abc123xyz"
+              role: "user"
+      responses:
+        '201':
+          description: Role assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleAssignment'
+        '400':
+          description: Invalid request
+
+  /admin/roles/{assignment_id}:
+    delete:
+      tags:
+        - Admin - Roles
+      summary: Revoke Role
+      description: Revokes a user's access to a client application
+      operationId: revokeRole
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: assignment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Role revoked successfully
+        '404':
+          description: Role assignment not found
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OAuth 2.0 access token
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Session cookie for admin endpoints
+
+  schemas:
+    OIDCDiscovery:
+      type: object
+      properties:
+        issuer:
+          type: string
+        authorization_endpoint:
+          type: string
+        token_endpoint:
+          type: string
+        jwks_uri:
+          type: string
+        userinfo_endpoint:
+          type: string
+        revocation_endpoint:
+          type: string
+        scopes_supported:
+          type: array
+          items:
+            type: string
+        response_types_supported:
+          type: array
+          items:
+            type: string
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+        token_endpoint_auth_methods_supported:
+          type: array
+          items:
+            type: string
+
+    JWKS:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+              use:
+                type: string
+              kid:
+                type: string
+              alg:
+                type: string
+              n:
+                type: string
+              e:
+                type: string
+
+    AuthorizationCodeGrant:
+      type: object
+      required:
+        - grant_type
+        - code
+        - redirect_uri
+        - code_verifier
+        - client_id
+        - client_secret
+      properties:
+        grant_type:
+          type: string
+          enum: [authorization_code]
+        code:
+          type: string
+        redirect_uri:
+          type: string
+        code_verifier:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+
+    RefreshTokenGrant:
+      type: object
+      required:
+        - grant_type
+        - refresh_token
+        - client_id
+        - client_secret
+      properties:
+        grant_type:
+          type: string
+          enum: [refresh_token]
+        refresh_token:
+          type: string
+        client_id:
+          type: string
+        client_secret:
+          type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+        id_token:
+          type: string
+          description: OIDC ID token (only for authorization_code grant)
+        refresh_token:
+          type: string
+        scope:
+          type: string
+
+    UserInfo:
+      type: object
+      properties:
+        sub:
+          type: string
+          description: User identifier
+        email:
+          type: string
+        email_verified:
+          type: boolean
+        name:
+          type: string
+        given_name:
+          type: string
+        family_name:
+          type: string
+        tenant_id:
+          type: string
+
+    Client:
+      type: object
+      properties:
+        client_id:
+          type: string
+        client_name:
+          type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ClientCredentials:
+      allOf:
+        - $ref: '#/components/schemas/Client'
+        - type: object
+          properties:
+            client_secret:
+              type: string
+              description: Only returned on creation
+
+    CreateClientRequest:
+      type: object
+      required:
+        - client_name
+        - redirect_uris
+      properties:
+        client_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          maxItems: 10
+
+    UpdateClientRequest:
+      type: object
+      properties:
+        client_name:
+          type: string
+        redirect_uris:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+
+    RoleAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+        client_id:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+        granted_at:
+          type: string
+          format: date-time
+        granted_by:
+          type: string
+
+    AssignRoleRequest:
+      type: object
+      required:
+        - user_id
+        - client_id
+        - role
+      properties:
+        user_id:
+          type: string
+        client_id:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, viewer]
+
+    OAuth2Error:
+      type: object
+      properties:
+        error:
+          type: string
+          enum:
+            - invalid_request
+            - invalid_client
+            - invalid_grant
+            - unauthorized_client
+            - unsupported_grant_type
+            - invalid_scope
+            - too_many_requests
+        error_description:
+          type: string
+        error_uri:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string

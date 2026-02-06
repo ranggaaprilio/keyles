@@ -23,6 +23,8 @@ import (
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
+	"github.com/ranggaaprilio/keyles/usecase/client"
+	"github.com/ranggaaprilio/keyles/usecase/role"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 )
 
@@ -59,6 +61,11 @@ func main() {
 	userRepo := postgresRepo.NewPostgresUserRepository(db)
 	auditRepo := postgresRepo.NewPostgresAuditRepository(db)
 	otpRepo := redisRepo.NewRedisOTPRepository(redisClient)
+	clientRepo := postgresRepo.NewPostgresClientRepository(db)
+	roleRepo := postgresRepo.NewPostgresRoleRepository(db)
+	authCodeRepo := redisRepo.NewRedisAuthCodeRepository(redisClient)
+	refreshTokenRepo := postgresRepo.NewPostgresRefreshTokenRepository(db)
+	signingKeyRepo := postgresRepo.NewPostgresSigningKeyRepositoryGorm(db)
 
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
@@ -66,6 +73,9 @@ func main() {
 	passwordService := infraServices.NewBcryptPasswordService() // Returns concrete type now
 	jwtService := infraServices.NewJWTService(cfg.JWTSecret, cfg.JWTExpirationHours)
 	authJWTService := infraServices.NewAuthJWTServiceAdapter(jwtService)
+
+	// Initialize OAuth token service
+	tokenService := infraServices.NewRSATokenService(signingKeyRepo)
 
 	// Initialize use cases
 	registerTenantUseCase := tenant.NewRegisterTenantUseCase(
@@ -77,6 +87,24 @@ func main() {
 	resendOTPUseCase := tenant.NewResendOTPUseCase(otpRepo, tenantRepo, userRepo, emailService, otpService, auditRepo)
 	authenticateAdminUseCase := auth.NewAuthenticateAdminUseCase(userRepo, tenantRepo, passwordService, authJWTService)
 
+	// Initialize client management use cases
+	createClientUseCase := client.NewCreateClientUseCase(clientRepo, passwordService)
+	getClientUseCase := client.NewGetClientUseCase(clientRepo)
+	updateClientUseCase := client.NewUpdateClientUseCase(clientRepo)
+	deleteClientUseCase := client.NewDeleteClientUseCase(clientRepo)
+	listClientsUseCase := client.NewListClientsUseCase(clientRepo)
+	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService)
+
+	// Initialize role management use cases
+	assignRoleUseCase := role.NewAssignRole(roleRepo, userRepo, clientRepo)
+	revokeRoleUseCase := role.NewRevokeRole(roleRepo, refreshTokenRepo)
+	listUserRolesUseCase := role.NewListUserRoles(roleRepo)
+
+	// Initialize OAuth use cases
+	authorizeClientUseCase := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
+	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, cfg.OAuthIssuer)
+	getUserInfoUseCase := auth.NewGetUserInfo(userRepo)
+
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
 	availabilityHandler := handlers.NewAvailabilityHandler(checkAvailabilityUseCase)
@@ -85,6 +113,18 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authenticateAdminUseCase)
 	dashboardHandler := handlers.NewDashboardHandler(userRepo, tenantRepo)
 	healthHandler := handlers.NewHealthHandler(tenantRepo, redisClient)
+	clientHandler := handlers.NewClientHandler(
+		createClientUseCase,
+		getClientUseCase,
+		updateClientUseCase,
+		deleteClientUseCase,
+		listClientsUseCase,
+		rotateSecretUseCase,
+	)
+	oauthHandler := handlers.NewOAuthHandler(authorizeClientUseCase, issueTokenUseCase, clientRepo)
+	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
+	roleHandler := handlers.NewRoleHandler(assignRoleUseCase, revokeRoleUseCase, listUserRolesUseCase)
+	userinfoHandler := handlers.NewUserinfoHandler(getUserInfoUseCase)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -99,6 +139,11 @@ func main() {
 		authHandler,
 		dashboardHandler,
 		healthHandler,
+		clientHandler,
+		oauthHandler,
+		discoveryHandler,
+		roleHandler,
+		userinfoHandler,
 		jwtService,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,

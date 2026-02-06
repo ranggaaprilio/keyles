@@ -73,7 +73,7 @@ func TestRegistrationHandler(t *testing.T) {
 
 	// Mock Redis OTP repository (in-memory map for testing)
 	otpRepo := &MockOTPRepository{
-		store: make(map[uuid.UUID]*entities.OTPVerification),
+		store: make(map[string]*entities.OTPVerification),
 		rateLimit: make(map[string]int),
 	}
 
@@ -234,9 +234,9 @@ func TestRegistrationHandler(t *testing.T) {
 				assert.Equal(t, dbTenant.ID, dbUser.TenantID)
 
 				// Verify OTP was stored
-				otp, exists := otpRepo.store[dbTenant.ID]
+				otp, exists := otpRepo.store[dbTenant.ID.String()]
 				require.True(t, exists, "OTP should be stored")
-				assert.Equal(t, "123456", otp.OTPCode)
+				assert.Equal(t, "123456", otp.Code)
 
 				// Note: Audit log verification skipped due to SQLite JSON type limitations
 			}
@@ -246,18 +246,21 @@ func TestRegistrationHandler(t *testing.T) {
 
 // MockOTPRepository for testing
 type MockOTPRepository struct {
-	store     map[uuid.UUID]*entities.OTPVerification
+	store     map[string]*entities.OTPVerification // keyed by TenantID (string)
 	rateLimit map[string]int
 }
 
-func (m *MockOTPRepository) Store(ctx context.Context, otp *entities.OTPVerification) error {
+func (m *MockOTPRepository) Create(ctx context.Context, otp *entities.OTPVerification) error {
+	if m.store == nil {
+		m.store = make(map[string]*entities.OTPVerification)
+	}
 	m.store[otp.TenantID] = otp
 	return nil
 }
 
-func (m *MockOTPRepository) FindByTenantID(ctx context.Context, tenantID uuid.UUID) (*entities.OTPVerification, error) {
+func (m *MockOTPRepository) FindByTenantIDAndPurpose(ctx context.Context, tenantID, purpose string) (*entities.OTPVerification, error) {
 	otp, exists := m.store[tenantID]
-	if !exists {
+	if !exists || otp.Purpose != purpose {
 		return nil, gorm.ErrRecordNotFound
 	}
 	return otp, nil
@@ -268,17 +271,32 @@ func (m *MockOTPRepository) Update(ctx context.Context, otp *entities.OTPVerific
 	return nil
 }
 
-func (m *MockOTPRepository) Delete(ctx context.Context, tenantID uuid.UUID) error {
-	delete(m.store, tenantID)
+func (m *MockOTPRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	for key, otp := range m.store {
+		if otp.ID == id {
+			delete(m.store, key)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (m *MockOTPRepository) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
 func (m *MockOTPRepository) IncrementRateLimitCounter(ctx context.Context, email string, window time.Duration) (int, error) {
+	if m.rateLimit == nil {
+		m.rateLimit = make(map[string]int)
+	}
 	m.rateLimit[email]++
 	return m.rateLimit[email], nil
 }
 
 func (m *MockOTPRepository) GetRateLimitCounter(ctx context.Context, email string) (int, error) {
+	if m.rateLimit == nil {
+		return 0, nil
+	}
 	return m.rateLimit[email], nil
 }
 

@@ -23,6 +23,7 @@ npm test && npm run lint
 TypeScript 5.x, React 18.x: Follow standard conventions
 
 ## Recent Changes
+- 003-sso-auth-provider: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 002-sso-landing-page: Added TypeScript 5.x, React 18.x
 
 - 002-sso-landing-page: Added TypeScript 5.x, React 18.x

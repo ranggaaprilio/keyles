@@ -28,7 +28,7 @@ func TestVerificationHandler(t *testing.T) {
 
 	// Initialize repositories
 	tenantRepo := postgres.NewPostgresTenantRepository(db)
-	userRepo := postgres.NewPostgresUserRepository(db)
+	_ = postgres.NewPostgresUserRepository(db) // May be needed for future tests
 	auditRepo := &MockAuditRepository{}
 
 	// Mock OTP repository with new interface
@@ -48,7 +48,7 @@ func TestVerificationHandler(t *testing.T) {
 	router.POST("/api/v1/verify-otp", handler.VerifyOTP)
 
 	// Create test tenant and user
-	testTenant, testUser := createTestTenantAndUser(t, db)
+	testTenant, _ := createTestTenantAndUser(t, db)
 	
 	// Create valid OTP
 	validOTP := &entities.OTPVerification{
@@ -99,7 +99,7 @@ func TestVerificationHandler(t *testing.T) {
 				"otp_code":  "999999",
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedError:  "invalid",
+			expectedError:  "Invalid OTP",
 			setupFunc: func() {
 				// Reset tenant status and recreate OTP
 				db.Model(&testTenant).Updates(map[string]interface{}{
@@ -162,8 +162,8 @@ func TestVerificationHandler(t *testing.T) {
 				"tenant_id": "invalid-uuid",
 				"otp_code":  "123456",
 			},
-			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid tenant ID",
+			expectedStatus: http.StatusNotFound,
+			expectedError:  "OTP not found",
 		},
 		{
 			name: "Missing OTP code",

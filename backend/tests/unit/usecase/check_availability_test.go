@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ranggaaprilio/keyles/tests/mocks"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -17,7 +18,7 @@ func TestCheckAvailability(t *testing.T) {
 		name           string
 		orgName        string
 		email          string
-		setupMocks     func(*MockTenantRepository, *MockUserRepository)
+		setupMocks     func(*mocks.MockTenantRepository, *mocks.MockUserRepository)
 		wantErr        bool
 		errContains    string
 		validateResult func(*testing.T, *tenant.CheckAvailabilityResult)
@@ -26,7 +27,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Both organization name and email available",
 			orgName: "Acme Corp",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				tenantRepo.On("OrganizationNameExists", mock.Anything, "Acme Corp").Return(false, nil)
 				userRepo.On("EmailExists", mock.Anything, "admin@acme.com").Return(false, nil)
 			},
@@ -41,7 +42,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Organization name taken",
 			orgName: "Acme Corp",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				tenantRepo.On("OrganizationNameExists", mock.Anything, "Acme Corp").Return(true, nil)
 				userRepo.On("EmailExists", mock.Anything, "admin@acme.com").Return(false, nil)
 			},
@@ -56,7 +57,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Email taken",
 			orgName: "Acme Corp",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				tenantRepo.On("OrganizationNameExists", mock.Anything, "Acme Corp").Return(false, nil)
 				userRepo.On("EmailExists", mock.Anything, "admin@acme.com").Return(true, nil)
 			},
@@ -71,7 +72,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Both taken",
 			orgName: "Acme Corp",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				tenantRepo.On("OrganizationNameExists", mock.Anything, "Acme Corp").Return(true, nil)
 				userRepo.On("EmailExists", mock.Anything, "admin@acme.com").Return(true, nil)
 			},
@@ -86,7 +87,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Database error checking organization name",
 			orgName: "Acme Corp",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				tenantRepo.On("OrganizationNameExists", mock.Anything, "Acme Corp").Return(false, errors.New("database error"))
 			},
 			wantErr:     true,
@@ -96,7 +97,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Database error checking email",
 			orgName: "Acme Corp",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				tenantRepo.On("OrganizationNameExists", mock.Anything, "Acme Corp").Return(false, nil)
 				userRepo.On("EmailExists", mock.Anything, "admin@acme.com").Return(false, errors.New("database error"))
 			},
@@ -107,7 +108,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Invalid organization name",
 			orgName: "A",
 			email:   "admin@acme.com",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				// No mocks needed - validation happens before database calls
 			},
 			wantErr:     true,
@@ -117,7 +118,7 @@ func TestCheckAvailability(t *testing.T) {
 			name:    "Invalid email",
 			orgName: "Acme Corp",
 			email:   "invalid-email",
-			setupMocks: func(tenantRepo *MockTenantRepository, userRepo *MockUserRepository) {
+			setupMocks: func(tenantRepo *mocks.MockTenantRepository, userRepo *mocks.MockUserRepository) {
 				// No mocks needed - validation happens before database calls
 			},
 			wantErr:     true,
@@ -128,8 +129,8 @@ func TestCheckAvailability(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup mocks
-			tenantRepo := new(MockTenantRepository)
-			userRepo := new(MockUserRepository)
+			tenantRepo := new(mocks.MockTenantRepository)
+			userRepo := new(mocks.MockUserRepository)
 
 			tt.setupMocks(tenantRepo, userRepo)
 

@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ory/fosite"
 )
 
 // ErrorHandler is a middleware that handles errors and sanitizes error messages
 // per FR-021: provide clear error messages without exposing security details
+// Updated to handle OAuth 2.0 specific errors per FR-044
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
@@ -21,6 +23,12 @@ func ErrorHandler() gin.HandlerFunc {
 
 		// Get the last error
 		err := c.Errors.Last()
+		
+		// Check if it's an OAuth error
+		if oauthErr, ok := err.Err.(*fosite.RFC6749Error); ok {
+			handleOAuthError(c, oauthErr)
+			return
+		}
 		
 		// Sanitize error message
 		sanitized := sanitizeError(err.Err)
@@ -39,6 +47,35 @@ func ErrorHandler() gin.HandlerFunc {
 			},
 		})
 	}
+}
+
+// handleOAuthError handles OAuth 2.0 specific errors per RFC 6749
+func handleOAuthError(c *gin.Context, err *fosite.RFC6749Error) {
+	status := http.StatusBadRequest
+
+	// Map OAuth error codes to HTTP status codes
+	switch err.ErrorField {
+	case "unauthorized_client", "access_denied":
+		status = http.StatusForbidden
+	case "invalid_client":
+		status = http.StatusUnauthorized
+	case "server_error":
+		status = http.StatusInternalServerError
+	case "temporarily_unavailable":
+		status = http.StatusServiceUnavailable
+	}
+
+	// Return OAuth 2.0 formatted error
+	response := gin.H{
+		"error":             err.ErrorField,
+		"error_description": err.DescriptionField,
+	}
+
+	if err.HintField != "" {
+		response["error_hint"] = err.HintField
+	}
+
+	c.JSON(status, response)
 }
 
 // RecoveryHandler handles panics and prevents stack trace exposure

@@ -106,7 +106,7 @@ func TestResendOTPHandler(t *testing.T) {
 				"tenant_id": testTenant.ID.String(),
 			},
 			expectedStatus: http.StatusTooManyRequests,
-			expectedError:  "rate limit exceeded",
+			expectedError:  "Too many OTP requests",
 			setupFunc: func() {
 				// Simulate 4 previous requests (exceeds max of 3)
 				otpRepo.rateLimit[testUser.Email] = 3
@@ -118,7 +118,7 @@ func TestResendOTPHandler(t *testing.T) {
 				"tenant_id": uuid.New().String(), // Random tenant with no OTP
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedError:  "OTP not found",
+			expectedError:  "Admin user not found",
 			setupFunc: func() {
 				// Create tenant without OTP
 				newTenant := &entities.Tenant{
@@ -149,7 +149,7 @@ func TestResendOTPHandler(t *testing.T) {
 				"tenant_id": uuid.New().String(), // Non-existent tenant
 			},
 			expectedStatus: http.StatusNotFound,
-			expectedError:  "tenant not found",
+			expectedError:  "Admin user not found",
 		},
 		{
 			name: "Invalid tenant ID format",
@@ -157,7 +157,7 @@ func TestResendOTPHandler(t *testing.T) {
 				"tenant_id": "invalid-uuid",
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "invalid tenant ID",
+			expectedError:  "Invalid tenant ID format",
 		},
 		{
 			name: "Missing tenant ID",

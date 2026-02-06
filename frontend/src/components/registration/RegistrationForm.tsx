@@ -3,21 +3,27 @@
  * Implements TDD approach with real-time validation and availability checking
  */
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "react-router-dom";
+import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 
-import { registrationSchema, RegistrationFormData } from './RegistrationSchema';
-import { useTenantRegistration } from '../../hooks/useTenantRegistration';
-import { checkAvailability } from '../../services/api/tenant';
-import { ApiException } from '../../types/api';
+import { registrationSchema, RegistrationFormData } from "./RegistrationSchema";
+import { useTenantRegistration } from "../../hooks/useTenantRegistration";
+import { checkAvailability } from "../../services/api/tenant";
+import { ApiException } from "../../types/api";
 
 export function RegistrationForm() {
   const navigate = useNavigate();
@@ -35,13 +41,13 @@ export function RegistrationForm() {
     setError,
   } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
-    mode: 'onChange',
+    mode: "onChange",
   });
 
   const mutation = useTenantRegistration({
     onSuccess: (data) => {
       // Navigate to verification page with tenant info
-      navigate('/verify-otp', {
+      navigate("/verify-otp", {
         state: {
           tenantId: data.tenant_id,
           organizationName: data.organization_name,
@@ -52,33 +58,33 @@ export function RegistrationForm() {
     onError: (error: ApiException) => {
       // Map API errors to form errors
       if (error.status === 409) {
-        if (error.error.includes('organization name')) {
-          setError('organization_name', {
-            type: 'manual',
-            message: error.error,
+        if (error.message.includes("organization name")) {
+          setError("organization_name", {
+            type: "manual",
+            message: error.message,
           });
-        } else if (error.error.includes('email')) {
-          setError('email', {
-            type: 'manual',
-            message: error.error,
+        } else if (error.message.includes("email")) {
+          setError("email", {
+            type: "manual",
+            message: error.message,
           });
         }
       } else {
-        setError('root', {
-          type: 'manual',
-          message: error.error || 'Registration failed. Please try again.',
+        setError("root", {
+          type: "manual",
+          message: error.message || "Registration failed. Please try again.",
         });
       }
     },
   });
 
   // Watch fields for real-time availability checking
-  const orgName = watch('organization_name');
-  const email = watch('email');
+  const orgName = watch("organization_name");
+  const email = watch("email");
 
   // Debounced availability check
   const checkFieldAvailability = async () => {
-    if (!orgName || !email || orgName.length < 3 || !email.includes('@')) {
+    if (!orgName || !email || orgName.length < 3 || !email.includes("@")) {
       return;
     }
 
@@ -94,7 +100,7 @@ export function RegistrationForm() {
       });
     } catch (error) {
       // Silently fail availability check - user can still submit
-      console.error('Availability check failed:', error);
+      console.error("Availability check failed:", error);
     } finally {
       setCheckingAvailability(false);
     }
@@ -132,20 +138,21 @@ export function RegistrationForm() {
                 <Input
                   id="organization_name"
                   placeholder="Acme Corporation"
-                  {...register('organization_name')}
+                  {...register("organization_name")}
                   onBlur={checkFieldAvailability}
-                  className={errors.organization_name ? 'border-red-500' : ''}
+                  className={errors.organization_name ? "border-red-500" : ""}
                 />
                 {checkingAvailability && (
                   <div className="absolute right-3 top-2.5">
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                   </div>
                 )}
-                {!checkingAvailability && availabilityStatus.orgName !== undefined && (
-                  <div className="absolute right-3 top-2.5">
-                    {getAvailabilityIcon(availabilityStatus.orgName)}
-                  </div>
-                )}
+                {!checkingAvailability &&
+                  availabilityStatus.orgName !== undefined && (
+                    <div className="absolute right-3 top-2.5">
+                      {getAvailabilityIcon(availabilityStatus.orgName)}
+                    </div>
+                  )}
               </div>
               {errors.organization_name && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
@@ -168,20 +175,21 @@ export function RegistrationForm() {
                   id="email"
                   type="email"
                   placeholder="admin@acme.com"
-                  {...register('email')}
+                  {...register("email")}
                   onBlur={checkFieldAvailability}
-                  className={errors.email ? 'border-red-500' : ''}
+                  className={errors.email ? "border-red-500" : ""}
                 />
                 {checkingAvailability && (
                   <div className="absolute right-3 top-2.5">
                     <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                   </div>
                 )}
-                {!checkingAvailability && availabilityStatus.email !== undefined && (
-                  <div className="absolute right-3 top-2.5">
-                    {getAvailabilityIcon(availabilityStatus.email)}
-                  </div>
-                )}
+                {!checkingAvailability &&
+                  availabilityStatus.email !== undefined && (
+                    <div className="absolute right-3 top-2.5">
+                      {getAvailabilityIcon(availabilityStatus.email)}
+                    </div>
+                  )}
               </div>
               {errors.email && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
@@ -203,8 +211,8 @@ export function RegistrationForm() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                {...register('password')}
-                className={errors.password ? 'border-red-500' : ''}
+                {...register("password")}
+                className={errors.password ? "border-red-500" : ""}
               />
               {errors.password && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
@@ -213,7 +221,8 @@ export function RegistrationForm() {
                 </p>
               )}
               <p className="text-xs text-gray-500">
-                Must be 8+ characters with uppercase, lowercase, number, and special character
+                Must be 8+ characters with uppercase, lowercase, number, and
+                special character
               </p>
             </div>
 
@@ -223,8 +232,8 @@ export function RegistrationForm() {
               <Input
                 id="full_name"
                 placeholder="John Doe"
-                {...register('full_name')}
-                className={errors.full_name ? 'border-red-500' : ''}
+                {...register("full_name")}
+                className={errors.full_name ? "border-red-500" : ""}
               />
               {errors.full_name && (
                 <p className="text-sm text-red-600 flex items-center gap-1">
@@ -256,14 +265,14 @@ export function RegistrationForm() {
                   Creating Organization...
                 </>
               ) : (
-                'Create Organization'
+                "Create Organization"
               )}
             </Button>
           </form>
 
           <div className="mt-4 text-center text-sm">
             <p className="text-gray-600">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <a href="/login" className="text-blue-600 hover:underline">
                 Sign in
               </a>

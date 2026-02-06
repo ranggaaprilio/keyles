@@ -18,6 +18,11 @@ type Router struct {
 	authHandler          *handlers.AuthHandler
 	dashboardHandler     *handlers.DashboardHandler
 	healthHandler        *handlers.HealthHandler
+	clientHandler        *handlers.ClientHandler
+	oauthHandler         *handlers.OAuthHandler
+	discoveryHandler     *handlers.DiscoveryHandler
+	roleHandler          *handlers.RoleHandler
+	userinfoHandler      *handlers.UserinfoHandler
 	jwtService           *services.JWTService
 }
 
@@ -31,6 +36,11 @@ func NewRouter(
 	authHandler *handlers.AuthHandler,
 	dashboardHandler *handlers.DashboardHandler,
 	healthHandler *handlers.HealthHandler,
+	clientHandler *handlers.ClientHandler,
+	oauthHandler *handlers.OAuthHandler,
+	discoveryHandler *handlers.DiscoveryHandler,
+	roleHandler *handlers.RoleHandler,
+	userinfoHandler *handlers.UserinfoHandler,
 	jwtService *services.JWTService,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
@@ -52,6 +62,11 @@ func NewRouter(
 		authHandler:         authHandler,
 		dashboardHandler:    dashboardHandler,
 		healthHandler:       healthHandler,
+		clientHandler:       clientHandler,
+		oauthHandler:        oauthHandler,
+		discoveryHandler:    discoveryHandler,
+		roleHandler:         roleHandler,
+		userinfoHandler:     userinfoHandler,
 		jwtService:          jwtService,
 	}
 }
@@ -61,6 +76,23 @@ func (r *Router) Setup() {
 	r.engine.GET("/health", r.healthHandler.Health)
 	r.engine.GET("/health/db", r.healthHandler.HealthDB)
 	r.engine.GET("/health/redis", r.healthHandler.HealthRedis)
+
+	// OIDC Discovery endpoints (public - no auth required)
+	r.engine.GET("/.well-known/openid-configuration", r.discoveryHandler.OpenIDConfiguration)
+	r.engine.GET("/.well-known/jwks.json", r.discoveryHandler.JWKS)
+
+	// OAuth 2.0 routes (public - handles authentication)
+	oauth2 := r.engine.Group("/oauth2")
+	{
+		oauth2.GET("/auth", r.oauthHandler.Authorize)
+		oauth2.POST("/auth", r.oauthHandler.Authorize)
+		// Token endpoint with rate limiting (FR-057: 10 req/min per client_id)
+		oauth2.POST("/token", r.oauthHandler.Token)
+		// Revocation endpoint per RFC 7009 (FR-051)
+		oauth2.POST("/revoke", r.oauthHandler.Revoke)
+		// UserInfo endpoint per OIDC spec (FR-052) - requires valid access token
+		oauth2.GET("/userinfo", middleware.AuthMiddleware(r.jwtService), r.userinfoHandler.UserInfo)
+	}
 
 	// API v1 routes
 	v1 := r.engine.Group("/api/v1")
@@ -86,6 +118,31 @@ func (r *Router) Setup() {
 		protected.Use(middleware.AuthMiddleware(r.jwtService))
 		{
 			protected.GET("/dashboard", r.dashboardHandler.GetDashboard)
+		}
+
+		// Admin routes (require JWT) - Client Management
+		admin := v1.Group("/admin")
+		admin.Use(middleware.AuthMiddleware(r.jwtService))
+		{
+			// Client management routes
+			clients := admin.Group("/clients")
+			{
+				clients.POST("", r.clientHandler.Create)
+				clients.GET("", r.clientHandler.List)
+				clients.GET("/:clientId", r.clientHandler.Get)
+				clients.PUT("/:clientId", r.clientHandler.Update)
+				clients.DELETE("/:clientId", r.clientHandler.Delete)
+				clients.POST("/:clientId/rotate-secret", r.clientHandler.RotateSecret)
+			}
+
+			// Role management routes (FR-006a, FR-006b)
+			roles := admin.Group("/roles")
+			{
+				roles.POST("/assign", r.roleHandler.AssignRole)
+				roles.POST("/revoke", r.roleHandler.RevokeRole)
+				roles.GET("/users/:userId", r.roleHandler.ListUserRoles)
+				roles.GET("/clients/:clientId", r.roleHandler.ListClientRoles)
+			}
 		}
 	}
 }

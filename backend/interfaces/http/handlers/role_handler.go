@@ -1,0 +1,250 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ranggaaprilio/keyles/usecase/role"
+)
+
+// RoleHandler handles admin role management endpoints
+type RoleHandler struct {
+	assignRoleUC    *role.AssignRole
+	revokeRoleUC    *role.RevokeRole
+	listUserRolesUC *role.ListUserRoles
+}
+
+// NewRoleHandler creates a new role management handler
+func NewRoleHandler(
+	assignRoleUC *role.AssignRole,
+	revokeRoleUC *role.RevokeRole,
+	listUserRolesUC *role.ListUserRoles,
+) *RoleHandler {
+	return &RoleHandler{
+		assignRoleUC:    assignRoleUC,
+		revokeRoleUC:    revokeRoleUC,
+		listUserRolesUC: listUserRolesUC,
+	}
+}
+
+// AssignRoleRequest represents the request body for assigning a role
+type AssignRoleRequest struct {
+	UserID   string `json:"user_id" binding:"required"`
+	ClientID string `json:"client_id" binding:"required"`
+	Role     string `json:"role" binding:"required"`
+}
+
+// RevokeRoleRequest represents the request body for revoking a role
+type RevokeRoleRequest struct {
+	UserID   string `json:"user_id" binding:"required"`
+	ClientID string `json:"client_id" binding:"required"`
+	Role     string `json:"role" binding:"required"`
+}
+
+// AssignRole handles POST /api/admin/roles/assign (FR-006a)
+func (h *RoleHandler) AssignRole(c *gin.Context) {
+	var req AssignRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": "user_id, client_id, and role are required",
+		})
+		return
+	}
+
+	// Get admin context from JWT middleware
+	tenantID, exists := c.Get("tenant_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "Admin authentication required",
+		})
+		return
+	}
+
+	adminID, _ := c.Get("user_id")
+	grantedBy, _ := adminID.(string)
+
+	err := h.assignRoleUC.Execute(c.Request.Context(), role.AssignRoleRequest{
+		UserID:    req.UserID,
+		ClientID:  req.ClientID,
+		TenantID:  tenantID.(string),
+		Role:      req.Role,
+		GrantedBy: grantedBy,
+	})
+
+	if err != nil {
+		// Determine appropriate status code based on error
+		statusCode := http.StatusInternalServerError
+		if contains(err.Error(), "not found") {
+			statusCode = http.StatusNotFound
+		} else if contains(err.Error(), "already has role") {
+			statusCode = http.StatusConflict
+		} else if contains(err.Error(), "invalid") {
+			statusCode = http.StatusBadRequest
+		}
+
+		c.JSON(statusCode, gin.H{
+			"error":   "role_assignment_failed",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":   "Role assigned successfully",
+		"user_id":   req.UserID,
+		"client_id": req.ClientID,
+		"role":      req.Role,
+	})
+}
+
+// RevokeRole handles POST /api/admin/roles/revoke (FR-006b)
+func (h *RoleHandler) RevokeRole(c *gin.Context) {
+	var req RevokeRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": "user_id, client_id, and role are required",
+		})
+		return
+	}
+
+	// Get admin context from JWT middleware
+	_, exists := c.Get("tenant_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "Admin authentication required",
+		})
+		return
+	}
+
+	err := h.revokeRoleUC.Execute(c.Request.Context(), role.RevokeRoleRequest{
+		UserID:   req.UserID,
+		ClientID: req.ClientID,
+		Role:     req.Role,
+	})
+
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if contains(err.Error(), "not found") {
+			statusCode = http.StatusNotFound
+		}
+
+		c.JSON(statusCode, gin.H{
+			"error":   "role_revocation_failed",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Role revoked successfully",
+		"user_id":   req.UserID,
+		"client_id": req.ClientID,
+		"role":      req.Role,
+	})
+}
+
+// ListUserRoles handles GET /api/admin/roles/users/:userId
+func (h *RoleHandler) ListUserRoles(c *gin.Context) {
+	userID := c.Param("userId")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": "userId parameter is required",
+		})
+		return
+	}
+
+	// Optional client filter
+	clientID := c.Query("client_id")
+
+	// Get admin context from JWT middleware
+	_, exists := c.Get("tenant_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "Admin authentication required",
+		})
+		return
+	}
+
+	resp, err := h.listUserRolesUC.Execute(c.Request.Context(), role.ListUserRolesRequest{
+		UserID:   userID,
+		ClientID: clientID,
+	})
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "list_roles_failed",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Convert to response format
+	rolesResponse := make([]gin.H, len(resp.Roles))
+	for i, r := range resp.Roles {
+		rolesResponse[i] = gin.H{
+			"id":         r.ID,
+			"user_id":    r.UserID,
+			"client_id":  r.ClientID,
+			"tenant_id":  r.TenantID,
+			"role":       r.Role,
+			"is_active":  r.IsActive,
+			"granted_at": r.GrantedAt,
+			"granted_by": r.GrantedBy,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user_id": userID,
+		"roles":   rolesResponse,
+	})
+}
+
+// ListClientRoles handles GET /api/admin/roles/clients/:clientId
+func (h *RoleHandler) ListClientRoles(c *gin.Context) {
+	clientID := c.Param("clientId")
+	if clientID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": "clientId parameter is required",
+		})
+		return
+	}
+
+	// Get admin context from JWT middleware
+	_, exists := c.Get("tenant_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "Admin authentication required",
+		})
+		return
+	}
+
+	// This would need a new use case, but for now we can use the repository directly
+	// In a full implementation, create a ListClientRoles use case
+	c.JSON(http.StatusOK, gin.H{
+		"client_id": clientID,
+		"roles":     []gin.H{},
+		"message":   "List client roles endpoint - implementation pending",
+	})
+}
+
+// Helper function to check if a string contains a substring
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
+}
+
+func containsHelper(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
