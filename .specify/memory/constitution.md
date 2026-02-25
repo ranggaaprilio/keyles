@@ -46,6 +46,7 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 - **Dependency Inversion Principle (DIP)**: Domain MUST depend on abstractions, NOT concrete implementations
 
 **Critical for DIP**:
+
 - Domain layer MUST use interfaces for all outbound dependencies (repositories, external services)
 - Infrastructure layer provides concrete implementations
 - NEVER call database or external service implementations directly from domain logic
@@ -55,11 +56,13 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 ### III. Dependency Inversion via Interfaces (NON-NEGOTIABLE)
 
 **Golang Backend**:
+
 - All outbound dependencies (database repositories, external services) MUST be defined as interfaces in the Domain layer
 - Concrete implementations MUST be in Infrastructure layer
 - Domain functions MUST accept interface parameters, NEVER concrete types
 
 **React/TypeScript Frontend**:
+
 - Use abstractions/interfaces for all external dependencies (API clients, storage services)
 - Components should depend on abstract contracts, not concrete implementations
 
@@ -68,6 +71,7 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 ### IV. Backend Code Conventions (Golang)
 
 **Mandatory Standards**:
+
 - Follow [Effective Go](https://go.dev/doc/effective_go) and official Go best practices
 - Package names MUST be lowercase, single-word when possible
 - All exported functions, types, and methods MUST have documentation comments
@@ -85,6 +89,7 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 ### V. Frontend Code Conventions (React/TypeScript)
 
 **Mandatory Standards**:
+
 - Use TypeScript exclusively (no plain JavaScript)
 - Use functional components and React Hooks exclusively
 - All components MUST use PascalCase naming
@@ -97,20 +102,24 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 ### VI. Test Coverage Requirements (NON-NEGOTIABLE)
 
 **Unit Testing**:
+
 - ALL business logic MUST have unit tests
 - Minimum 85% code coverage for Domain/Business Logic layer
 - Tests MUST be independent and reproducible
 
 **Integration Testing**:
+
 - Every backend handler/controller MUST have integration tests
 - Integration tests MUST verify infrastructure layer connections work correctly
 - Frontend API integration points MUST be tested
 
 **Testing Tools**:
+
 - **Backend**: Go's built-in `testing` package or GoMock for mocking
-- **Frontend**: Jest and React Testing Library
+- **Frontend**: Vitest and React Testing Library
 
 **Test-First Workflow**:
+
 - Write tests before implementation where feasible
 - Ensure tests fail before writing the implementation
 - Follow Red-Green-Refactor cycle
@@ -122,17 +131,20 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 Every feature plan MUST pass these validation gates before implementation:
 
 **Clean Architecture Compliance**:
+
 - [ ] Domain layer has no imports from infrastructure or frameworks
 - [ ] All repository/service interfaces defined in Domain
 - [ ] Concrete implementations only in Infrastructure layer
 - [ ] Dependency arrows point inward
 
 **SOLID Compliance**:
+
 - [ ] Each module has single, well-defined responsibility
 - [ ] Domain depends only on abstractions (interfaces)
 - [ ] No direct database/external API calls from business logic
 
 **Testing Requirements**:
+
 - [ ] Unit test plan for all business logic (target: 85%+ coverage)
 - [ ] Integration test plan for all handlers/controllers
 - [ ] Test isolation strategy documented
@@ -142,6 +154,7 @@ Every feature plan MUST pass these validation gates before implementation:
 ## Technology Stack Requirements
 
 **Backend**:
+
 - **Language**: Golang (latest stable version)
 - **Architecture**: Clean Architecture / Hexagonal Architecture
 - **Package Structure**: Standard Go layout with domain/usecase/infrastructure separation
@@ -149,17 +162,20 @@ Every feature plan MUST pass these validation gates before implementation:
 - **Documentation**: Follow Effective Go conventions
 
 **Frontend**:
+
 - **Language**: TypeScript (strict mode enabled)
 - **Framework**: React with Functional Components and Hooks
-- **Testing**: Jest + React Testing Library
+- **Testing**: Vitest + React Testing Library
 - **Code Organization**: Component-based architecture in `src/components/`
 
 **Database**:
+
 - Repository pattern MUST be used
 - Database access MUST be abstracted behind interfaces defined in Domain layer
 - Infrastructure layer provides concrete repository implementations
 
 **API Design**:
+
 - RESTful or GraphQL contracts defined in `/contracts/`
 - API layer serves as boundary between frontend and backend
 - Handlers/Controllers in outer layer, business logic in Domain layer
@@ -167,24 +183,28 @@ Every feature plan MUST pass these validation gates before implementation:
 ## Quality Gates
 
 **Pre-Implementation Gates** (from Constitution Check in plan.md):
+
 - Clean Architecture validation completed
 - SOLID principles verified in design
 - Interface definitions complete for all external dependencies
 - Test plan approved with coverage targets
 
 **Implementation Gates**:
+
 - Code review MUST verify:
   - No domain-to-infrastructure dependencies
   - All outbound calls use interfaces
   - Proper layer separation maintained
   - Naming follows language conventions (Go: lowercase packages, exported docs; React: PascalCase components)
-  
+
 **Testing Gates**:
+
 - Unit tests pass with ≥85% domain layer coverage
 - Integration tests verify infrastructure connections
 - No skipped or disabled tests without documented justification
 
 **Deployment Gates**:
+
 - All tests passing
 - Code coverage requirements met
 - Architecture validation confirmed
@@ -193,23 +213,27 @@ Every feature plan MUST pass these validation gates before implementation:
 ## Governance
 
 **Constitution Authority**:
+
 - This constitution supersedes all other development practices and guidelines
 - All feature specifications, plans, and implementations MUST comply with these principles
 - Constitution violations require explicit justification and approval before proceeding
 
 **Amendment Process**:
+
 - Amendments require documentation of rationale and impact analysis
 - Version number MUST increment per semantic versioning (MAJOR.MINOR.PATCH)
 - All affected templates and documentation MUST be updated for consistency
 - Migration plan required for breaking changes
 
 **Compliance Enforcement**:
+
 - All pull requests MUST include Constitution Check verification
 - Code reviewers MUST validate architectural principles compliance
 - Complexity that appears to violate principles MUST be justified in Complexity Tracking section of plan.md
 - Regular architecture reviews to prevent drift
 
 **Development Workflow**:
+
 - Feature specs undergo Constitution Check before planning
 - Implementation plans validate Clean Architecture and SOLID compliance
 - Test-first approach enforced through task ordering

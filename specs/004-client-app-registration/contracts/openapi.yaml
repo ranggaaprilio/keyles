@@ -1,0 +1,541 @@
+openapi: 3.0.3
+info:
+  title: Keyles OAuth Client Application Registration API
+  description: |
+    API for managing OAuth 2.0 / OIDC client application registrations.
+    
+    **Scope**: This API extends the existing Keyles SSO Auth Provider (003-sso-auth-provider)
+    with full client lifecycle management: registration, configuration updates, secret rotation,
+    and deletion.
+    
+    **Authentication**: All endpoints require a valid JWT Bearer token from a tenant administrator.
+    
+    **Client Types**:
+    - `confidential`: Server-side apps that securely store a client_secret
+    - `public`: SPAs and mobile/native apps that use PKCE-only (no secret)
+    
+    **Quota**: Maximum 25 clients per tenant.
+    
+  version: 1.0.0
+  contact:
+    name: Keyles Engineering
+    email: eng@keyles.com
+
+servers:
+  - url: https://sso.keyles.com
+    description: Production server
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: Client Management
+    description: OAuth client application CRUD operations (admin only)
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/admin/clients:
+    post:
+      tags:
+        - Client Management
+      summary: Register a new OAuth client application
+      description: |
+        Creates a new OAuth client application for the authenticated tenant.
+        
+        For **confidential** clients, a `client_secret` is generated and returned
+        in the response. This secret is displayed **only once** and cannot be retrieved later.
+        
+        For **public** clients, no secret is generated. The client must use PKCE-only flows.
+        
+        **Quota**: Returns 409 if the tenant has already reached the maximum of 25 clients.
+      operationId: createClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClientRequest'
+            examples:
+              confidential:
+                summary: Confidential client (server-side app)
+                value:
+                  client_name: "My Web Application"
+                  description: "Production web application backend"
+                  client_type: "confidential"
+                  redirect_uris:
+                    - "https://myapp.example.com/auth/callback"
+                    - "https://staging.myapp.example.com/auth/callback"
+              public:
+                summary: Public client (SPA / mobile app)
+                value:
+                  client_name: "My Mobile App"
+                  description: "iOS mobile application"
+                  client_type: "public"
+                  redirect_uris:
+                    - "https://myapp.example.com/auth/callback"
+                    - "http://localhost:3000/auth/callback"
+      responses:
+        '201':
+          description: Client created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateClientResponse'
+              examples:
+                confidential:
+                  summary: Confidential client response (includes secret)
+                  value:
+                    client_id: "aBcDeFgHiJkLmNoPqRsTuVwXyZ012345"
+                    client_secret: "sEcReTkEy_aBcDeFgHiJkLmNoPqRsTuVwXyZ012345678"
+                    client_name: "My Web Application"
+                    description: "Production web application backend"
+                    client_type: "confidential"
+                    redirect_uris:
+                      - "https://myapp.example.com/auth/callback"
+                      - "https://staging.myapp.example.com/auth/callback"
+                    is_active: true
+                    created_at: "2026-02-25T10:00:00Z"
+                public:
+                  summary: Public client response (no secret)
+                  value:
+                    client_id: "xYzAbCdEfGhIjKlMnOpQrStUvWx012345"
+                    client_name: "My Mobile App"
+                    description: "iOS mobile application"
+                    client_type: "public"
+                    redirect_uris:
+                      - "https://myapp.example.com/auth/callback"
+                      - "http://localhost:3000/auth/callback"
+                    is_active: true
+                    created_at: "2026-02-25T10:00:00Z"
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_uri:
+                  value:
+                    error: "redirect_uri must use HTTPS (except localhost)"
+                invalid_name:
+                  value:
+                    error: "client_name must be between 3 and 100 characters"
+        '401':
+          description: Unauthorized - invalid or missing JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - user is not a tenant administrator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Quota exceeded - maximum 25 clients per tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "tenant client quota exceeded (maximum 25 clients)"
+
+    get:
+      tags:
+        - Client Management
+      summary: List all client applications
+      description: |
+        Returns a paginated list of OAuth client applications for the authenticated tenant.
+        Supports optional search by client name.
+      operationId: listClients
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based)
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 10
+          description: Number of items per page
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Case-insensitive search by client name
+      responses:
+        '200':
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListClientsResponse'
+              example:
+                clients:
+                  - client_id: "aBcDeFgHiJkLmNoPqRsTuVwXyZ012345"
+                    client_name: "My Web Application"
+                    description: "Production web application backend"
+                    client_type: "confidential"
+                    redirect_uris:
+                      - "https://myapp.example.com/auth/callback"
+                    is_active: true
+                    created_at: "2026-02-25T10:00:00Z"
+                    updated_at: "2026-02-25T10:00:00Z"
+                  - client_id: "xYzAbCdEfGhIjKlMnOpQrStUvWx012345"
+                    client_name: "My Mobile App"
+                    description: "iOS mobile application"
+                    client_type: "public"
+                    redirect_uris:
+                      - "https://myapp.example.com/auth/callback"
+                    is_active: true
+                    created_at: "2026-02-25T10:00:00Z"
+                    updated_at: "2026-02-25T10:00:00Z"
+                total: 2
+                page: 1
+                page_size: 10
+                total_pages: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/admin/clients/{clientId}:
+    parameters:
+      - name: clientId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The client_id of the OAuth client application
+
+    get:
+      tags:
+        - Client Management
+      summary: Get client application details
+      description: |
+        Returns full details of a specific OAuth client application.
+        The `client_secret` is **never** included in this response.
+      operationId: getClient
+      responses:
+        '200':
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Client not found"
+
+    put:
+      tags:
+        - Client Management
+      summary: Update client application configuration
+      description: |
+        Updates the configuration of an existing OAuth client application.
+        Only provided fields are updated (partial update).
+        
+        **Note**: `client_type` cannot be changed after creation.
+      operationId: updateClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClientRequest'
+            example:
+              client_name: "My Updated App"
+              description: "Updated description"
+              redirect_uris:
+                - "https://myapp.example.com/auth/callback"
+                - "https://staging.myapp.example.com/auth/callback"
+                - "https://myapp.example.com/auth/callback/v2"
+      responses:
+        '200':
+          description: Client updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Client Management
+      summary: Delete client application
+      description: |
+        Permanently deactivates a client application and revokes all associated tokens.
+        
+        **WARNING**: This action is irreversible. All active access tokens and refresh tokens
+        issued through this client are immediately revoked. Applications using this client's
+        credentials will stop working instantly.
+      operationId: deleteClient
+      responses:
+        '204':
+          description: Client deleted successfully (no content)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/admin/clients/{clientId}/rotate-secret:
+    parameters:
+      - name: clientId
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The client_id of the OAuth client application
+
+    post:
+      tags:
+        - Client Management
+      summary: Rotate client secret
+      description: |
+        Generates a new `client_secret` for a confidential client and immediately
+        invalidates the previous secret.
+        
+        The new secret is returned **only once** in this response.
+        
+        **Note**: This operation is only available for `confidential` client types.
+        Public clients do not have secrets.
+      operationId: rotateClientSecret
+      responses:
+        '200':
+          description: Secret rotated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotateSecretResponse'
+              example:
+                client_id: "aBcDeFgHiJkLmNoPqRsTuVwXyZ012345"
+                client_secret: "nEwSeCrEt_aBcDeFgHiJkLmNoPqRsTuVwXyZ012345678"
+                rotated_at: "2026-02-25T14:30:00Z"
+        '400':
+          description: Invalid operation (e.g., public client)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "secret rotation is not available for public clients"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from admin login (`POST /api/v1/login`)
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - invalid or missing JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Tenant not found in token"
+
+  schemas:
+    CreateClientRequest:
+      type: object
+      required:
+        - client_name
+        - client_type
+        - redirect_uris
+      properties:
+        client_name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Human-readable application name
+          example: "My Web Application"
+        description:
+          type: string
+          maxLength: 500
+          description: Application description (optional)
+          example: "Production web application backend"
+        client_type:
+          type: string
+          enum:
+            - confidential
+            - public
+          description: |
+            Client type determines credential handling:
+            - `confidential`: Receives a client_secret (server-side apps)
+            - `public`: No secret, must use PKCE-only (SPAs, mobile apps)
+          example: "confidential"
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          description: |
+            Allowed OAuth callback URIs. Must use HTTPS in production.
+            HTTP is allowed for localhost/127.0.0.1 (development).
+          example:
+            - "https://myapp.example.com/auth/callback"
+
+    CreateClientResponse:
+      type: object
+      properties:
+        client_id:
+          type: string
+          description: Unique client identifier
+        client_secret:
+          type: string
+          nullable: true
+          description: |
+            Client secret (confidential clients only).
+            **Displayed only once** — cannot be retrieved later.
+            NULL for public clients.
+        client_name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        client_type:
+          type: string
+          enum: [confidential, public]
+        redirect_uris:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ClientResponse:
+      type: object
+      description: Client details (never includes client_secret)
+      properties:
+        client_id:
+          type: string
+        client_name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        client_type:
+          type: string
+          enum: [confidential, public]
+        redirect_uris:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateClientRequest:
+      type: object
+      description: Partial update — only provided fields are changed
+      properties:
+        client_name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Updated application name
+        description:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Updated description
+        redirect_uris:
+          type: array
+          items:
+            type: string
+            format: uri
+          minItems: 1
+          description: Updated redirect URIs (replaces all existing URIs)
+        is_active:
+          type: boolean
+          description: Enable or disable the client
+
+    ListClientsResponse:
+      type: object
+      properties:
+        clients:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientResponse'
+        total:
+          type: integer
+          description: Total number of matching clients
+        page:
+          type: integer
+          description: Current page number
+        page_size:
+          type: integer
+          description: Items per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+
+    RotateSecretResponse:
+      type: object
+      properties:
+        client_id:
+          type: string
+        client_secret:
+          type: string
+          description: New client secret — displayed only once
+        rotated_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
