@@ -29,4 +29,7 @@ type RefreshTokenRepository interface {
 
 	// UpdateLastUsed updates the last_used_at timestamp
 	UpdateLastUsed(ctx context.Context, tokenHash string) error
+
+	// RevokeByClientID revokes all refresh tokens issued to a specific client
+	RevokeByClientID(ctx context.Context, clientID string) error
 }

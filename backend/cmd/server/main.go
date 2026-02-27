@@ -67,6 +67,10 @@ func main() {
 	refreshTokenRepo := postgresRepo.NewPostgresRefreshTokenRepository(db)
 	signingKeyRepo := postgresRepo.NewPostgresSigningKeyRepositoryGorm(db)
 
+	// Initialize Redis caches
+	clientCountCache := redisRepo.NewClientCountCache(redisClient)
+	revokedClientCache := redisRepo.NewRevokedClientCache(redisClient)
+
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
 	otpService := infraServices.NewCryptoOTPService()
@@ -88,12 +92,12 @@ func main() {
 	authenticateAdminUseCase := auth.NewAuthenticateAdminUseCase(userRepo, tenantRepo, passwordService, authJWTService)
 
 	// Initialize client management use cases
-	createClientUseCase := client.NewCreateClientUseCase(clientRepo, passwordService)
+	createClientUseCase := client.NewCreateClientUseCase(clientRepo, passwordService, auditRepo, clientCountCache)
 	getClientUseCase := client.NewGetClientUseCase(clientRepo)
-	updateClientUseCase := client.NewUpdateClientUseCase(clientRepo)
-	deleteClientUseCase := client.NewDeleteClientUseCase(clientRepo)
+	updateClientUseCase := client.NewUpdateClientUseCase(clientRepo, auditRepo)
+	deleteClientUseCase := client.NewDeleteClientUseCase(clientRepo, auditRepo, refreshTokenRepo, revokedClientCache, clientCountCache)
 	listClientsUseCase := client.NewListClientsUseCase(clientRepo)
-	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService)
+	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService, auditRepo)
 
 	// Initialize role management use cases
 	assignRoleUseCase := role.NewAssignRole(roleRepo, userRepo, clientRepo)

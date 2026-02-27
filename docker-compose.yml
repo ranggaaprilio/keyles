@@ -44,7 +44,7 @@ services:
       - DB_PASSWORD=keyles_dev_password
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_API_KEY=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
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
       - GIN_MODE=release
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173

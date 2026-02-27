@@ -20,6 +20,8 @@ func TestUpdateClient_Execute(t *testing.T) {
 		ClientID:            "client-123",
 		TenantID:            "tenant-456",
 		ClientName:          "Test Application",
+		Description:         "Original desc",
+		ClientType:          "confidential",
 		ClientSecretHash:    "hashed-secret",
 		AllowedRedirectURIs: []string{"https://app.example.com/callback"},
 		IsActive:            true,
@@ -29,28 +31,27 @@ func TestUpdateClient_Execute(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		clientID     string
-		tenantID     string
-		clientName   *string
-		redirectURIs []string
-		isActive     *bool
-		setupMocks   func(*mocks.MockClientRepository)
+		request      *client.UpdateClientRequest
+		setupMocks   func(*mocks.MockClientRepository, *mocks.MockAuditRepository)
 		wantErr      bool
 		errContains  string
 		validateResp func(*testing.T, *client.UpdateClientResponse)
 	}{
 		{
-			name:         "Update client name",
-			clientID:     "client-123",
-			tenantID:     "tenant-456",
-			clientName:   strPtr("Updated Application"),
-			redirectURIs: nil,
-			isActive:     nil,
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Update client name",
+			request: &client.UpdateClientRequest{
+				ClientID:   "client-123",
+				TenantID:   "tenant-456",
+				ClientName: strPtr("Updated Application"),
+				IPAddress:  "127.0.0.1",
+				UserAgent:  "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
 				repo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Client")).
 					Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 			},
 			wantErr: false,
 			validateResp: func(t *testing.T, resp *client.UpdateClientResponse) {
@@ -58,17 +59,20 @@ func TestUpdateClient_Execute(t *testing.T) {
 			},
 		},
 		{
-			name:         "Update redirect URIs",
-			clientID:     "client-123",
-			tenantID:     "tenant-456",
-			clientName:   nil,
-			redirectURIs: []string{"https://new.example.com/callback", "http://localhost:3000/callback"},
-			isActive:     nil,
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Update redirect URIs",
+			request: &client.UpdateClientRequest{
+				ClientID:     "client-123",
+				TenantID:     "tenant-456",
+				RedirectURIs: []string{"https://new.example.com/callback", "http://localhost:3000/callback"},
+				IPAddress:    "127.0.0.1",
+				UserAgent:    "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
 				repo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Client")).
 					Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 			},
 			wantErr: false,
 			validateResp: func(t *testing.T, resp *client.UpdateClientResponse) {
@@ -77,17 +81,20 @@ func TestUpdateClient_Execute(t *testing.T) {
 			},
 		},
 		{
-			name:         "Deactivate client",
-			clientID:     "client-123",
-			tenantID:     "tenant-456",
-			clientName:   nil,
-			redirectURIs: nil,
-			isActive:     boolPtr(false),
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Deactivate client",
+			request: &client.UpdateClientRequest{
+				ClientID:  "client-123",
+				TenantID:  "tenant-456",
+				IsActive:  boolPtr(false),
+				IPAddress: "127.0.0.1",
+				UserAgent: "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
 				repo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Client")).
 					Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 			},
 			wantErr: false,
 			validateResp: func(t *testing.T, resp *client.UpdateClientResponse) {
@@ -95,13 +102,34 @@ func TestUpdateClient_Execute(t *testing.T) {
 			},
 		},
 		{
-			name:         "Client not found",
-			clientID:     "nonexistent",
-			tenantID:     "tenant-456",
-			clientName:   strPtr("New Name"),
-			redirectURIs: nil,
-			isActive:     nil,
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Update description",
+			request: &client.UpdateClientRequest{
+				ClientID:    "client-123",
+				TenantID:    "tenant-456",
+				Description: strPtr("New description"),
+				IPAddress:   "127.0.0.1",
+				UserAgent:   "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
+				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
+					Return(existingClient, nil)
+				repo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Client")).
+					Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
+			},
+			wantErr: false,
+			validateResp: func(t *testing.T, resp *client.UpdateClientResponse) {
+				assert.Equal(t, "New description", resp.Description)
+			},
+		},
+		{
+			name: "Client not found",
+			request: &client.UpdateClientRequest{
+				ClientID:   "nonexistent",
+				TenantID:   "tenant-456",
+				ClientName: strPtr("New Name"),
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
 				repo.On("GetByClientID", mock.Anything, "nonexistent", "tenant-456").
 					Return(nil, errors.New("client not found"))
 			},
@@ -109,49 +137,51 @@ func TestUpdateClient_Execute(t *testing.T) {
 			errContains: "client not found",
 		},
 		{
-			name:         "Invalid redirect URI",
-			clientID:     "client-123",
-			tenantID:     "tenant-456",
-			clientName:   nil,
-			redirectURIs: []string{"invalid-uri-without-scheme"},
-			isActive:     nil,
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Invalid redirect URI",
+			request: &client.UpdateClientRequest{
+				ClientID:     "client-123",
+				TenantID:     "tenant-456",
+				RedirectURIs: []string{"invalid-uri-without-scheme"},
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
 			},
 			wantErr:     true,
-			errContains: "must have a scheme",
+			errContains: "scheme",
 		},
 		{
-			name:         "Empty client ID",
-			clientID:     "",
-			tenantID:     "tenant-456",
-			clientName:   strPtr("New Name"),
-			redirectURIs: nil,
-			isActive:     nil,
-			setupMocks:   func(repo *mocks.MockClientRepository) {},
-			wantErr:      true,
-			errContains:  "client_id is required",
+			name: "Empty client ID",
+			request: &client.UpdateClientRequest{
+				ClientID:   "",
+				TenantID:   "tenant-456",
+				ClientName: strPtr("New Name"),
+			},
+			setupMocks:  func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {},
+			wantErr:     true,
+			errContains: "client_id is required",
 		},
 		{
-			name:         "Empty tenant ID",
-			clientID:     "client-123",
-			tenantID:     "",
-			clientName:   strPtr("New Name"),
-			redirectURIs: nil,
-			isActive:     nil,
-			setupMocks:   func(repo *mocks.MockClientRepository) {},
-			wantErr:      true,
-			errContains:  "tenant_id is required",
+			name: "Empty tenant ID",
+			request: &client.UpdateClientRequest{
+				ClientID:   "client-123",
+				TenantID:   "",
+				ClientName: strPtr("New Name"),
+			},
+			setupMocks:  func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {},
+			wantErr:     true,
+			errContains: "tenant_id is required",
 		},
 		{
-			name:         "Repository update failure",
-			clientID:     "client-123",
-			tenantID:     "tenant-456",
-			clientName:   strPtr("New Name"),
-			redirectURIs: nil,
-			isActive:     nil,
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Repository update failure",
+			request: &client.UpdateClientRequest{
+				ClientID:   "client-123",
+				TenantID:   "tenant-456",
+				ClientName: strPtr("New Name"),
+				IPAddress:  "127.0.0.1",
+				UserAgent:  "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
 				repo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Client")).
@@ -165,19 +195,12 @@ func TestUpdateClient_Execute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.MockClientRepository)
-			tt.setupMocks(repo)
+			audit := new(mocks.MockAuditRepository)
+			tt.setupMocks(repo, audit)
 
-			uc := client.NewUpdateClientUseCase(repo)
+			uc := client.NewUpdateClientUseCase(repo, audit)
 
-			req := &client.UpdateClientRequest{
-				ClientID:     tt.clientID,
-				TenantID:     tt.tenantID,
-				ClientName:   tt.clientName,
-				RedirectURIs: tt.redirectURIs,
-				IsActive:     tt.isActive,
-			}
-
-			resp, err := uc.Execute(context.Background(), req)
+			resp, err := uc.Execute(context.Background(), tt.request)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -210,6 +233,7 @@ func TestUpdateClient_PreservesUnchangedFields(t *testing.T) {
 	}
 
 	repo := new(mocks.MockClientRepository)
+	audit := new(mocks.MockAuditRepository)
 
 	var updatedClient *entities.Client
 	repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
@@ -219,20 +243,21 @@ func TestUpdateClient_PreservesUnchangedFields(t *testing.T) {
 			updatedClient = args.Get(1).(*entities.Client)
 		}).
 		Return(nil)
+	audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 
-	uc := client.NewUpdateClientUseCase(repo)
+	uc := client.NewUpdateClientUseCase(repo, audit)
 
-	// Only update the name
 	req := &client.UpdateClientRequest{
 		ClientID:   "client-123",
 		TenantID:   "tenant-456",
 		ClientName: strPtr("Updated Name"),
+		IPAddress:  "127.0.0.1",
+		UserAgent:  "test",
 	}
 
 	_, err := uc.Execute(context.Background(), req)
 	require.NoError(t, err)
 
-	// Verify unchanged fields are preserved
 	assert.Equal(t, "Updated Name", updatedClient.ClientName)
 	assert.Equal(t, "original-secret-hash", updatedClient.ClientSecretHash)
 	assert.Equal(t, existingClient.AllowedRedirectURIs, updatedClient.AllowedRedirectURIs)

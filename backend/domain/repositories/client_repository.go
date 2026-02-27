@@ -26,6 +26,16 @@ type ClientRepository interface {
 	// ListByTenant retrieves all clients for a tenant
 	ListByTenant(ctx context.Context, tenantID string) ([]*entities.Client, error)
 
+	// CountByTenant returns the number of active clients for a tenant
+	CountByTenant(ctx context.Context, tenantID string) (int, error)
+
+	// ListByTenantPaginated retrieves clients with pagination and optional search
+	// search: case-insensitive partial match on client_name (empty = no filter)
+	// page: 1-based page number
+	// pageSize: items per page (max 25)
+	// Returns: clients, total count, error
+	ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error)
+
 	// ValidateCredentials validates client credentials (client_id + client_secret)
 	// Returns the client if valid, error if invalid
 	ValidateCredentials(ctx context.Context, clientID string, clientSecret string) (*entities.Client, error)

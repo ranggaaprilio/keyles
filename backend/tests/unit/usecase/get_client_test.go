@@ -19,6 +19,8 @@ func TestGetClient_Execute(t *testing.T) {
 		ClientID:            "client-123",
 		TenantID:            "tenant-456",
 		ClientName:          "Test Application",
+		Description:         "A test application",
+		ClientType:          "confidential",
 		ClientSecretHash:    "hashed-secret",
 		AllowedRedirectURIs: []string{"https://app.example.com/callback"},
 		IsActive:            true,
@@ -47,6 +49,8 @@ func TestGetClient_Execute(t *testing.T) {
 			validateResp: func(t *testing.T, resp *client.GetClientResponse) {
 				assert.Equal(t, "client-123", resp.ClientID)
 				assert.Equal(t, "Test Application", resp.ClientName)
+				assert.Equal(t, "A test application", resp.Description)
+				assert.Equal(t, "confidential", resp.ClientType)
 				assert.Equal(t, []string{"https://app.example.com/callback"}, resp.RedirectURIs)
 				assert.True(t, resp.IsActive)
 			},

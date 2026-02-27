@@ -12,6 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import ScrollToHashElement from "./components/landing/ScrollToHashElement";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ClientManagementPage } from "./pages/ClientManagementPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -62,6 +63,38 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/clients"
+              element={
+                <ProtectedRoute>
+                  <ClientManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/clients/new"
+              element={
+                <ProtectedRoute>
+                  <ClientManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/clients/:clientId"
+              element={
+                <ProtectedRoute>
+                  <ClientManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/clients/:clientId/edit"
+              element={
+                <ProtectedRoute>
+                  <ClientManagementPage />
                 </ProtectedRoute>
               }
             />

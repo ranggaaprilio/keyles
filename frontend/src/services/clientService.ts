@@ -24,12 +24,18 @@ const api = axios.create({
 
 // Add auth token interceptor
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+export interface ListClientsParams {
+  page?: number;
+  page_size?: number;
+  search?: string | undefined;
+}
 
 /**
  * Client Service API
@@ -46,11 +52,12 @@ export const clientService = {
   },
 
   /**
-   * Get all clients for the current tenant
-   * @returns List of clients
+   * Get all clients for the current tenant (paginated)
+   * @param params - Optional pagination and search params
+   * @returns Paginated list of clients
    */
-  async list(): Promise<ListClientsResponse> {
-    const response = await api.get<ListClientsResponse>('/clients');
+  async list(params?: ListClientsParams): Promise<ListClientsResponse> {
+    const response = await api.get<ListClientsResponse>('/clients', { params });
     return response.data;
   },
 

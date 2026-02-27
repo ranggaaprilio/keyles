@@ -2,6 +2,23 @@
  * Loading Skeleton Components
  */
 
+import React from "react";
+
+/**
+ * Generic Skeleton primitive used for loading placeholders.
+ */
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={`animate-pulse rounded-md bg-gray-200 ${className ?? ""}`}
+      {...props}
+    />
+  );
+}
+
 export function FormSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
@@ -94,7 +111,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
             <div className="h-4 bg-gray-200 rounded w-1/4"></div>
           </div>
         </div>
-        
+
         {/* Table Rows */}
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="bg-white border-b border-gray-200 px-6 py-4">

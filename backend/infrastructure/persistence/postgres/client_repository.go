@@ -18,7 +18,9 @@ type ClientModel struct {
 	ClientID         string         `gorm:"column:client_id;primaryKey"`
 	TenantID         string         `gorm:"column:tenant_id;not null;index"`
 	ClientName       string         `gorm:"column:client_name;not null"`
-	ClientSecretHash string         `gorm:"column:client_secret;not null"`
+	Description      *string        `gorm:"column:description"`
+	ClientType       string         `gorm:"column:client_type;not null;default:confidential"`
+	ClientSecretHash *string        `gorm:"column:client_secret"`
 	RedirectURIs     pq.StringArray `gorm:"column:redirect_uris;type:text[]"`
 	IsActive         bool           `gorm:"column:is_active;not null;default:true"`
 	CreatedAt        time.Time      `gorm:"column:created_at;not null"`
@@ -41,17 +43,7 @@ func NewPostgresClientRepository(db *gorm.DB) repositories.ClientRepository {
 
 // Create creates a new OAuth client
 func (r *PostgresClientRepository) Create(ctx context.Context, client *entities.Client) error {
-	model := &ClientModel{
-		ClientID:         client.ClientID,
-		TenantID:         client.TenantID,
-		ClientName:       client.ClientName,
-		ClientSecretHash: client.ClientSecretHash,
-		RedirectURIs:     client.AllowedRedirectURIs,
-		IsActive:         client.IsActive,
-		CreatedAt:        client.CreatedAt,
-		UpdatedAt:        client.UpdatedAt,
-	}
-
+	model := entityToModel(client)
 	return r.db.WithContext(ctx).Create(model).Error
 }
 
@@ -87,17 +79,7 @@ func (r *PostgresClientRepository) GetByClientID(ctx context.Context, clientID s
 
 // Update updates an existing client
 func (r *PostgresClientRepository) Update(ctx context.Context, client *entities.Client) error {
-	model := &ClientModel{
-		ClientID:         client.ClientID,
-		TenantID:         client.TenantID,
-		ClientName:       client.ClientName,
-		ClientSecretHash: client.ClientSecretHash,
-		RedirectURIs:     client.AllowedRedirectURIs,
-		IsActive:         client.IsActive,
-		CreatedAt:        client.CreatedAt,
-		UpdatedAt:        client.UpdatedAt,
-	}
-
+	model := entityToModel(client)
 	return r.db.WithContext(ctx).Save(model).Error
 }
 
@@ -141,24 +123,106 @@ func (r *PostgresClientRepository) ValidateCredentials(ctx context.Context, clie
 		return nil, err
 	}
 
+	// Public clients cannot authenticate with a secret
+	if model.ClientSecretHash == nil {
+		return nil, errors.New("invalid client credentials")
+	}
+
 	// Verify the secret using bcrypt
-	if err := bcrypt.CompareHashAndPassword([]byte(model.ClientSecretHash), []byte(clientSecret)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(*model.ClientSecretHash), []byte(clientSecret)); err != nil {
 		return nil, errors.New("invalid client credentials")
 	}
 
 	return modelToEntity(&model), nil
 }
 
+// CountByTenant returns the number of active clients for a tenant
+func (r *PostgresClientRepository) CountByTenant(ctx context.Context, tenantID string) (int, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&ClientModel{}).
+		Where("tenant_id = ? AND is_active = true", tenantID).
+		Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
+}
+
+// ListByTenantPaginated retrieves clients with pagination and optional search
+func (r *PostgresClientRepository) ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error) {
+	var models []ClientModel
+	var total int64
+
+	query := r.db.WithContext(ctx).
+		Model(&ClientModel{}).
+		Where("tenant_id = ? AND is_active = true", tenantID)
+
+	if search != "" {
+		query = query.Where("client_name ILIKE ?", "%"+search+"%")
+	}
+
+	// Get total count
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	offset := (page - 1) * pageSize
+	if err := query.
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&models).Error; err != nil {
+		return nil, 0, err
+	}
+
+	clients := make([]*entities.Client, len(models))
+	for i, model := range models {
+		clients[i] = modelToEntity(&model)
+	}
+
+	return clients, int(total), nil
+}
+
+// entityToModel converts a domain entity to a GORM model
+func entityToModel(client *entities.Client) *ClientModel {
+	model := &ClientModel{
+		ClientID:     client.ClientID,
+		TenantID:     client.TenantID,
+		ClientName:   client.ClientName,
+		ClientType:   client.ClientType,
+		RedirectURIs: client.AllowedRedirectURIs,
+		IsActive:     client.IsActive,
+		CreatedAt:    client.CreatedAt,
+		UpdatedAt:    client.UpdatedAt,
+	}
+	if client.Description != "" {
+		model.Description = &client.Description
+	}
+	if client.ClientSecretHash != "" {
+		model.ClientSecretHash = &client.ClientSecretHash
+	}
+	return model
+}
+
 // Helper function to convert model to entity
 func modelToEntity(model *ClientModel) *entities.Client {
-	return &entities.Client{
+	entity := &entities.Client{
 		ClientID:            model.ClientID,
 		TenantID:            model.TenantID,
 		ClientName:          model.ClientName,
-		ClientSecretHash:    model.ClientSecretHash,
+		ClientType:          model.ClientType,
 		AllowedRedirectURIs: model.RedirectURIs,
 		IsActive:            model.IsActive,
 		CreatedAt:           model.CreatedAt,
 		UpdatedAt:           model.UpdatedAt,
 	}
+	if model.Description != nil {
+		entity.Description = *model.Description
+	}
+	if model.ClientSecretHash != nil {
+		entity.ClientSecretHash = *model.ClientSecretHash
+	}
+	return entity
 }

@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/ranggaaprilio/keyles/domain/repositories"
@@ -11,22 +12,30 @@ import (
 // ListClientsRequest contains the data for listing OAuth clients
 type ListClientsRequest struct {
 	TenantID string
+	Search   string
+	Page     int
+	PageSize int
 }
 
 // ClientListItem represents a single client in the list
 type ClientListItem struct {
 	ClientID     string
 	ClientName   string
+	Description  string
+	ClientType   string
 	RedirectURIs []string
 	IsActive     bool
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
 
-// ListClientsResponse contains the list of clients
+// ListClientsResponse contains the paginated list of clients
 type ListClientsResponse struct {
-	Clients []ClientListItem
-	Total   int
+	Clients    []ClientListItem
+	Total      int
+	Page       int
+	PageSize   int
+	TotalPages int
 }
 
 // ListClientsUseCase handles listing OAuth clients for a tenant
@@ -41,15 +50,28 @@ func NewListClientsUseCase(clientRepo repositories.ClientRepository) *ListClient
 	}
 }
 
-// Execute lists all OAuth clients for a tenant
+// Execute lists all OAuth clients for a tenant with pagination and search
 func (uc *ListClientsUseCase) Execute(ctx context.Context, req *ListClientsRequest) (*ListClientsResponse, error) {
 	// Validate request
 	if req.TenantID == "" {
 		return nil, errors.New("tenant_id is required")
 	}
 
-	// Get clients from repository
-	clients, err := uc.clientRepo.ListByTenant(ctx, req.TenantID)
+	// Apply defaults
+	page := req.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 25 {
+		pageSize = 25
+	}
+
+	// Get clients from repository with pagination
+	clients, total, err := uc.clientRepo.ListByTenantPaginated(ctx, req.TenantID, req.Search, page, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +82,8 @@ func (uc *ListClientsUseCase) Execute(ctx context.Context, req *ListClientsReque
 		items[i] = ClientListItem{
 			ClientID:     c.ClientID,
 			ClientName:   c.ClientName,
+			Description:  c.Description,
+			ClientType:   c.ClientType,
 			RedirectURIs: c.AllowedRedirectURIs,
 			IsActive:     c.IsActive,
 			CreatedAt:    c.CreatedAt,
@@ -67,8 +91,13 @@ func (uc *ListClientsUseCase) Execute(ctx context.Context, req *ListClientsReque
 		}
 	}
 
+	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
+
 	return &ListClientsResponse{
-		Clients: items,
-		Total:   len(items),
+		Clients:    items,
+		Total:      total,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
 	}, nil
 }
