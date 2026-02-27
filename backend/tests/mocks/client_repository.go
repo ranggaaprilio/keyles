@@ -57,6 +57,21 @@ func (m *MockClientRepository) ListByTenant(ctx context.Context, tenantID string
 	return args.Get(0).([]*entities.Client), args.Error(1)
 }
 
+// CountByTenant returns the number of active clients for a tenant
+func (m *MockClientRepository) CountByTenant(ctx context.Context, tenantID string) (int, error) {
+	args := m.Called(ctx, tenantID)
+	return args.Int(0), args.Error(1)
+}
+
+// ListByTenantPaginated retrieves clients with pagination and optional search
+func (m *MockClientRepository) ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error) {
+	args := m.Called(ctx, tenantID, search, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*entities.Client), args.Int(1), args.Error(2)
+}
+
 // ValidateCredentials validates client credentials
 func (m *MockClientRepository) ValidateCredentials(ctx context.Context, clientID string, clientSecret string) (*entities.Client, error) {
 	args := m.Called(ctx, clientID, clientSecret)

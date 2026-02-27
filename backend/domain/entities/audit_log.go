@@ -24,6 +24,12 @@ const (
 	EventLogout               EventType = "logout"
 	EventTenantActivated      EventType = "tenant_activated"
 	EventTenantSuspended      EventType = "tenant_suspended"
+
+	// Client management events
+	EventClientCreated        EventType = "client_created"
+	EventClientUpdated        EventType = "client_updated"
+	EventClientDeleted        EventType = "client_deleted"
+	EventClientSecretRotated  EventType = "client_secret_rotated"
 )
 
 // AuditLog represents security and activity events for compliance and monitoring

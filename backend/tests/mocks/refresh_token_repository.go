@@ -56,3 +56,8 @@ func (m *MockRefreshTokenRepository) UpdateLastUsed(ctx context.Context, tokenHa
 	args := m.Called(ctx, tokenHash)
 	return args.Error(0)
 }
+
+func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
+	args := m.Called(ctx, clientID)
+	return args.Error(0)
+}

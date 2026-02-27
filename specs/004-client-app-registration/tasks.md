@@ -25,7 +25,7 @@
 
 **Purpose**: Schema changes that all subsequent phases depend on
 
-- [ ] T001 Create migration files `backend/migrations/000008_add_client_type_and_description.up.sql` and `backend/migrations/000008_add_client_type_and_description.down.sql` per data-model.md (includes pg_trgm extension, client_type column, description column, relax client_secret NOT NULL, CHECK constraints, indexes)
+- [X] T001 Create migration files `backend/migrations/000008_add_client_type_and_description.up.sql` and `backend/migrations/000008_add_client_type_and_description.down.sql` per data-model.md (includes pg_trgm extension, client_type column, description column, relax client_secret NOT NULL, CHECK constraints, indexes)
 
 ---
 
@@ -37,27 +37,27 @@
 
 ### Backend Domain & Repository Interfaces
 
-- [ ] T002 Update domain entity in `backend/domain/entities/client.go`: add `ClientType` and `Description` fields, add constants `ClientTypeConfidential`, `ClientTypePublic`, `MaxClientsPerTenant = 25`, update `Validate()` to enforce client type enum, description max 500 chars, and conditional secret requirement, add `ValidateRedirectURIStrict(uri string, allowInsecureLocalhost bool) error` for HTTPS enforcement with localhost exception per research.md §8
-- [ ] T003 [P] Update `ClientRepository` interface in `backend/domain/repositories/client_repository.go`: add `CountByTenant(ctx context.Context, tenantID string) (int, error)` and `ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error)` methods
-- [ ] T004 [P] Update `RefreshTokenRepository` interface in `backend/domain/repositories/refresh_token_repository.go`: add `RevokeByClientID(ctx context.Context, clientID string) error` method
+- [X] T002 Update domain entity in `backend/domain/entities/client.go`: add `ClientType` and `Description` fields, add constants `ClientTypeConfidential`, `ClientTypePublic`, `MaxClientsPerTenant = 25`, update `Validate()` to enforce client type enum, description max 500 chars, and conditional secret requirement, add `ValidateRedirectURIStrict(uri string, allowInsecureLocalhost bool) error` for HTTPS enforcement with localhost exception per research.md §8
+- [X] T003 [P] Update `ClientRepository` interface in `backend/domain/repositories/client_repository.go`: add `CountByTenant(ctx context.Context, tenantID string) (int, error)` and `ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error)` methods
+- [X] T004 [P] Update `RefreshTokenRepository` interface in `backend/domain/repositories/refresh_token_repository.go`: add `RevokeByClientID(ctx context.Context, clientID string) error` method
 
 ### Backend Infrastructure Implementations
 
-- [ ] T005 Update GORM model and implement new repository methods in `backend/infrastructure/persistence/postgres/client_repository.go`: update `PostgresClient` struct (add `Description *string`, `ClientType string`, make `ClientSecret *string` nullable), update `toDomain()`/`toModel()` conversions, implement `CountByTenant()` with row-level locking, implement `ListByTenantPaginated()` with ILIKE search and offset pagination
-- [ ] T006 [P] Implement `RevokeByClientID()` in `backend/infrastructure/persistence/postgres/refresh_token_repository.go`: UPDATE refresh_tokens SET is_revoked=true WHERE client_id=?
-- [ ] T007 [P] Create Redis client count cache in `backend/infrastructure/persistence/redis/client_count_cache.go`: implement `ClientCountCache` with `Get(tenantID)`, `Invalidate(tenantID)` methods using key pattern `client_count:{tenant_id}` with 60s TTL
-- [ ] T008 [P] Add revoked client blacklist check to token validation middleware: on client deletion, SET `revoked_client:{client_id}` with 900s TTL in Redis; check EXISTS during access token validation in auth middleware
+- [X] T005 Update GORM model and implement new repository methods in `backend/infrastructure/persistence/postgres/client_repository.go`: update `PostgresClient` struct (add `Description *string`, `ClientType string`, make `ClientSecret *string` nullable), update `toDomain()`/`toModel()` conversions, implement `CountByTenant()` with row-level locking, implement `ListByTenantPaginated()` with ILIKE search and offset pagination
+- [X] T006 [P] Implement `RevokeByClientID()` in `backend/infrastructure/persistence/postgres/refresh_token_repository.go`: UPDATE refresh_tokens SET is_revoked=true WHERE client_id=?
+- [X] T007 [P] Create Redis client count cache in `backend/infrastructure/persistence/redis/client_count_cache.go`: implement `ClientCountCache` with `Get(tenantID)`, `Invalidate(tenantID)` methods using key pattern `client_count:{tenant_id}` with 60s TTL
+- [X] T008 [P] Add revoked client blacklist check to token validation middleware: on client deletion, SET `revoked_client:{client_id}` with 900s TTL in Redis; check EXISTS during access token validation in auth middleware
 
 ### Backend Wiring
 
-- [ ] T009 Update dependency injection in `backend/cmd/server/main.go`: wire `AuditLogRepository` and Redis client count cache into client use case constructors, wire `RefreshTokenRepository` into `DeleteClientUseCase`
-- [ ] T010 [P] Generate/update GoMock mocks in `backend/tests/mocks/` for updated `ClientRepository`, `RefreshTokenRepository`, and `ClientCountCache` interfaces
+- [X] T009 Update dependency injection in `backend/cmd/server/main.go`: wire `AuditLogRepository` and Redis client count cache into client use case constructors, wire `RefreshTokenRepository` into `DeleteClientUseCase`
+- [X] T010 [P] Generate/update GoMock mocks in `backend/tests/mocks/` for updated `ClientRepository`, `RefreshTokenRepository`, and `ClientCountCache` interfaces
 
 ### Frontend Base
 
-- [ ] T011 [P] Update frontend types in `frontend/src/types/client.ts`: add `ClientType` enum (`confidential` | `public`), `Description` field to client type, add `PaginatedResponse<T>` type with `total`, `page`, `page_size`, `total_pages`, add `CreateClientRequest`/`UpdateClientRequest` types with `client_type` field
-- [ ] T012 [P] Update frontend API service in `frontend/src/services/clientService.ts`: add `client_type` and `description` to create/update payloads, add `page`, `page_size`, `search` query params to list endpoint, update response types for pagination
-- [ ] T013 Create TanStack Query hooks in `frontend/src/hooks/useClients.ts`: implement `useClients(page, search)`, `useClient(id)`, `useCreateClient()`, `useUpdateClient()`, `useDeleteClient()`, `useRotateSecret()` wrapping clientService methods with proper cache invalidation
+- [X] T011 [P] Update frontend types in `frontend/src/types/client.ts`: add `ClientType` enum (`confidential` | `public`), `Description` field to client type, add `PaginatedResponse<T>` type with `total`, `page`, `page_size`, `total_pages`, add `CreateClientRequest`/`UpdateClientRequest` types with `client_type` field
+- [X] T012 [P] Update frontend API service in `frontend/src/services/clientService.ts`: add `client_type` and `description` to create/update payloads, add `page`, `page_size`, `search` query params to list endpoint, update response types for pagination
+- [X] T013 Create TanStack Query hooks in `frontend/src/hooks/useClients.ts`: implement `useClients(page, search)`, `useClient(id)`, `useCreateClient()`, `useUpdateClient()`, `useDeleteClient()`, `useRotateSecret()` wrapping clientService methods with proper cache invalidation
 
 **Clean Architecture Checkpoint**:
 
@@ -79,15 +79,15 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T014 [P] [US1] Unit tests for `CreateClientUseCase` in `backend/tests/unit/client/create_client_test.go`: test confidential client creation (secret generated), public client creation (no secret), quota enforcement (reject at 25), redirect URI validation, audit log creation, invalid client type rejection
-- [ ] T015 [P] [US1] Integration test for POST `/api/v1/admin/clients` in `backend/tests/integration/client_handler_test.go`: test 201 response with client_id/client_secret for confidential, 201 without secret for public, 400 for invalid redirect URIs, 409 for quota exceeded, 401 for unauthenticated, 403 for non-admin
+- [X] T014 [P] [US1] Unit tests for `CreateClientUseCase` in `backend/tests/unit/client/create_client_test.go`: test confidential client creation (secret generated), public client creation (no secret), quota enforcement (reject at 25), redirect URI validation, audit log creation, invalid client type rejection
+- [X] T015 [P] [US1] Integration test for POST `/api/v1/admin/clients` in `backend/tests/integration/client_handler_test.go`: test 201 response with client_id/client_secret for confidential, 201 without secret for public, 400 for invalid redirect URIs, 409 for quota exceeded, 401 for unauthenticated, 403 for non-admin
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Modify `CreateClientUseCase` in `backend/usecase/client/create_client.go`: add `AuditLogRepository` and `ClientCountCache` dependencies, accept `ClientType` and `Description` in input, check quota via `CountByTenant()` before creation, skip secret generation for public clients, create audit log entry with type `client_created`, invalidate count cache on success
-- [ ] T017 [US1] Modify `CreateClient` handler method in `backend/interfaces/http/handlers/client_handler.go`: add `client_type` (required, enum) and `description` (optional) to `CreateClientRequest` struct, return `client_secret: null` for public clients in response, return 409 with quota error message, add `client_type` and `description` to response struct
-- [ ] T018 [P] [US1] Create `CreateClientForm` component in `frontend/src/components/clients/CreateClientForm.tsx`: react-hook-form + zod validation, radio buttons for client type (confidential/public) with helper text, name input (3-100 chars), description textarea (max 500), dynamic redirect URI list editor with add/remove and inline HTTPS validation, submit button with loading state
-- [ ] T019 [P] [US1] Create `SecretDisplay` component in `frontend/src/components/clients/SecretDisplay.tsx`: modal overlay showing client_id and client_secret (confidential only), copy-to-clipboard buttons with visual feedback, prominent warning that secret cannot be retrieved again, "I have saved the secret" checkbox that enables dismiss button
+- [X] T016 [US1] Modify `CreateClientUseCase` in `backend/usecase/client/create_client.go`: add `AuditLogRepository` and `ClientCountCache` dependencies, accept `ClientType` and `Description` in input, check quota via `CountByTenant()` before creation, skip secret generation for public clients, create audit log entry with type `client_created`, invalidate count cache on success
+- [X] T017 [US1] Modify `CreateClient` handler method in `backend/interfaces/http/handlers/client_handler.go`: add `client_type` (required, enum) and `description` (optional) to `CreateClientRequest` struct, return `client_secret: null` for public clients in response, return 409 with quota error message, add `client_type` and `description` to response struct
+- [X] T018 [P] [US1] Create `CreateClientForm` component in `frontend/src/components/clients/CreateClientForm.tsx`: react-hook-form + zod validation, radio buttons for client type (confidential/public) with helper text, name input (3-100 chars), description textarea (max 500), dynamic redirect URI list editor with add/remove and inline HTTPS validation, submit button with loading state
+- [X] T019 [P] [US1] Create `SecretDisplay` component in `frontend/src/components/clients/SecretDisplay.tsx`: modal overlay showing client_id and client_secret (confidential only), copy-to-clipboard buttons with visual feedback, prominent warning that secret cannot be retrieved again, "I have saved the secret" checkbox that enables dismiss button
 
 **Checkpoint**: Confidential and public client registration works end-to-end. Credentials are generated, displayed once, and stored securely. Quota is enforced.
 
@@ -101,18 +101,18 @@
 
 ### Tests for User Story 2 (MANDATORY per constitution) ⚠️
 
-- [ ] T020 [P] [US2] Unit tests for `ListClientsUseCase` and `GetClientUseCase` in `backend/tests/unit/client/list_clients_test.go` and `backend/tests/unit/client/get_client_test.go`: test paginated listing with total count, search filter by name, page/page_size defaults, get client returns client_type and description, get client never returns secret hash
-- [ ] T021 [P] [US2] Integration tests for GET `/api/v1/admin/clients` and GET `/api/v1/admin/clients/{id}` in `backend/tests/integration/client_handler_test.go`: test 200 with pagination metadata, search query filtering, 404 for nonexistent client, tenant isolation (cannot see other tenant's clients)
+- [X] T020 [P] [US2] Unit tests for `ListClientsUseCase` and `GetClientUseCase` in `backend/tests/unit/client/list_clients_test.go` and `backend/tests/unit/client/get_client_test.go`: test paginated listing with total count, search filter by name, page/page_size defaults, get client returns client_type and description, get client never returns secret hash
+- [X] T021 [P] [US2] Integration tests for GET `/api/v1/admin/clients` and GET `/api/v1/admin/clients/{id}` in `backend/tests/integration/client_handler_test.go`: test 200 with pagination metadata, search query filtering, 404 for nonexistent client, tenant isolation (cannot see other tenant's clients)
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Modify `ListClientsUseCase` in `backend/usecase/client/list_clients.go`: accept `Search string`, `Page int`, `PageSize int` in input, validate page/pageSize defaults (page=1, pageSize=10, max=25), call `ListByTenantPaginated()`, return clients with pagination metadata (total, page, pageSize, totalPages)
-- [ ] T023 [US2] Modify `GetClientUseCase` in `backend/usecase/client/get_client.go`: include `ClientType` and `Description` in response, ensure secret hash is never returned
-- [ ] T024 [US2] Modify `ListClients` and `GetClient` handler methods in `backend/interfaces/http/handlers/client_handler.go`: parse `page`, `page_size`, `search` query params for list endpoint, return `ListClientsResponse` with pagination metadata, add `client_type` and `description` to `ClientResponse` struct
-- [ ] T025 [P] [US2] Create `ClientCard` component in `frontend/src/components/clients/ClientCard.tsx`: display client_name, client_type badge (confidential/public), client_id (truncated with copy), is_active status indicator, created_at date, click handler for navigation to detail view
-- [ ] T026 [US2] Create `ClientList` component in `frontend/src/components/clients/ClientList.tsx`: search input with debounced filtering, renders `ClientCard` items, pagination controls (prev/next/page numbers) using `useClients` hook, empty state when no clients, loading skeleton state
-- [ ] T027 [US2] Create `ClientDetail` component in `frontend/src/components/clients/ClientDetail.tsx`: display full client info (client_id, name, description, type, redirect URIs list, timestamps, status), action buttons for edit/rotate/delete (wired in later phases), back navigation to list
-- [ ] T028 [US2] Create `ClientManagementPage` in `frontend/src/pages/ClientManagementPage.tsx` and add `/admin/clients` and `/admin/clients/:id` routes to `frontend/src/App.tsx` with `ProtectedRoute` wrapper: page renders `ClientList` or `ClientDetail` based on route, "Register New Client" button opens `CreateClientForm`
+- [X] T022 [US2] Modify `ListClientsUseCase` in `backend/usecase/client/list_clients.go`: accept `Search string`, `Page int`, `PageSize int` in input, validate page/pageSize defaults (page=1, pageSize=10, max=25), call `ListByTenantPaginated()`, return clients with pagination metadata (total, page, pageSize, totalPages)
+- [X] T023 [US2] Modify `GetClientUseCase` in `backend/usecase/client/get_client.go`: include `ClientType` and `Description` in response, ensure secret hash is never returned
+- [X] T024 [US2] Modify `ListClients` and `GetClient` handler methods in `backend/interfaces/http/handlers/client_handler.go`: parse `page`, `page_size`, `search` query params for list endpoint, return `ListClientsResponse` with pagination metadata, add `client_type` and `description` to `ClientResponse` struct
+- [X] T025 [P] [US2] Create `ClientCard` component in `frontend/src/components/clients/ClientCard.tsx`: display client_name, client_type badge (confidential/public), client_id (truncated with copy), is_active status indicator, created_at date, click handler for navigation to detail view
+- [X] T026 [US2] Create `ClientList` component in `frontend/src/components/clients/ClientList.tsx`: search input with debounced filtering, renders `ClientCard` items, pagination controls (prev/next/page numbers) using `useClients` hook, empty state when no clients, loading skeleton state
+- [X] T027 [US2] Create `ClientDetail` component in `frontend/src/components/clients/ClientDetail.tsx`: display full client info (client_id, name, description, type, redirect URIs list, timestamps, status), action buttons for edit/rotate/delete (wired in later phases), back navigation to list
+- [X] T028 [US2] Create `ClientManagementPage` in `frontend/src/pages/ClientManagementPage.tsx` and add `/admin/clients` and `/admin/clients/:id` routes to `frontend/src/App.tsx` with `ProtectedRoute` wrapper: page renders `ClientList` or `ClientDetail` based on route, "Register New Client" button opens `CreateClientForm`
 
 **Checkpoint**: Full client dashboard with paginated list, search, and detail view working end-to-end. Combined with US1, this delivers a complete MVP.
 
@@ -126,14 +126,14 @@
 
 ### Tests for User Story 3 (MANDATORY per constitution) ⚠️
 
-- [ ] T029 [P] [US3] Unit test for `UpdateClientUseCase` in `backend/tests/unit/client/update_client_test.go`: test partial update (only description), partial update (only redirect URIs), full update, redirect URI validation on update, audit log creation with changed fields, cannot change client_type after creation
-- [ ] T030 [P] [US3] Integration test for PUT `/api/v1/admin/clients/{id}` in `backend/tests/integration/client_handler_test.go`: test 200 with updated fields, 400 for invalid redirect URIs, 404 for nonexistent client, tenant isolation
+- [X] T029 [P] [US3] Unit test for `UpdateClientUseCase` in `backend/tests/unit/client/update_client_test.go`: test partial update (only description), partial update (only redirect URIs), full update, redirect URI validation on update, audit log creation with changed fields, cannot change client_type after creation
+- [X] T030 [P] [US3] Integration test for PUT `/api/v1/admin/clients/{id}` in `backend/tests/integration/client_handler_test.go`: test 200 with updated fields, 400 for invalid redirect URIs, 404 for nonexistent client, tenant isolation
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Modify `UpdateClientUseCase` in `backend/usecase/client/update_client.go`: add `AuditLogRepository` dependency, accept `Description` in input, create audit log entry with type `client_updated` and changed fields in details, reject attempts to change `client_type`
-- [ ] T032 [US3] Modify `UpdateClient` handler method in `backend/interfaces/http/handlers/client_handler.go`: add `description` field to `UpdateClientRequest` struct, ensure `client_type` is not accepted in update payload
-- [ ] T033 [US3] Create `EditClientForm` component in `frontend/src/components/clients/EditClientForm.tsx`: pre-populated form with current values, editable fields (name, description, redirect URIs), client_type displayed as read-only, same redirect URI validation as create form, save/cancel buttons with `useUpdateClient` mutation
+- [X] T031 [US3] Modify `UpdateClientUseCase` in `backend/usecase/client/update_client.go`: add `AuditLogRepository` dependency, accept `Description` in input, create audit log entry with type `client_updated` and changed fields in details, reject attempts to change `client_type`
+- [X] T032 [US3] Modify `UpdateClient` handler method in `backend/interfaces/http/handlers/client_handler.go`: add `description` field to `UpdateClientRequest` struct, ensure `client_type` is not accepted in update payload
+- [X] T033 [US3] Create `EditClientForm` component in `frontend/src/components/clients/EditClientForm.tsx`: pre-populated form with current values, editable fields (name, description, redirect URIs), client_type displayed as read-only, same redirect URI validation as create form, save/cancel buttons with `useUpdateClient` mutation
 
 **Checkpoint**: Client configuration updates work end-to-end with audit trail. Previous stories unaffected.
 
@@ -147,14 +147,14 @@
 
 ### Tests for User Story 4 (MANDATORY per constitution) ⚠️
 
-- [ ] T034 [P] [US4] Unit test for `RotateSecretUseCase` in `backend/tests/unit/client/rotate_secret_test.go`: test successful rotation for confidential client, reject rotation for public client with descriptive error, audit log creation with type `client_secret_rotated`, verify new secret hash differs from old
-- [ ] T035 [P] [US4] Integration test for POST `/api/v1/admin/clients/{id}/rotate-secret` in `backend/tests/integration/client_handler_test.go`: test 200 with new secret for confidential, 400 for public client, 404 for nonexistent client
+- [X] T034 [P] [US4] Unit test for `RotateSecretUseCase` in `backend/tests/unit/client/rotate_secret_test.go`: test successful rotation for confidential client, reject rotation for public client with descriptive error, audit log creation with type `client_secret_rotated`, verify new secret hash differs from old
+- [X] T035 [P] [US4] Integration test for POST `/api/v1/admin/clients/{id}/rotate-secret` in `backend/tests/integration/client_handler_test.go`: test 200 with new secret for confidential, 400 for public client, 404 for nonexistent client
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Modify `RotateSecretUseCase` in `backend/usecase/client/rotate_secret.go`: add `AuditLogRepository` dependency, guard against public client type (return error "secret rotation is not available for public clients"), create audit log entry with type `client_secret_rotated`
-- [ ] T037 [US4] Modify `RotateSecret` handler method in `backend/interfaces/http/handlers/client_handler.go`: return 400 with descriptive error for public clients, include `rotated_at` timestamp in response per OpenAPI contract
-- [ ] T038 [US4] Create `RotateSecretDialog` component in `frontend/src/components/clients/RotateSecretDialog.tsx`: confirmation dialog warning that old secret stops working immediately, confirm/cancel buttons, on confirm call `useRotateSecret` mutation, on success show `SecretDisplay` with new secret
+- [X] T036 [US4] Modify `RotateSecretUseCase` in `backend/usecase/client/rotate_secret.go`: add `AuditLogRepository` dependency, guard against public client type (return error "secret rotation is not available for public clients"), create audit log entry with type `client_secret_rotated`
+- [X] T037 [US4] Modify `RotateSecret` handler method in `backend/interfaces/http/handlers/client_handler.go`: return 400 with descriptive error for public clients, include `rotated_at` timestamp in response per OpenAPI contract
+- [X] T038 [US4] Create `RotateSecretDialog` component in `frontend/src/components/clients/RotateSecretDialog.tsx`: confirmation dialog warning that old secret stops working immediately, confirm/cancel buttons, on confirm call `useRotateSecret` mutation, on success show `SecretDisplay` with new secret
 
 **Checkpoint**: Secret rotation works for confidential clients, properly rejected for public clients. Audit trail captures rotation events.
 
@@ -166,8 +166,8 @@
 
 **Independent Test**: View a registered client's detail page → see documentation links and code examples with the client's actual client_id inserted into sample requests.
 
-- [ ] T039 [US6] Create `IntegrationDocs` component in `frontend/src/components/clients/IntegrationDocs.tsx`: expandable section in client detail, tabbed code examples (cURL, JavaScript, Go) for authorization code flow, PKCE flow, token exchange, and token refresh, dynamically insert the client's `client_id` into all examples, show different examples for confidential vs public client types, link to redirect URI requirements and HTTPS rules
-- [ ] T040 [P] [US6] Unit test for `IntegrationDocs` component in `frontend/tests/unit/components/clients/IntegrationDocs.test.tsx`: verify client_id is interpolated into code examples, verify confidential examples show client_secret placeholder, verify public examples show PKCE parameters, verify all OAuth flow tabs render
+- [X] T039 [US6] Create `IntegrationDocs` component in `frontend/src/components/clients/IntegrationDocs.tsx`: expandable section in client detail, tabbed code examples (cURL, JavaScript, Go) for authorization code flow, PKCE flow, token exchange, and token refresh, dynamically insert the client's `client_id` into all examples, show different examples for confidential vs public client types, link to redirect URI requirements and HTTPS rules
+- [X] T040 [P] [US6] Unit test for `IntegrationDocs` component in `frontend/tests/unit/components/clients/IntegrationDocs.test.tsx`: verify client_id is interpolated into code examples, verify confidential examples show client_secret placeholder, verify public examples show PKCE parameters, verify all OAuth flow tabs render
 
 **Checkpoint**: Developers have personalized integration documentation accessible from the client detail view.
 
@@ -181,14 +181,14 @@
 
 ### Tests for User Story 5 (MANDATORY per constitution) ⚠️
 
-- [ ] T041 [P] [US5] Unit test for `DeleteClientUseCase` in `backend/tests/unit/client/delete_client_test.go`: test soft-delete sets is_active=false, refresh tokens revoked via `RevokeByClientID()`, Redis blacklist entry created with 900s TTL, audit log entry with type `client_deleted`, count cache invalidated
-- [ ] T042 [P] [US5] Integration test for DELETE `/api/v1/admin/clients/{id}` in `backend/tests/integration/client_handler_test.go`: test 204 no content response, client no longer appears in list, 404 for already-deleted client, tenant isolation
+- [X] T041 [P] [US5] Unit test for `DeleteClientUseCase` in `backend/tests/unit/client/delete_client_test.go`: test soft-delete sets is_active=false, refresh tokens revoked via `RevokeByClientID()`, Redis blacklist entry created with 900s TTL, audit log entry with type `client_deleted`, count cache invalidated
+- [X] T042 [P] [US5] Integration test for DELETE `/api/v1/admin/clients/{id}` in `backend/tests/integration/client_handler_test.go`: test 204 no content response, client no longer appears in list, 404 for already-deleted client, tenant isolation
 
 ### Implementation for User Story 5
 
-- [ ] T043 [US5] Modify `DeleteClientUseCase` in `backend/usecase/client/delete_client.go`: add `AuditLogRepository`, `RefreshTokenRepository`, and Redis client dependencies, call `refreshTokenRepo.RevokeByClientID()` after soft-delete, set `revoked_client:{client_id}` in Redis with 900s TTL, create audit log entry with type `client_deleted`, invalidate count cache
-- [ ] T044 [US5] Modify `DeleteClient` handler method in `backend/interfaces/http/handlers/client_handler.go`: return 204 No Content on success per OpenAPI contract (currently may return 200)
-- [ ] T045 [US5] Create `DeleteClientDialog` component in `frontend/src/components/clients/DeleteClientDialog.tsx`: confirmation dialog with prominent warning that action is irreversible, explains all tokens will be revoked and applications will stop working, confirm/cancel buttons, on confirm call `useDeleteClient` mutation, redirect to client list on success
+- [X] T043 [US5] Modify `DeleteClientUseCase` in `backend/usecase/client/delete_client.go`: add `AuditLogRepository`, `RefreshTokenRepository`, and Redis client dependencies, call `refreshTokenRepo.RevokeByClientID()` after soft-delete, set `revoked_client:{client_id}` in Redis with 900s TTL, create audit log entry with type `client_deleted`, invalidate count cache
+- [X] T044 [US5] Modify `DeleteClient` handler method in `backend/interfaces/http/handlers/client_handler.go`: return 204 No Content on success per OpenAPI contract (currently may return 200)
+- [X] T045 [US5] Create `DeleteClientDialog` component in `frontend/src/components/clients/DeleteClientDialog.tsx`: confirmation dialog with prominent warning that action is irreversible, explains all tokens will be revoked and applications will stop working, confirm/cancel buttons, on confirm call `useDeleteClient` mutation, redirect to client list on success
 
 **Checkpoint**: Client deletion with full token revocation cascade works end-to-end. All 6 user stories complete.
 
@@ -198,12 +198,12 @@
 
 **Purpose**: Quality assurance, architecture compliance, and documentation
 
-- [ ] T046 [P] Verify ≥85% unit test coverage for domain layer (`backend/domain/entities/client.go`) and use case layer (`backend/usecase/client/*.go`) — run `go test -coverprofile=coverage.out ./...` and check coverage report
-- [ ] T047 [P] Architecture compliance review: verify no `domain/` imports from `infrastructure/` or `interfaces/`, all repository usage via interfaces, all use cases depend only on domain abstractions
-- [ ] T048 Run `specs/004-client-app-registration/quickstart.md` validation: follow the quickstart guide end-to-end to register a confidential client, a public client, list/search clients, update configuration, rotate secret, delete with token verification
-- [ ] T049 [P] Code cleanup: add GoDoc comments on all exported types and functions, verify error messages match OpenAPI contract examples, ensure consistent JSON field naming (snake_case) across all handler responses
-- [ ] T050 [P] [US1] Unit tests for `CreateClientForm` and `SecretDisplay` in `frontend/tests/unit/components/clients/CreateClientForm.test.tsx` and `frontend/tests/unit/components/clients/SecretDisplay.test.tsx`: test form validation (name length, URI format), client type radio selection, secret copy-to-clipboard, "I have saved" checkbox flow
-- [ ] T051 [P] [US2] Unit tests for `ClientList` and `ClientCard` in `frontend/tests/unit/components/clients/ClientList.test.tsx` and `frontend/tests/unit/components/clients/ClientCard.test.tsx`: test pagination controls, search input debounce, empty state, card rendering with type badge
+- [X] T046 [P] Verify ≥85% unit test coverage for domain layer (`backend/domain/entities/client.go`) and use case layer (`backend/usecase/client/*.go`) — run `go test -coverprofile=coverage.out ./...` and check coverage report
+- [X] T047 [P] Architecture compliance review: verify no `domain/` imports from `infrastructure/` or `interfaces/`, all repository usage via interfaces, all use cases depend only on domain abstractions
+- [X] T048 Run `specs/004-client-app-registration/quickstart.md` validation: follow the quickstart guide end-to-end to register a confidential client, a public client, list/search clients, update configuration, rotate secret, delete with token verification
+- [X] T049 [P] Code cleanup: add GoDoc comments on all exported types and functions, verify error messages match OpenAPI contract examples, ensure consistent JSON field naming (snake_case) across all handler responses
+- [X] T050 [P] [US1] Unit tests for `CreateClientForm` and `SecretDisplay` in `frontend/tests/unit/components/clients/CreateClientForm.test.tsx` and `frontend/tests/unit/components/clients/SecretDisplay.test.tsx`: test form validation (name length, URI format), client type radio selection, secret copy-to-clipboard, "I have saved" checkbox flow
+- [X] T051 [P] [US2] Unit tests for `ClientList` and `ClientCard` in `frontend/tests/unit/components/clients/ClientList.test.tsx` and `frontend/tests/unit/components/clients/ClientCard.test.tsx`: test pagination controls, search input debounce, empty state, card rendering with type badge
 
 ---
 

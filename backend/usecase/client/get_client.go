@@ -18,6 +18,8 @@ type GetClientRequest struct {
 type GetClientResponse struct {
 	ClientID     string
 	ClientName   string
+	Description  string
+	ClientType   string
 	RedirectURIs []string
 	IsActive     bool
 	CreatedAt    time.Time
@@ -55,6 +57,8 @@ func (uc *GetClientUseCase) Execute(ctx context.Context, req *GetClientRequest) 
 	return &GetClientResponse{
 		ClientID:     client.ClientID,
 		ClientName:   client.ClientName,
+		Description:  client.Description,
+		ClientType:   client.ClientType,
 		RedirectURIs: client.AllowedRedirectURIs,
 		IsActive:     client.IsActive,
 		CreatedAt:    client.CreatedAt,

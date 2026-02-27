@@ -94,6 +94,11 @@ func (m *MockRefreshTokenRepository) UpdateLastUsed(ctx context.Context, tokenHa
 	return args.Error(0)
 }
 
+func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
+	args := m.Called(ctx, clientID)
+	return args.Error(0)
+}
+
 // MockTokenService is a mock for TokenService
 type MockTokenService struct {
 	mock.Mock
@@ -188,6 +193,19 @@ func (m *MockClientRepositoryForToken) ValidateCredentials(ctx context.Context, 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*entities.Client), args.Error(1)
+}
+
+func (m *MockClientRepositoryForToken) CountByTenant(ctx context.Context, tenantID string) (int, error) {
+	args := m.Called(ctx, tenantID)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockClientRepositoryForToken) ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error) {
+	args := m.Called(ctx, tenantID, search, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*entities.Client), args.Int(1), args.Error(2)
 }
 
 // MockUserRepository is a mock for fetching user info

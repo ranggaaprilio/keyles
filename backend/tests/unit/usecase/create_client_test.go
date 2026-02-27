@@ -14,113 +14,152 @@ import (
 
 func TestCreateClient_Execute(t *testing.T) {
 	tests := []struct {
-		name          string
-		tenantID      string
-		clientName    string
-		redirectURIs  []string
-		setupMocks    func(*mocks.MockClientRepository, *mocks.MockPasswordService)
-		wantErr       bool
-		errContains   string
-		validateResp  func(*testing.T, *client.CreateClientResponse)
+		name         string
+		request      *client.CreateClientRequest
+		setupMocks   func(*mocks.MockClientRepository, *mocks.MockPasswordService, *mocks.MockAuditRepository, *mocks.MockClientCountCache)
+		wantErr      bool
+		errContains  string
+		validateResp func(*testing.T, *client.CreateClientResponse)
 	}{
 		{
-			name:         "Successful client creation",
-			tenantID:     "tenant-123",
-			clientName:   "Test Application",
-			redirectURIs: []string{"https://app.example.com/callback"},
-			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {
+			name: "Successful confidential client creation",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Test Application",
+				Description:  "A test app",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback"},
+				IPAddress:    "127.0.0.1",
+				UserAgent:    "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {
+				repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
 				pwd.On("Hash", mock.AnythingOfType("string")).Return("hashed-secret", nil)
 				repo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Client")).Return(nil)
+				cache.On("Invalidate", mock.Anything, "tenant-123").Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 			},
 			wantErr: false,
 			validateResp: func(t *testing.T, resp *client.CreateClientResponse) {
 				assert.NotEmpty(t, resp.ClientID)
 				assert.NotEmpty(t, resp.ClientSecret)
 				assert.Equal(t, "Test Application", resp.ClientName)
+				assert.Equal(t, "confidential", resp.ClientType)
 				assert.Equal(t, []string{"https://app.example.com/callback"}, resp.RedirectURIs)
 			},
 		},
 		{
-			name:         "Successful client creation with multiple redirect URIs",
-			tenantID:     "tenant-123",
-			clientName:   "Multi-Redirect App",
-			redirectURIs: []string{
-				"https://app.example.com/callback",
-				"https://staging.example.com/callback",
-				"http://localhost:3000/callback",
+			name: "Successful public client creation - no secret",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Public SPA",
+				ClientType:   "public",
+				RedirectURIs: []string{"https://spa.example.com/callback"},
+				IPAddress:    "127.0.0.1",
+				UserAgent:    "test",
 			},
-			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {
-				pwd.On("Hash", mock.AnythingOfType("string")).Return("hashed-secret", nil)
+			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {
+				repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
 				repo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Client")).Return(nil)
+				cache.On("Invalidate", mock.Anything, "tenant-123").Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 			},
 			wantErr: false,
 			validateResp: func(t *testing.T, resp *client.CreateClientResponse) {
 				assert.NotEmpty(t, resp.ClientID)
-				assert.Equal(t, 3, len(resp.RedirectURIs))
+				assert.Empty(t, resp.ClientSecret, "public clients should not have a secret")
+				assert.Equal(t, "public", resp.ClientType)
 			},
 		},
 		{
-			name:         "Empty tenant ID",
-			tenantID:     "",
-			clientName:   "Test Application",
-			redirectURIs: []string{"https://app.example.com/callback"},
-			setupMocks:   func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {},
-			wantErr:      true,
-			errContains:  "tenant_id is required",
+			name: "Quota exceeded",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Too Many Clients",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback"},
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {
+				repo.On("CountByTenant", mock.Anything, "tenant-123").Return(entities.MaxClientsPerTenant, nil)
+			},
+			wantErr:     true,
+			errContains: "quota exceeded",
 		},
 		{
-			name:         "Empty client name",
-			tenantID:     "tenant-123",
-			clientName:   "",
-			redirectURIs: []string{"https://app.example.com/callback"},
-			setupMocks:   func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {},
-			wantErr:      true,
-			errContains:  "client_name is required",
+			name: "Empty tenant ID",
+			request: &client.CreateClientRequest{
+				TenantID:     "",
+				ClientName:   "Test",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback"},
+			},
+			setupMocks:  func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {},
+			wantErr:     true,
+			errContains: "tenant_id is required",
 		},
 		{
-			name:         "No redirect URIs",
-			tenantID:     "tenant-123",
-			clientName:   "Test Application",
-			redirectURIs: []string{},
-			setupMocks:   func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {},
-			wantErr:      true,
-			errContains:  "at least one redirect_uri is required",
+			name: "Empty client name",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback"},
+			},
+			setupMocks:  func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {},
+			wantErr:     true,
+			errContains: "client_name is required",
 		},
 		{
-			name:         "Invalid redirect URI - missing scheme",
-			tenantID:     "tenant-123",
-			clientName:   "Test Application",
-			redirectURIs: []string{"app.example.com/callback"},
-			setupMocks:   func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {},
-			wantErr:      true,
-			errContains:  "must have a scheme",
+			name: "No redirect URIs",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Test Application",
+				ClientType:   "confidential",
+				RedirectURIs: []string{},
+			},
+			setupMocks:  func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {},
+			wantErr:     true,
+			errContains: "at least one redirect_uri is required",
 		},
 		{
-			name:         "Invalid redirect URI - with fragment",
-			tenantID:     "tenant-123",
-			clientName:   "Test Application",
-			redirectURIs: []string{"https://app.example.com/callback#section"},
-			setupMocks:   func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {},
-			wantErr:      true,
-			errContains:  "must not contain a fragment",
+			name: "Invalid redirect URI - with fragment",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Test Application",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback#section"},
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {
+				repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
+			},
+			wantErr:     true,
+			errContains: "fragment",
 		},
 		{
-			name:         "Password hashing failure",
-			tenantID:     "tenant-123",
-			clientName:   "Test Application",
-			redirectURIs: []string{"https://app.example.com/callback"},
-			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {
+			name: "Password hashing failure",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Test Application",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback"},
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {
+				repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
 				pwd.On("Hash", mock.AnythingOfType("string")).Return("", assert.AnError)
 			},
 			wantErr:     true,
 			errContains: "failed to hash client secret",
 		},
 		{
-			name:         "Repository create failure",
-			tenantID:     "tenant-123",
-			clientName:   "Test Application",
-			redirectURIs: []string{"https://app.example.com/callback"},
-			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService) {
+			name: "Repository create failure",
+			request: &client.CreateClientRequest{
+				TenantID:     "tenant-123",
+				ClientName:   "Test Application",
+				ClientType:   "confidential",
+				RedirectURIs: []string{"https://app.example.com/callback"},
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, pwd *mocks.MockPasswordService, audit *mocks.MockAuditRepository, cache *mocks.MockClientCountCache) {
+				repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
 				pwd.On("Hash", mock.AnythingOfType("string")).Return("hashed-secret", nil)
 				repo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Client")).Return(assert.AnError)
 			},
@@ -133,17 +172,13 @@ func TestCreateClient_Execute(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.MockClientRepository)
 			pwd := new(mocks.MockPasswordService)
-			tt.setupMocks(repo, pwd)
+			audit := new(mocks.MockAuditRepository)
+			cache := new(mocks.MockClientCountCache)
+			tt.setupMocks(repo, pwd, audit, cache)
 
-			uc := client.NewCreateClientUseCase(repo, pwd)
+			uc := client.NewCreateClientUseCase(repo, pwd, audit, cache)
 
-			req := &client.CreateClientRequest{
-				TenantID:     tt.tenantID,
-				ClientName:   tt.clientName,
-				RedirectURIs: tt.redirectURIs,
-			}
-
-			resp, err := uc.Execute(context.Background(), req)
+			resp, err := uc.Execute(context.Background(), tt.request)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -166,15 +201,21 @@ func TestCreateClient_Execute(t *testing.T) {
 func TestCreateClient_GeneratesUniqueCredentials(t *testing.T) {
 	repo := new(mocks.MockClientRepository)
 	pwd := new(mocks.MockPasswordService)
+	audit := new(mocks.MockAuditRepository)
+	cache := new(mocks.MockClientCountCache)
 
-	pwd.On("Hash", mock.AnythingOfType("string")).Return("hashed-secret", nil).Twice()
-	repo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Client")).Return(nil).Twice()
+	repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
+	pwd.On("Hash", mock.AnythingOfType("string")).Return("hashed-secret", nil)
+	repo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Client")).Return(nil)
+	cache.On("Invalidate", mock.Anything, "tenant-123").Return(nil)
+	audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 
-	uc := client.NewCreateClientUseCase(repo, pwd)
+	uc := client.NewCreateClientUseCase(repo, pwd, audit, cache)
 
 	req := &client.CreateClientRequest{
 		TenantID:     "tenant-123",
 		ClientName:   "Test Application",
+		ClientType:   "confidential",
 		RedirectURIs: []string{"https://app.example.com/callback"},
 	}
 
@@ -184,40 +225,40 @@ func TestCreateClient_GeneratesUniqueCredentials(t *testing.T) {
 	resp2, err2 := uc.Execute(context.Background(), req)
 	require.NoError(t, err2)
 
-	// Client IDs should be unique
 	assert.NotEqual(t, resp1.ClientID, resp2.ClientID)
-
-	// Client secrets should be unique
 	assert.NotEqual(t, resp1.ClientSecret, resp2.ClientSecret)
 }
 
 func TestCreateClient_SetsDefaultValues(t *testing.T) {
 	repo := new(mocks.MockClientRepository)
 	pwd := new(mocks.MockPasswordService)
+	audit := new(mocks.MockAuditRepository)
+	cache := new(mocks.MockClientCountCache)
 
 	var createdClient *entities.Client
+	repo.On("CountByTenant", mock.Anything, "tenant-123").Return(0, nil)
 	pwd.On("Hash", mock.AnythingOfType("string")).Return("hashed-secret", nil)
 	repo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Client")).
 		Run(func(args mock.Arguments) {
 			createdClient = args.Get(1).(*entities.Client)
 		}).
 		Return(nil)
+	cache.On("Invalidate", mock.Anything, "tenant-123").Return(nil)
+	audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 
-	uc := client.NewCreateClientUseCase(repo, pwd)
+	uc := client.NewCreateClientUseCase(repo, pwd, audit, cache)
 
 	req := &client.CreateClientRequest{
 		TenantID:     "tenant-123",
 		ClientName:   "Test Application",
+		ClientType:   "confidential",
 		RedirectURIs: []string{"https://app.example.com/callback"},
 	}
 
 	_, err := uc.Execute(context.Background(), req)
 	require.NoError(t, err)
 
-	// Should be active by default
 	assert.True(t, createdClient.IsActive)
-
-	// Should have creation timestamp
 	assert.False(t, createdClient.CreatedAt.IsZero())
 	assert.False(t, createdClient.UpdatedAt.IsZero())
 }

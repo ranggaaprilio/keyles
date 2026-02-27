@@ -157,5 +157,17 @@ func (r *PostgresRefreshTokenRepository) UpdateLastUsed(ctx context.Context, tok
 	return result.Error
 }
 
+// RevokeByClientID revokes all refresh tokens issued to a specific client
+func (r *PostgresRefreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
+	now := time.Now()
+	result := r.db.WithContext(ctx).Model(&RefreshTokenModel{}).
+		Where("client_id = ? AND is_revoked = ?", clientID, false).
+		Updates(map[string]interface{}{
+			"is_revoked": true,
+			"revoked_at": now,
+		})
+	return result.Error
+}
+
 // Verify interface compliance
 var _ repositories.RefreshTokenRepository = (*PostgresRefreshTokenRepository)(nil)

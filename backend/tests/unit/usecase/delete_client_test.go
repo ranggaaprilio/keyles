@@ -20,6 +20,7 @@ func TestDeleteClient_Execute(t *testing.T) {
 		ClientID:            "client-123",
 		TenantID:            "tenant-456",
 		ClientName:          "Test Application",
+		ClientType:          "confidential",
 		ClientSecretHash:    "hashed-secret",
 		AllowedRedirectURIs: []string{"https://app.example.com/callback"},
 		IsActive:            true,
@@ -29,29 +30,37 @@ func TestDeleteClient_Execute(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		clientID    string
-		tenantID    string
-		setupMocks  func(*mocks.MockClientRepository)
+		request     *client.DeleteClientRequest
+		setupMocks  func(*mocks.MockClientRepository, *mocks.MockAuditRepository, *mocks.MockRefreshTokenRepository, *mocks.MockRevokedClientCache, *mocks.MockClientCountCache)
 		wantErr     bool
 		errContains string
 	}{
 		{
-			name:     "Successful deletion",
-			clientID: "client-123",
-			tenantID: "tenant-456",
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Successful deletion",
+			request: &client.DeleteClientRequest{
+				ClientID:  "client-123",
+				TenantID:  "tenant-456",
+				IPAddress: "127.0.0.1",
+				UserAgent: "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository, rt *mocks.MockRefreshTokenRepository, revoked *mocks.MockRevokedClientCache, countCache *mocks.MockClientCountCache) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
-				repo.On("Delete", mock.Anything, "client-123").
-					Return(nil)
+				repo.On("Delete", mock.Anything, "client-123").Return(nil)
+				rt.On("RevokeByClientID", mock.Anything, "client-123").Return(nil)
+				revoked.On("Revoke", mock.Anything, "client-123").Return(nil)
+				countCache.On("Invalidate", mock.Anything, "tenant-456").Return(nil)
+				audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 			},
 			wantErr: false,
 		},
 		{
-			name:     "Client not found",
-			clientID: "nonexistent",
-			tenantID: "tenant-456",
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Client not found",
+			request: &client.DeleteClientRequest{
+				ClientID: "nonexistent",
+				TenantID: "tenant-456",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository, rt *mocks.MockRefreshTokenRepository, revoked *mocks.MockRevokedClientCache, countCache *mocks.MockClientCountCache) {
 				repo.On("GetByClientID", mock.Anything, "nonexistent", "tenant-456").
 					Return(nil, errors.New("client not found"))
 			},
@@ -59,37 +68,34 @@ func TestDeleteClient_Execute(t *testing.T) {
 			errContains: "client not found",
 		},
 		{
-			name:     "Wrong tenant - access denied",
-			clientID: "client-123",
-			tenantID: "wrong-tenant",
-			setupMocks: func(repo *mocks.MockClientRepository) {
-				repo.On("GetByClientID", mock.Anything, "client-123", "wrong-tenant").
-					Return(nil, errors.New("client not found"))
+			name: "Empty client ID",
+			request: &client.DeleteClientRequest{
+				ClientID: "",
+				TenantID: "tenant-456",
 			},
-			wantErr:     true,
-			errContains: "client not found",
-		},
-		{
-			name:        "Empty client ID",
-			clientID:    "",
-			tenantID:    "tenant-456",
-			setupMocks:  func(repo *mocks.MockClientRepository) {},
+			setupMocks:  func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository, rt *mocks.MockRefreshTokenRepository, revoked *mocks.MockRevokedClientCache, countCache *mocks.MockClientCountCache) {},
 			wantErr:     true,
 			errContains: "client_id is required",
 		},
 		{
-			name:        "Empty tenant ID",
-			clientID:    "client-123",
-			tenantID:    "",
-			setupMocks:  func(repo *mocks.MockClientRepository) {},
+			name: "Empty tenant ID",
+			request: &client.DeleteClientRequest{
+				ClientID: "client-123",
+				TenantID: "",
+			},
+			setupMocks:  func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository, rt *mocks.MockRefreshTokenRepository, revoked *mocks.MockRevokedClientCache, countCache *mocks.MockClientCountCache) {},
 			wantErr:     true,
 			errContains: "tenant_id is required",
 		},
 		{
-			name:     "Repository delete failure",
-			clientID: "client-123",
-			tenantID: "tenant-456",
-			setupMocks: func(repo *mocks.MockClientRepository) {
+			name: "Repository delete failure",
+			request: &client.DeleteClientRequest{
+				ClientID:  "client-123",
+				TenantID:  "tenant-456",
+				IPAddress: "127.0.0.1",
+				UserAgent: "test",
+			},
+			setupMocks: func(repo *mocks.MockClientRepository, audit *mocks.MockAuditRepository, rt *mocks.MockRefreshTokenRepository, revoked *mocks.MockRevokedClientCache, countCache *mocks.MockClientCountCache) {
 				repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").
 					Return(existingClient, nil)
 				repo.On("Delete", mock.Anything, "client-123").
@@ -103,16 +109,15 @@ func TestDeleteClient_Execute(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := new(mocks.MockClientRepository)
-			tt.setupMocks(repo)
+			audit := new(mocks.MockAuditRepository)
+			rt := new(mocks.MockRefreshTokenRepository)
+			revoked := new(mocks.MockRevokedClientCache)
+			countCache := new(mocks.MockClientCountCache)
+			tt.setupMocks(repo, audit, rt, revoked, countCache)
 
-			uc := client.NewDeleteClientUseCase(repo)
+			uc := client.NewDeleteClientUseCase(repo, audit, rt, revoked, countCache)
 
-			req := &client.DeleteClientRequest{
-				ClientID: tt.clientID,
-				TenantID: tt.tenantID,
-			}
-
-			err := uc.Execute(context.Background(), req)
+			err := uc.Execute(context.Background(), tt.request)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -126,12 +131,13 @@ func TestDeleteClient_Execute(t *testing.T) {
 	}
 }
 
-func TestDeleteClient_VerifiesTenantOwnership(t *testing.T) {
+func TestDeleteClient_RevokesTokensAndCache(t *testing.T) {
 	now := time.Now()
-	tenantAClient := &entities.Client{
+	existingClient := &entities.Client{
 		ClientID:            "client-123",
-		TenantID:            "tenant-A",
-		ClientName:          "Tenant A's Application",
+		TenantID:            "tenant-456",
+		ClientName:          "Test Application",
+		ClientType:          "confidential",
 		ClientSecretHash:    "hashed-secret",
 		AllowedRedirectURIs: []string{"https://app.example.com/callback"},
 		IsActive:            true,
@@ -140,27 +146,31 @@ func TestDeleteClient_VerifiesTenantOwnership(t *testing.T) {
 	}
 
 	repo := new(mocks.MockClientRepository)
+	audit := new(mocks.MockAuditRepository)
+	rt := new(mocks.MockRefreshTokenRepository)
+	revoked := new(mocks.MockRevokedClientCache)
+	countCache := new(mocks.MockClientCountCache)
 
-	// Tenant B tries to delete Tenant A's client
-	repo.On("GetByClientID", mock.Anything, "client-123", "tenant-B").
-		Return(nil, errors.New("client not found")) // Repository should return not found for wrong tenant
+	repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").Return(existingClient, nil)
+	repo.On("Delete", mock.Anything, "client-123").Return(nil)
+	rt.On("RevokeByClientID", mock.Anything, "client-123").Return(nil)
+	revoked.On("Revoke", mock.Anything, "client-123").Return(nil)
+	countCache.On("Invalidate", mock.Anything, "tenant-456").Return(nil)
+	audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
 
-	uc := client.NewDeleteClientUseCase(repo)
+	uc := client.NewDeleteClientUseCase(repo, audit, rt, revoked, countCache)
 
-	req := &client.DeleteClientRequest{
-		ClientID: "client-123",
-		TenantID: "tenant-B", // Wrong tenant
-	}
+	err := uc.Execute(context.Background(), &client.DeleteClientRequest{
+		ClientID:  "client-123",
+		TenantID:  "tenant-456",
+		IPAddress: "127.0.0.1",
+		UserAgent: "test",
+	})
+	require.NoError(t, err)
 
-	err := uc.Execute(context.Background(), req)
-
-	// Should fail because tenant B doesn't own this client
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
-
-	// Delete should NOT be called because verification failed
-	repo.AssertNotCalled(t, "Delete", mock.Anything, mock.Anything)
-
-	// Cleanup - check that the client still "exists" for Tenant A
-	_ = tenantAClient // Unused, just demonstrating the concept
+	// Verify all cascade operations were called
+	rt.AssertCalled(t, "RevokeByClientID", mock.Anything, "client-123")
+	revoked.AssertCalled(t, "Revoke", mock.Anything, "client-123")
+	countCache.AssertCalled(t, "Invalidate", mock.Anything, "tenant-456")
+	audit.AssertCalled(t, "Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog"))
 }

@@ -166,3 +166,19 @@ func (r *refreshTokenRepository) UpdateLastUsed(ctx context.Context, tokenHash s
 
 	return nil
 }
+
+// RevokeByClientID revokes all refresh tokens issued to a specific client
+func (r *refreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
+	query := `
+		UPDATE refresh_tokens
+		SET is_revoked = true, revoked_at = $1, revoked_reason = $2
+		WHERE client_id = $3 AND is_revoked = false
+	`
+
+	_, err := r.pool.Exec(ctx, query, time.Now(), "client deleted", clientID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh tokens for client: %w", err)
+	}
+
+	return nil
+}

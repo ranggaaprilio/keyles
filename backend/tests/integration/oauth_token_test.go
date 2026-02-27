@@ -89,6 +89,14 @@ func (m *MockClientRepositoryForTokenTest) ValidateCredentials(ctx context.Conte
 	return nil, errors.New("client not found")
 }
 
+func (m *MockClientRepositoryForTokenTest) CountByTenant(ctx context.Context, tenantID string) (int, error) {
+	return 0, nil
+}
+
+func (m *MockClientRepositoryForTokenTest) ListByTenantPaginated(ctx context.Context, tenantID string, search string, page int, pageSize int) ([]*entities.Client, int, error) {
+	return nil, 0, nil
+}
+
 var _ repositories.ClientRepository = (*MockClientRepositoryForTokenTest)(nil)
 
 // MockRefreshTokenRepository for token tests
@@ -143,6 +151,10 @@ func (m *MockRefreshTokenRepository) IsRevoked(ctx context.Context, tokenHash st
 }
 
 func (m *MockRefreshTokenRepository) UpdateLastUsed(ctx context.Context, tokenHash string) error {
+	return nil
+}
+
+func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
 	return nil
 }
 
