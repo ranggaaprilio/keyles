@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useClients } from '@/hooks/useClients';
-import { ClientCard } from './ClientCard';
+import { useState, useEffect, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useClients } from "@/hooks/useClients";
+import { ClientCard } from "./ClientCard";
 
 interface ClientListProps {
   onSelectClient: (clientId: string) => void;
@@ -13,8 +13,8 @@ interface ClientListProps {
 
 export function ClientList({ onSelectClient, onCreateNew }: ClientListProps) {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Debounce search input
   useEffect(() => {
@@ -78,7 +78,7 @@ export function ClientList({ onSelectClient, onCreateNew }: ClientListProps) {
         <div className="text-center py-12 text-muted-foreground">
           {debouncedSearch
             ? `No clients found matching "${debouncedSearch}"`
-            : 'No client applications registered yet.'}
+            : "No client applications registered yet."}
         </div>
       )}
 

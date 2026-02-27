@@ -7,9 +7,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Loader2 } from 'lucide-react';
-import { useRotateSecret } from '@/hooks/useClients';
+} from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
+import { useRotateSecret } from "@/hooks/useClients";
 
 interface RotateSecretDialogProps {
   open: boolean;
@@ -44,22 +44,27 @@ export function RotateSecretDialog({
           <AlertDialogTitle>Rotate Client Secret</AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <p>
-              Are you sure you want to rotate the secret for <strong>{clientName}</strong>?
+              Are you sure you want to rotate the secret for{" "}
+              <strong>{clientName}</strong>?
             </p>
             <p className="text-destructive font-medium">
-              The current secret will stop working immediately. Any applications 
+              The current secret will stop working immediately. Any applications
               using the old secret will need to be updated.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={mutation.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={mutation.isPending}>
+            Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={mutation.isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            {mutation.isPending && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            )}
             Rotate Secret
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1,9 +1,9 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Copy, Check } from 'lucide-react';
-import { useState } from 'react';
-import type { Client } from '@/types/client';
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Copy, Check } from "lucide-react";
+import { useState } from "react";
+import type { Client } from "@/types/client";
 
 interface ClientCardProps {
   client: Client;
@@ -35,7 +35,13 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-semibold truncate">{client.client_name}</h3>
-              <Badge variant={client.client_type === 'confidential' ? 'default' : 'secondary'}>
+              <Badge
+                variant={
+                  client.client_type === "confidential"
+                    ? "default"
+                    : "secondary"
+                }
+              >
                 {client.client_type}
               </Badge>
             </div>
@@ -64,8 +70,8 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
           </div>
 
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <Badge variant={client.is_active ? 'default' : 'destructive'}>
-              {client.is_active ? 'Active' : 'Inactive'}
+            <Badge variant={client.is_active ? "default" : "destructive"}>
+              {client.is_active ? "Active" : "Inactive"}
             </Badge>
             <span className="text-xs text-muted-foreground">
               {new Date(client.created_at).toLocaleDateString()}

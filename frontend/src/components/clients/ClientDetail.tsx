@@ -1,10 +1,10 @@
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Copy, Check, Pencil, RotateCw, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { useClient } from '@/hooks/useClients';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, Copy, Check, Pencil, RotateCw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useClient } from "@/hooks/useClients";
 
 interface ClientDetailProps {
   clientId: string;
@@ -62,23 +62,35 @@ export function ClientDetail({
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <h2 className="text-xl font-semibold">{client.client_name}</h2>
-          <Badge variant={client.client_type === 'confidential' ? 'default' : 'secondary'}>
+          <Badge
+            variant={
+              client.client_type === "confidential" ? "default" : "secondary"
+            }
+          >
             {client.client_type}
           </Badge>
-          <Badge variant={client.is_active ? 'default' : 'destructive'}>
-            {client.is_active ? 'Active' : 'Inactive'}
+          <Badge variant={client.is_active ? "default" : "destructive"}>
+            {client.is_active ? "Active" : "Inactive"}
           </Badge>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => onEdit(clientId)}>
             <Pencil className="h-4 w-4 mr-1" /> Edit
           </Button>
-          {client.client_type === 'confidential' && (
-            <Button variant="outline" size="sm" onClick={() => onRotateSecret(clientId, client.client_name)}>
+          {client.client_type === "confidential" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onRotateSecret(clientId, client.client_name)}
+            >
               <RotateCw className="h-4 w-4 mr-1" /> Rotate Secret
             </Button>
           )}
-          <Button variant="destructive" size="sm" onClick={() => onDelete(clientId, client.client_name)}>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDelete(clientId, client.client_name)}
+          >
             <Trash2 className="h-4 w-4 mr-1" /> Delete
           </Button>
         </div>
@@ -92,12 +104,19 @@ export function ClientDetail({
         <CardContent className="space-y-4">
           {/* Client ID */}
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-1">Client ID</p>
+            <p className="text-sm font-medium text-muted-foreground mb-1">
+              Client ID
+            </p>
             <div className="flex items-center gap-2">
               <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
                 {client.client_id}
               </code>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyId}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={copyId}
+              >
                 {copiedId ? (
                   <Check className="h-3 w-3 text-green-600" />
                 ) : (
@@ -110,17 +129,24 @@ export function ClientDetail({
           {/* Description */}
           {client.description && (
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Description
+              </p>
               <p className="text-sm">{client.description}</p>
             </div>
           )}
 
           {/* Redirect URIs */}
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-1">Redirect URIs</p>
+            <p className="text-sm font-medium text-muted-foreground mb-1">
+              Redirect URIs
+            </p>
             <ul className="space-y-1">
               {client.redirect_uris.map((uri, i) => (
-                <li key={i} className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                <li
+                  key={i}
+                  className="font-mono text-sm bg-muted px-2 py-1 rounded"
+                >
                   {uri}
                 </li>
               ))}
@@ -130,12 +156,20 @@ export function ClientDetail({
           {/* Timestamps */}
           <div className="grid grid-cols-2 gap-4 pt-2 border-t">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Created</p>
-              <p className="text-sm">{new Date(client.created_at).toLocaleString()}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Created
+              </p>
+              <p className="text-sm">
+                {new Date(client.created_at).toLocaleString()}
+              </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
-              <p className="text-sm">{new Date(client.updated_at).toLocaleString()}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Last Updated
+              </p>
+              <p className="text-sm">
+                {new Date(client.updated_at).toLocaleString()}
+              </p>
             </div>
           </div>
         </CardContent>

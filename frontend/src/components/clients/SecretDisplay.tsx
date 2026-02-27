@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Copy, Check, AlertTriangle } from 'lucide-react';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Copy, Check, AlertTriangle } from "lucide-react";
 
 interface SecretDisplayProps {
   open: boolean;
@@ -30,9 +30,9 @@ export function SecretDisplay({
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
-  const copyToClipboard = async (text: string, field: 'id' | 'secret') => {
+  const copyToClipboard = async (text: string, field: "id" | "secret") => {
     await navigator.clipboard.writeText(text);
-    if (field === 'id') {
+    if (field === "id") {
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     } else {
@@ -49,8 +49,14 @@ export function SecretDisplay({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && confirmed && handleClose()}>
-      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => !isOpen && confirmed && handleClose()}
+    >
+      <DialogContent
+        className="sm:max-w-lg"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Client Credentials — {clientName}</DialogTitle>
           <DialogDescription>
@@ -66,13 +72,13 @@ export function SecretDisplay({
               <p className="font-medium">Important</p>
               {clientSecret ? (
                 <p>
-                  The client secret is shown only once. Copy and store it securely
-                  before closing this dialog.
+                  The client secret is shown only once. Copy and store it
+                  securely before closing this dialog.
                 </p>
               ) : (
                 <p>
-                  This is a public client — no client secret is generated. Use PKCE
-                  for authorization flows.
+                  This is a public client — no client secret is generated. Use
+                  PKCE for authorization flows.
                 </p>
               )}
             </div>
@@ -90,7 +96,7 @@ export function SecretDisplay({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => copyToClipboard(clientId, 'id')}
+                onClick={() => copyToClipboard(clientId, "id")}
               >
                 {copiedId ? (
                   <Check className="h-4 w-4 text-green-600" />
@@ -114,7 +120,7 @@ export function SecretDisplay({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => copyToClipboard(clientSecret, 'secret')}
+                  onClick={() => copyToClipboard(clientSecret, "secret")}
                 >
                   {copiedSecret ? (
                     <Check className="h-4 w-4 text-green-600" />
@@ -136,7 +142,8 @@ export function SecretDisplay({
               className="h-4 w-4 rounded border-gray-300"
             />
             <label htmlFor="confirm-saved" className="text-sm cursor-pointer">
-              I have saved {clientSecret ? 'the client secret' : 'the client ID'} securely
+              I have saved{" "}
+              {clientSecret ? "the client secret" : "the client ID"} securely
             </label>
           </div>
         </div>

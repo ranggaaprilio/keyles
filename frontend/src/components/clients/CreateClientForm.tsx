@@ -1,30 +1,30 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus, Loader2 } from 'lucide-react';
-import type { ClientType } from '@/types/client';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { X, Plus, Loader2 } from "lucide-react";
+import type { ClientType } from "@/types/client";
 
 const createClientSchema = z.object({
   client_name: z
     .string()
-    .min(3, 'Name must be at least 3 characters')
-    .max(100, 'Name must not exceed 100 characters'),
+    .min(3, "Name must be at least 3 characters")
+    .max(100, "Name must not exceed 100 characters"),
   description: z
     .string()
-    .max(500, 'Description must not exceed 500 characters')
+    .max(500, "Description must not exceed 500 characters")
     .optional()
-    .default(''),
-  client_type: z.enum(['confidential', 'public'] as const),
+    .default(""),
+  client_type: z.enum(["confidential", "public"] as const),
   redirect_uris: z
-    .array(z.string().url('Must be a valid URL'))
-    .min(1, 'At least one redirect URI is required'),
+    .array(z.string().url("Must be a valid URL"))
+    .min(1, "At least one redirect URI is required"),
 });
 
 type CreateClientFormData = z.infer<typeof createClientSchema>;
@@ -35,8 +35,12 @@ interface CreateClientFormProps {
   isLoading?: boolean;
 }
 
-export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClientFormProps) {
-  const [redirectURIs, setRedirectURIs] = useState<string[]>(['']);
+export function CreateClientForm({
+  onSubmit,
+  onCancel,
+  isLoading,
+}: CreateClientFormProps) {
+  const [redirectURIs, setRedirectURIs] = useState<string[]>([""]);
   const [uriErrors, setUriErrors] = useState<Record<number, string>>({});
 
   const {
@@ -48,29 +52,39 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
   } = useForm<CreateClientFormData>({
     resolver: zodResolver(createClientSchema),
     defaultValues: {
-      client_name: '',
-      description: '',
-      client_type: 'confidential',
-      redirect_uris: [''],
+      client_name: "",
+      description: "",
+      client_type: "confidential",
+      redirect_uris: [""],
     },
   });
 
-  const clientType = watch('client_type');
+  const clientType = watch("client_type");
 
   const validateURI = (uri: string, index: number): boolean => {
     if (!uri) {
-      setUriErrors((prev) => ({ ...prev, [index]: 'URI is required' }));
+      setUriErrors((prev) => ({ ...prev, [index]: "URI is required" }));
       return false;
     }
     try {
       const parsed = new URL(uri);
       if (parsed.hash) {
-        setUriErrors((prev) => ({ ...prev, [index]: 'URI must not contain a fragment' }));
+        setUriErrors((prev) => ({
+          ...prev,
+          [index]: "URI must not contain a fragment",
+        }));
         return false;
       }
       const host = parsed.hostname;
-      if (parsed.protocol !== 'https:' && host !== 'localhost' && host !== '127.0.0.1') {
-        setUriErrors((prev) => ({ ...prev, [index]: 'Must use HTTPS (except localhost)' }));
+      if (
+        parsed.protocol !== "https:" &&
+        host !== "localhost" &&
+        host !== "127.0.0.1"
+      ) {
+        setUriErrors((prev) => ({
+          ...prev,
+          [index]: "Must use HTTPS (except localhost)",
+        }));
         return false;
       }
       setUriErrors((prev) => {
@@ -80,22 +94,22 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
       });
       return true;
     } catch {
-      setUriErrors((prev) => ({ ...prev, [index]: 'Must be a valid URL' }));
+      setUriErrors((prev) => ({ ...prev, [index]: "Must be a valid URL" }));
       return false;
     }
   };
 
   const addRedirectURI = () => {
-    const updated = [...redirectURIs, ''];
+    const updated = [...redirectURIs, ""];
     setRedirectURIs(updated);
-    setValue('redirect_uris', updated);
+    setValue("redirect_uris", updated);
   };
 
   const removeRedirectURI = (index: number) => {
     if (redirectURIs.length <= 1) return;
     const updated = redirectURIs.filter((_, i) => i !== index);
     setRedirectURIs(updated);
-    setValue('redirect_uris', updated);
+    setValue("redirect_uris", updated);
     setUriErrors((prev) => {
       const copy = { ...prev };
       delete copy[index];
@@ -107,7 +121,7 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
     const updated = [...redirectURIs];
     updated[index] = value;
     setRedirectURIs(updated);
-    setValue('redirect_uris', updated);
+    setValue("redirect_uris", updated);
     if (value) validateURI(value, index);
   };
 
@@ -134,10 +148,12 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
             <Input
               id="client_name"
               placeholder="My Application"
-              {...register('client_name')}
+              {...register("client_name")}
             />
             {errors.client_name && (
-              <p className="text-sm text-destructive">{errors.client_name.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.client_name.message}
+              </p>
             )}
           </div>
 
@@ -148,10 +164,12 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
               id="description"
               placeholder="Brief description of your application"
               rows={3}
-              {...register('description')}
+              {...register("description")}
             />
             {errors.description && (
-              <p className="text-sm text-destructive">{errors.description.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.description.message}
+              </p>
             )}
           </div>
 
@@ -160,30 +178,43 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
             <Label>Client Type *</Label>
             <RadioGroup
               value={clientType}
-              onValueChange={(value: ClientType) => setValue('client_type', value)}
+              onValueChange={(value: ClientType) =>
+                setValue("client_type", value)
+              }
               className="space-y-3"
             >
               <div className="flex items-start space-x-3 rounded-md border p-3">
-                <RadioGroupItem value="confidential" id="confidential" className="mt-1" />
+                <RadioGroupItem
+                  value="confidential"
+                  id="confidential"
+                  className="mt-1"
+                />
                 <div>
-                  <Label htmlFor="confidential" className="font-medium cursor-pointer">
+                  <Label
+                    htmlFor="confidential"
+                    className="font-medium cursor-pointer"
+                  >
                     Confidential
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Server-side applications that can securely store a client secret. 
-                    A secret will be generated for authentication.
+                    Server-side applications that can securely store a client
+                    secret. A secret will be generated for authentication.
                   </p>
                 </div>
               </div>
               <div className="flex items-start space-x-3 rounded-md border p-3">
                 <RadioGroupItem value="public" id="public" className="mt-1" />
                 <div>
-                  <Label htmlFor="public" className="font-medium cursor-pointer">
+                  <Label
+                    htmlFor="public"
+                    className="font-medium cursor-pointer"
+                  >
                     Public
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    SPAs, mobile, or desktop apps that cannot securely store secrets. 
-                    Uses PKCE for authorization. No client secret generated.
+                    SPAs, mobile, or desktop apps that cannot securely store
+                    secrets. Uses PKCE for authorization. No client secret
+                    generated.
                   </p>
                 </div>
               </div>
@@ -206,7 +237,9 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
                     onBlur={() => uri && validateURI(uri, index)}
                   />
                   {uriErrors[index] && (
-                    <p className="text-sm text-destructive mt-1">{uriErrors[index]}</p>
+                    <p className="text-sm text-destructive mt-1">
+                      {uriErrors[index]}
+                    </p>
                   )}
                 </div>
                 {redirectURIs.length > 1 && (
@@ -221,11 +254,18 @@ export function CreateClientForm({ onSubmit, onCancel, isLoading }: CreateClient
                 )}
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={addRedirectURI}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addRedirectURI}
+            >
               <Plus className="h-4 w-4 mr-1" /> Add Redirect URI
             </Button>
             {errors.redirect_uris && (
-              <p className="text-sm text-destructive">{errors.redirect_uris.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.redirect_uris.message}
+              </p>
             )}
           </div>
 
