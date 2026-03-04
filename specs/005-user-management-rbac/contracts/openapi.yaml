@@ -1,0 +1,1180 @@
+openapi: 3.0.3
+info:
+  title: Keyles End-User Management & RBAC API
+  description: |
+    API for managing end-users, role assignments, and sessions within a Keyles tenant.
+
+    **Scope**: This API extends the Keyles SSO platform (features 001–004) with full
+    lifecycle management of end-users: invitations, RBAC role assignments, session
+    visibility and termination, and account enable/disable/delete operations.
+
+    **Authentication**: All endpoints require a valid JWT Bearer token issued to a
+    **tenant administrator** for the same tenant as the resources being managed.
+
+    **Tenant Isolation**: All resources are scoped to the authenticated administrator's
+    tenant. Cross-tenant access is rejected with HTTP 403.
+
+    **User Quota**: Maximum 10,000 users per tenant (across all statuses).
+
+    **Role Name Rules**: Free-form strings, 1–100 characters (Unicode permitted).
+
+  version: 1.0.0
+  contact:
+    name: Keyles Engineering
+    email: eng@keyles.com
+
+servers:
+  - url: https://sso.keyles.com
+    description: Production server
+  - url: http://localhost:8080
+    description: Development server
+
+tags:
+  - name: User Management
+    description: Invite, list, view, enable/disable, and delete tenant users
+  - name: Role Management
+    description: Assign and revoke per-client roles for users (RBAC)
+  - name: Session Management
+    description: View and terminate active user sessions
+  - name: User Activity
+    description: Read-only activity/audit log per user
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  # ─────────────────────────────────────────────
+  # USER MANAGEMENT
+  # ─────────────────────────────────────────────
+
+  /api/v1/admin/users:
+    get:
+      tags: [User Management]
+      summary: List users in the tenant
+      description: |
+        Returns a paginated list of all users in the authenticated administrator's tenant.
+        Supports search by name/email and filtering by account status.
+      operationId: listUsers
+      parameters:
+        - name: search
+          in: query
+          description: Case-insensitive partial match on display_name or email
+          schema:
+            type: string
+            example: alice
+        - name: status
+          in: query
+          description: Filter by account status
+          schema:
+            type: string
+            enum: [active, pending, disabled]
+        - name: page
+          in: query
+          description: 1-based page number (default 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: Users per page (default 25, max 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+              example:
+                users:
+                  - id: "usr_aB3dEfGhIjKlMn"
+                    email: "alice@example.com"
+                    display_name: "Alice Smith"
+                    status: "active"
+                    last_login_at: "2025-06-10T14:32:00Z"
+                    role_assignment_count: 3
+                    created_at: "2025-05-01T09:00:00Z"
+                  - id: "usr_xY7zAbCdEfGhIj"
+                    email: "bob@example.com"
+                    display_name: "Bob Jones"
+                    status: "pending"
+                    last_login_at: null
+                    role_assignment_count: 0
+                    created_at: "2025-06-11T08:00:00Z"
+                pagination:
+                  page: 1
+                  page_size: 25
+                  total_count: 2
+                  total_pages: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [User Management]
+      summary: Invite a new user to the tenant
+      description: |
+        Creates a pending user record and dispatches an invitation email containing a
+        time-limited activation link (valid 72 hours).
+
+        Returns **409 Conflict** if an active or pending user with the same email already
+        exists in the tenant, or if the tenant has reached the 10,000-user quota.
+      operationId: inviteUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteUserRequest'
+            example:
+              email: "alice@example.com"
+              display_name: "Alice Smith"
+      responses:
+        '201':
+          description: Invitation sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+              example:
+                invitation_id: "inv_aB3dEfGhIjKlMn"
+                email: "alice@example.com"
+                display_name: "Alice Smith"
+                status: "pending"
+                expires_at: "2025-06-14T08:00:00Z"
+                created_at: "2025-06-11T08:00:00Z"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Email already exists in this tenant or quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                email_conflict:
+                  value:
+                    error: "conflict"
+                    message: "A user with this email already exists in this tenant."
+                quota_exceeded:
+                  value:
+                    error: "quota_exceeded"
+                    message: "This tenant has reached the maximum of 10,000 users."
+
+  /api/v1/admin/users/{user_id}:
+    get:
+      tags: [User Management]
+      summary: Get user details
+      description: Returns full profile for a single user including all role assignments.
+      operationId: getUser
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '200':
+          description: User profile with role assignments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [User Management]
+      summary: Update user display name
+      description: |
+        Updates mutable profile fields. Currently only `display_name` is updatable
+        via this endpoint. Email changes are not supported (re-invite with new email).
+      operationId: updateUser
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+            example:
+              display_name: "Alice M. Smith"
+      responses:
+        '200':
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [User Management]
+      summary: Permanently delete a user
+      description: |
+        Permanently removes the user from the tenant. This action:
+        - Deletes all role assignments for the user
+        - Immediately revokes all active refresh tokens (sessions)
+        - Adds a short-lived blacklist entry to invalidate outstanding access tokens
+        - Records a `user_deleted` audit event
+
+        **This action is irreversible.**
+
+        Returns **403** if the administrator attempts to delete their own account.
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '204':
+          description: User permanently deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden — cross-tenant access or self-deletion attempt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                self_delete:
+                  value:
+                    error: "forbidden"
+                    message: "You cannot remove your own account."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/users/{user_id}/status:
+    put:
+      tags: [User Management]
+      summary: Enable or disable a user account
+      description: |
+        Transitions a user's account status:
+        - `active` → `disabled`: Immediately revokes all active sessions
+        - `disabled` → `active`: Restores authentication capability (no new sessions created)
+
+        Returns **403** if the administrator attempts to disable another admin account.
+      operationId: updateUserStatus
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+            examples:
+              disable:
+                value:
+                  status: "disabled"
+              enable:
+                value:
+                  status: "active"
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStatusResponse'
+              example:
+                user_id: "usr_aB3dEfGhIjKlMn"
+                status: "disabled"
+                sessions_revoked: 2
+                updated_at: "2025-06-11T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden — cross-tenant or admin-disable attempt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "forbidden"
+                message: "You cannot disable an administrator account."
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/users/{user_id}/resend-invitation:
+    post:
+      tags: [User Management]
+      summary: Resend invitation to a pending user
+      description: |
+        Invalidates the existing invitation token and dispatches a new invitation email
+        with a fresh 72-hour activation window.
+
+        Only valid for users in `pending` status.
+      operationId: resendInvitation
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '200':
+          description: New invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+        '400':
+          description: User is not in pending status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "invalid_state"
+                message: "Invitations can only be resent for users in 'pending' status."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─────────────────────────────────────────────
+  # INVITATION ACCEPTANCE (public, no auth required)
+  # ─────────────────────────────────────────────
+
+  /api/v1/invitations/{token}/accept:
+    post:
+      tags: [User Management]
+      summary: Accept an invitation and set password
+      description: |
+        Public endpoint (no authentication required). The invited user submits their
+        chosen password. If the token is valid and not expired, the account transitions
+        from `pending` to `active`.
+
+        The token is **single-use** — a second call with the same token returns 400.
+      operationId: acceptInvitation
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: The plain invitation token from the email link
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+            example:
+              password: "Str0ng!P@ssword2025"
+      responses:
+        '200':
+          description: Account activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptInvitationResponse'
+              example:
+                message: "Account activated. You may now sign in."
+                email: "alice@example.com"
+        '400':
+          description: Invalid, expired, or already-used token, or weak password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                expired:
+                  value:
+                    error: "token_expired"
+                    message: "This invitation link has expired. Please request a new one from your administrator."
+                used:
+                  value:
+                    error: "token_used"
+                    message: "This invitation link has already been used."
+                weak_password:
+                  value:
+                    error: "validation_error"
+                    message: "Password does not meet minimum strength requirements."
+                    details:
+                      - field: "password"
+                        message: "Password must be at least 12 characters."
+
+  # ─────────────────────────────────────────────
+  # ROLE MANAGEMENT
+  # ─────────────────────────────────────────────
+
+  /api/v1/admin/users/{user_id}/roles:
+    get:
+      tags: [Role Management]
+      summary: List role assignments for a user
+      description: |
+        Returns all role assignments for the user, grouped by client application.
+        Includes both active and revoked assignments for audit purposes.
+        Results are sorted by client name, then by role name.
+      operationId: listUserRoles
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - name: active_only
+          in: query
+          description: When true, returns only active (non-revoked) assignments (default false)
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Role assignments grouped by client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRolesResponse'
+              example:
+                user_id: "usr_aB3dEfGhIjKlMn"
+                assignments:
+                  - client_id: "aBcDeFgHiJkLmNo"
+                    client_name: "Reporting Dashboard"
+                    roles:
+                      - id: 42
+                        role_name: "analyst"
+                        is_active: true
+                        granted_at: "2025-05-10T09:00:00Z"
+                        granted_by_email: "admin@acme.com"
+                        revoked_at: null
+                  - client_id: "pQrStUvWxYzAbCd"
+                    client_name: "CI Platform"
+                    roles:
+                      - id: 51
+                        role_name: "deployer"
+                        is_active: true
+                        granted_at: "2025-05-15T14:00:00Z"
+                        granted_by_email: "admin@acme.com"
+                        revoked_at: null
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      tags: [Role Management]
+      summary: Assign a role to a user for a client application
+      description: |
+        Assigns the specified named role to the user for the given client application.
+
+        - The client application must belong to the same tenant.
+        - Duplicate assignments (same user + client + role) are rejected with **409**.
+        - The role is immediately included in new JWT tokens.
+      operationId: assignRole
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRoleRequest'
+            example:
+              client_id: "aBcDeFgHiJkLmNo"
+              role_name: "analyst"
+      responses:
+        '201':
+          description: Role assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleAssignmentResponse'
+              example:
+                id: 42
+                user_id: "usr_aB3dEfGhIjKlMn"
+                client_id: "aBcDeFgHiJkLmNo"
+                client_name: "Reporting Dashboard"
+                role_name: "analyst"
+                is_active: true
+                granted_at: "2025-06-11T10:00:00Z"
+                granted_by_email: "admin@acme.com"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User or client application not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate role assignment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "conflict"
+                message: "This role is already assigned to this user for the selected application."
+
+  /api/v1/admin/users/{user_id}/roles/{assignment_id}:
+    delete:
+      tags: [Role Management]
+      summary: Revoke a role assignment
+      description: |
+        Soft-deletes (revokes) a role assignment by its ID.
+        The revocation is immediately effective — subsequent token issuances will not
+        include this role.
+
+        The record is retained with `is_active: false` for audit history.
+      operationId: revokeRole
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - name: assignment_id
+          in: path
+          required: true
+          description: Numeric ID of the role assignment to revoke
+          schema:
+            type: integer
+            example: 42
+      responses:
+        '204':
+          description: Role revoked successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─────────────────────────────────────────────
+  # SESSION MANAGEMENT
+  # ─────────────────────────────────────────────
+
+  /api/v1/admin/users/{user_id}/sessions:
+    get:
+      tags: [Session Management]
+      summary: List active sessions for a user
+      description: |
+        Returns all active (non-revoked, non-expired) refresh tokens for the user,
+        representing established sessions. Sorted by last activity (most recent first).
+      operationId: listUserSessions
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      responses:
+        '200':
+          description: Active sessions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionsResponse'
+              example:
+                user_id: "usr_aB3dEfGhIjKlMn"
+                sessions:
+                  - session_id: "rt_aB3dEfGhIjKlMn01"
+                    client_id: "aBcDeFgHiJkLmNo"
+                    client_name: "Reporting Dashboard"
+                    created_at: "2025-06-10T08:00:00Z"
+                    last_activity_at: "2025-06-11T09:45:00Z"
+                    expires_at: "2025-06-17T08:00:00Z"
+                    country_code: "US"
+                  - session_id: "rt_xY7zAbCdEfGhIj02"
+                    client_id: "pQrStUvWxYzAbCd"
+                    client_name: "CI Platform"
+                    created_at: "2025-06-09T12:00:00Z"
+                    last_activity_at: "2025-06-11T07:30:00Z"
+                    expires_at: "2025-06-16T12:00:00Z"
+                    country_code: "DE"
+                total_active: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/admin/users/{user_id}/sessions/{session_id}:
+    delete:
+      tags: [Session Management]
+      summary: Terminate (revoke) a specific session
+      description: |
+        Immediately revokes the specified refresh token.
+        The associated client application will receive `invalid_grant` on the next
+        token refresh attempt.
+      operationId: terminateSession
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - name: session_id
+          in: path
+          required: true
+          description: Session ID (opaque refresh token identifier, not the raw token)
+          schema:
+            type: string
+            example: "rt_aB3dEfGhIjKlMn01"
+      responses:
+        '204':
+          description: Session terminated successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─────────────────────────────────────────────
+  # USER ACTIVITY
+  # ─────────────────────────────────────────────
+
+  /api/v1/admin/users/{user_id}/activity:
+    get:
+      tags: [User Activity]
+      summary: List activity events for a user
+      description: |
+        Returns a paginated, reverse-chronological list of authentication and
+        administrative events for the specified user.
+
+        Event types include: `login_success`, `login_failure`, `token_refresh`,
+        `logout`, `session_terminated`, `account_disabled`, `account_enabled`,
+        `role_assigned`, `role_revoked`, `user_invited`, `invitation_accepted`,
+        `invitation_expired`, `invitation_resent`, `user_deleted`.
+
+        Events are retained for a minimum of 90 days.
+      operationId: listUserActivity
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+        - name: event_type
+          in: query
+          description: Filter by event type
+          schema:
+            type: string
+            enum:
+              - login_success
+              - login_failure
+              - token_refresh
+              - logout
+              - session_terminated
+              - account_disabled
+              - account_enabled
+              - role_assigned
+              - role_revoked
+              - user_invited
+              - invitation_accepted
+              - invitation_expired
+              - invitation_resent
+              - user_deleted
+        - name: since
+          in: query
+          description: ISO 8601 timestamp — return events at or after this time
+          schema:
+            type: string
+            format: date-time
+            example: "2025-06-01T00:00:00Z"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Paginated activity events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserActivityResponse'
+              example:
+                user_id: "usr_aB3dEfGhIjKlMn"
+                events:
+                  - id: 10042
+                    event_type: "login_success"
+                    client_id: "aBcDeFgHiJkLmNo"
+                    client_name: "Reporting Dashboard"
+                    country_code: "US"
+                    details: {}
+                    occurred_at: "2025-06-11T09:45:00Z"
+                  - id: 10001
+                    event_type: "login_failure"
+                    client_id: "aBcDeFgHiJkLmNo"
+                    client_name: "Reporting Dashboard"
+                    country_code: "US"
+                    details:
+                      reason: "invalid_password"
+                    occurred_at: "2025-06-11T09:44:00Z"
+                pagination:
+                  page: 1
+                  page_size: 25
+                  total_count: 87
+                  total_pages: 4
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# ─────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token issued to a tenant administrator by the Keyles SSO
+
+  parameters:
+    UserID:
+      name: user_id
+      in: path
+      required: true
+      description: Unique user identifier
+      schema:
+        type: string
+        example: "usr_aB3dEfGhIjKlMn"
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "unauthorized"
+            message: "A valid authentication token is required."
+
+    Forbidden:
+      description: Authenticated user does not have permission for this resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "forbidden"
+            message: "You do not have permission to access this resource."
+
+    NotFound:
+      description: Requested resource does not exist in this tenant
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "not_found"
+            message: "The requested resource was not found."
+
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          example:
+            error: "validation_error"
+            message: "One or more fields are invalid."
+            details:
+              - field: "email"
+                message: "Must be a valid email address."
+
+  schemas:
+
+    # ── Request schemas ──────────────────────
+
+    InviteUserRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email address of the person to invite (unique per tenant)
+          example: "alice@example.com"
+        display_name:
+          type: string
+          maxLength: 255
+          description: Optional display name
+          example: "Alice Smith"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+          maxLength: 255
+          description: Updated display name
+          example: "Alice M. Smith"
+
+    UpdateUserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, disabled]
+          description: Target account status
+
+    AcceptInvitationRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 12
+          description: New password (minimum 12 characters)
+
+    AssignRoleRequest:
+      type: object
+      required: [client_id, role_name]
+      properties:
+        client_id:
+          type: string
+          description: ID of the client application to assign the role for
+          example: "aBcDeFgHiJkLmNo"
+        role_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Free-form role name (1–100 characters, Unicode permitted)
+          example: "analyst"
+
+    # ── Response schemas ──────────────────────
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+          example: "usr_aB3dEfGhIjKlMn"
+        email:
+          type: string
+          format: email
+          example: "alice@example.com"
+        display_name:
+          type: string
+          nullable: true
+          example: "Alice Smith"
+        status:
+          type: string
+          enum: [pending, active, disabled]
+          example: "active"
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-06-10T14:32:00Z"
+        role_assignment_count:
+          type: integer
+          description: Number of active role assignments across all client apps
+          example: 3
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-05-01T09:00:00Z"
+
+    UserDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserSummary'
+        - type: object
+          properties:
+            updated_at:
+              type: string
+              format: date-time
+              example: "2025-06-01T11:00:00Z"
+            role_assignments:
+              type: array
+              description: All active role assignments for this user, grouped by client
+              items:
+                $ref: '#/components/schemas/ClientRoleGroup'
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    InvitationResponse:
+      type: object
+      properties:
+        invitation_id:
+          type: string
+          example: "inv_aB3dEfGhIjKlMn"
+        email:
+          type: string
+          format: email
+          example: "alice@example.com"
+        display_name:
+          type: string
+          nullable: true
+          example: "Alice Smith"
+        status:
+          type: string
+          enum: [pending, accepted, expired]
+          example: "pending"
+        expires_at:
+          type: string
+          format: date-time
+          description: Invitation link expiry (72 hours from creation)
+          example: "2025-06-14T08:00:00Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-06-11T08:00:00Z"
+
+    AcceptInvitationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Account activated. You may now sign in."
+        email:
+          type: string
+          format: email
+          example: "alice@example.com"
+
+    UserStatusResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: "usr_aB3dEfGhIjKlMn"
+        status:
+          type: string
+          enum: [active, disabled]
+          example: "disabled"
+        sessions_revoked:
+          type: integer
+          description: Number of active sessions revoked as a result of this status change (0 when enabling)
+          example: 2
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-06-11T10:00:00Z"
+
+    UserRolesResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: "usr_aB3dEfGhIjKlMn"
+        assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClientRoleGroup'
+
+    ClientRoleGroup:
+      type: object
+      properties:
+        client_id:
+          type: string
+          example: "aBcDeFgHiJkLmNo"
+        client_name:
+          type: string
+          example: "Reporting Dashboard"
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoleAssignmentResponse'
+
+    RoleAssignmentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique role assignment ID (used for revocation)
+          example: 42
+        user_id:
+          type: string
+          example: "usr_aB3dEfGhIjKlMn"
+        client_id:
+          type: string
+          example: "aBcDeFgHiJkLmNo"
+        client_name:
+          type: string
+          example: "Reporting Dashboard"
+        role_name:
+          type: string
+          example: "analyst"
+        is_active:
+          type: boolean
+          example: true
+        granted_at:
+          type: string
+          format: date-time
+          example: "2025-06-11T10:00:00Z"
+        granted_by_email:
+          type: string
+          format: email
+          description: Email of the administrator who granted this role
+          example: "admin@acme.com"
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+
+    UserSessionsResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: "usr_aB3dEfGhIjKlMn"
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
+        total_active:
+          type: integer
+          example: 2
+
+    SessionSummary:
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: Opaque session identifier (safe to expose; not the raw refresh token)
+          example: "rt_aB3dEfGhIjKlMn01"
+        client_id:
+          type: string
+          example: "aBcDeFgHiJkLmNo"
+        client_name:
+          type: string
+          example: "Reporting Dashboard"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-06-10T08:00:00Z"
+        last_activity_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-06-11T09:45:00Z"
+        expires_at:
+          type: string
+          format: date-time
+          example: "2025-06-17T08:00:00Z"
+        country_code:
+          type: string
+          nullable: true
+          maxLength: 2
+          description: ISO 3166-1 alpha-2 country code derived from session origin IP
+          example: "US"
+
+    UserActivityResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: "usr_aB3dEfGhIjKlMn"
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserEventSummary'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    UserEventSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10042
+        event_type:
+          type: string
+          example: "login_success"
+        client_id:
+          type: string
+          nullable: true
+          example: "aBcDeFgHiJkLmNo"
+        client_name:
+          type: string
+          nullable: true
+          example: "Reporting Dashboard"
+        country_code:
+          type: string
+          nullable: true
+          example: "US"
+        details:
+          type: object
+          additionalProperties: true
+          description: Event-specific context (e.g., failure reason for login_failure)
+          example: {}
+        occurred_at:
+          type: string
+          format: date-time
+          example: "2025-06-11T09:45:00Z"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 25
+        total_count:
+          type: integer
+          example: 87
+        total_pages:
+          type: integer
+          example: 4
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+          example: "not_found"
+        message:
+          type: string
+          description: Human-readable error description
+          example: "The requested resource was not found."
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: "email"
+                  message:
+                    type: string
+                    example: "Must be a valid email address."
