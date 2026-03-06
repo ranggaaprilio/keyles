@@ -1,13 +1,13 @@
 package domain_test
 
 import (
-"strings"
-"testing"
-"time"
+	"strings"
+	"testing"
+	"time"
 
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/require"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewUser(t *testing.T) {

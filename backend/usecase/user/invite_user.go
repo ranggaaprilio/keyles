@@ -1,18 +1,18 @@
 package user
 
 import (
-"context"
-"crypto/rand"
-"encoding/base64"
-"errors"
-"fmt"
-"time"
+	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"time"
 
-"github.com/google/uuid"
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/domain/repositories"
-"github.com/ranggaaprilio/keyles/domain/services"
-"golang.org/x/crypto/bcrypt"
+	"github.com/google/uuid"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/domain/repositories"
+	"github.com/ranggaaprilio/keyles/domain/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // InviteUserInput represents the request to invite a new user

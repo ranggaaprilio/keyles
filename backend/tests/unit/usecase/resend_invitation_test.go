@@ -1,15 +1,15 @@
 package usecase_test
 
 import (
-"context"
-"errors"
-"testing"
+	"context"
+	"errors"
+	"testing"
 
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/tests/mocks"
-"github.com/ranggaaprilio/keyles/usecase/user"
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/mock"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/tests/mocks"
+	"github.com/ranggaaprilio/keyles/usecase/user"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestResendInvitation_HappyPath(t *testing.T) {

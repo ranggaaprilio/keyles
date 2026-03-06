@@ -1,18 +1,18 @@
 package usecase_test
 
 import (
-"context"
-"errors"
-"strings"
-"testing"
+	"context"
+	"errors"
+	"strings"
+	"testing"
 
-"github.com/google/uuid"
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/mock"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/tests/mocks"
-"github.com/ranggaaprilio/keyles/usecase/role"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/tests/mocks"
+	"github.com/ranggaaprilio/keyles/usecase/role"
 )
 
 // TestAssignRole_Success tests successful role assignment

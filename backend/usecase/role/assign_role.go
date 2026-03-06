@@ -1,14 +1,14 @@
 package role
 
 import (
-"context"
-"errors"
-"fmt"
-"time"
+	"context"
+	"errors"
+	"fmt"
+	"time"
 
-"github.com/google/uuid"
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/domain/repositories"
+	"github.com/google/uuid"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
 // AssignRoleRequest represents a request to assign a role to a user

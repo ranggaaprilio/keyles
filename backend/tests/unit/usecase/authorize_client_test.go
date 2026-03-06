@@ -1,16 +1,16 @@
 package usecase_test
 
 import (
-"context"
-"errors"
-"testing"
-"time"
+	"context"
+	"errors"
+	"testing"
+	"time"
 
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/tests/mocks"
-"github.com/ranggaaprilio/keyles/usecase/auth"
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/mock"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/tests/mocks"
+	"github.com/ranggaaprilio/keyles/usecase/auth"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestAuthorizeClient_Execute(t *testing.T) {

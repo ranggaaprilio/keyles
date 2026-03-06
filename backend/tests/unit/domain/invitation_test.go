@@ -1,11 +1,11 @@
 package domain_test
 
 import (
-"testing"
-"time"
+	"testing"
+	"time"
 
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/stretchr/testify/assert"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInvitationIsExpired_PastExpiry(t *testing.T) {
