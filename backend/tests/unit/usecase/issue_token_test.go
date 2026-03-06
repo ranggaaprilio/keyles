@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 	"github.com/ranggaaprilio/keyles/domain/services"
+	"github.com/ranggaaprilio/keyles/tests/mocks"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -97,6 +99,27 @@ func (m *MockRefreshTokenRepository) UpdateLastUsed(ctx context.Context, tokenHa
 func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
 	args := m.Called(ctx, clientID)
 	return args.Error(0)
+}
+
+func (m *MockRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockRefreshTokenRepository) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.RefreshToken), args.Error(1)
+}
+
+func (m *MockRefreshTokenRepository) GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entities.RefreshToken), args.Error(1)
 }
 
 // MockTokenService is a mock for TokenService
@@ -276,6 +299,7 @@ func TestIssueToken_Execute_Success(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	client := createValidClient()
@@ -284,11 +308,12 @@ func TestIssueToken_Execute_Success(t *testing.T) {
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
 	authCodeRepo.On("MarkAsUsed", ctx, "test-auth-code").Return(nil)
+	roleRepo.On("GetActiveRoles", ctx, "test-user-id", "test-client-id").Return([]string{"admin", "user"}, nil)
 	tokenService.On("SignIDToken", ctx, mock.AnythingOfType("*services.TokenClaims")).Return("id-token-jwt", nil)
 	tokenService.On("SignAccessToken", ctx, mock.AnythingOfType("*services.TokenClaims")).Return("access-token-jwt", nil)
 	refreshTokenRepo.On("Create", ctx, mock.AnythingOfType("*entities.RefreshToken")).Return(nil)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -314,6 +339,7 @@ func TestIssueToken_Execute_Success(t *testing.T) {
 	clientRepo.AssertExpectations(t)
 	refreshTokenRepo.AssertExpectations(t)
 	tokenService.AssertExpectations(t)
+	roleRepo.AssertExpectations(t)
 }
 
 func TestIssueToken_Execute_InvalidGrantType(t *testing.T) {
@@ -323,8 +349,9 @@ func TestIssueToken_Execute_InvalidGrantType(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType: "invalid_grant",
@@ -348,8 +375,9 @@ func TestIssueToken_Execute_MissingCode(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -377,10 +405,11 @@ func TestIssueToken_Execute_AuthCodeNotFound(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCodeRepo.On("Get", ctx, "invalid-code").Return(nil, errors.New("not found"))
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -411,13 +440,14 @@ func TestIssueToken_Execute_AuthCodeExpired(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	authCode.ExpiresAt = time.Now().Add(-1 * time.Minute) // Expired
 
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -449,13 +479,14 @@ func TestIssueToken_Execute_AuthCodeAlreadyUsed(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	authCode.UsedFlag = true // Already used
 
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -487,13 +518,14 @@ func TestIssueToken_Execute_InvalidClientCredentials(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "wrong-secret").Return(nil, errors.New("invalid credentials"))
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -525,6 +557,7 @@ func TestIssueToken_Execute_ClientIDMismatch(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	client := createValidClient()
@@ -532,7 +565,7 @@ func TestIssueToken_Execute_ClientIDMismatch(t *testing.T) {
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 	clientRepo.On("ValidateCredentials", ctx, "different-client-id", "test-client-secret").Return(client, nil)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -565,6 +598,7 @@ func TestIssueToken_Execute_RedirectURIMismatch(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	client := createValidClient()
@@ -572,7 +606,7 @@ func TestIssueToken_Execute_RedirectURIMismatch(t *testing.T) {
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -605,6 +639,7 @@ func TestIssueToken_Execute_InvalidPKCEVerifier(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	client := createValidClient()
@@ -612,7 +647,7 @@ func TestIssueToken_Execute_InvalidPKCEVerifier(t *testing.T) {
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -644,9 +679,10 @@ func TestIssueToken_Execute_MissingCodeVerifier(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	// No need to set up mock expectations - validation fails early
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -676,6 +712,7 @@ func TestIssueToken_Execute_TokenSigningFailure(t *testing.T) {
 	clientRepo := new(MockClientRepositoryForToken)
 	refreshTokenRepo := new(MockRefreshTokenRepository)
 	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
 
 	authCode := createValidAuthCode(verifier)
 	client := createValidClient()
@@ -683,9 +720,10 @@ func TestIssueToken_Execute_TokenSigningFailure(t *testing.T) {
 	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
 	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
 	authCodeRepo.On("MarkAsUsed", ctx, "test-auth-code").Return(nil)
+	roleRepo.On("GetActiveRoles", ctx, "test-user-id", "test-client-id").Return([]string{}, nil)
 	tokenService.On("SignIDToken", ctx, mock.AnythingOfType("*services.TokenClaims")).Return("", errors.New("signing error"))
 
-	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.example.com")
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
 
 	req := auth.TokenRequest{
 		GrantType:    "authorization_code",
@@ -708,6 +746,168 @@ func TestIssueToken_Execute_TokenSigningFailure(t *testing.T) {
 	authCodeRepo.AssertExpectations(t)
 	clientRepo.AssertExpectations(t)
 	tokenService.AssertExpectations(t)
+	roleRepo.AssertExpectations(t)
+}
+
+func TestIssueToken_Execute_RolesInJWTClaims(t *testing.T) {
+	ctx := context.Background()
+	verifier, _ := generatePKCEPair()
+
+	authCodeRepo := new(MockAuthCodeRepository)
+	clientRepo := new(MockClientRepositoryForToken)
+	refreshTokenRepo := new(MockRefreshTokenRepository)
+	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
+
+	authCode := createValidAuthCode(verifier)
+	client := createValidClient()
+
+	expectedRoles := []string{"admin", "editor", "viewer"}
+
+	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
+	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
+	authCodeRepo.On("MarkAsUsed", ctx, "test-auth-code").Return(nil)
+	roleRepo.On("GetActiveRoles", ctx, "test-user-id", "test-client-id").Return(expectedRoles, nil)
+
+	// Verify that roles are included in the ID token claims
+	tokenService.On("SignIDToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return reflect.DeepEqual(claims.Roles, expectedRoles)
+	})).Return("id-token-jwt", nil)
+
+	// Verify that roles are included in the access token claims
+	tokenService.On("SignAccessToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return reflect.DeepEqual(claims.Roles, expectedRoles)
+	})).Return("access-token-jwt", nil)
+
+	refreshTokenRepo.On("Create", ctx, mock.AnythingOfType("*entities.RefreshToken")).Return(nil)
+
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
+
+	req := auth.TokenRequest{
+		GrantType:    "authorization_code",
+		Code:         "test-auth-code",
+		RedirectURI:  "https://app.example.com/callback",
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		CodeVerifier: verifier,
+	}
+
+	resp, err := useCase.Execute(ctx, req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "id-token-jwt", resp.IDToken)
+	assert.Equal(t, "access-token-jwt", resp.AccessToken)
+
+	authCodeRepo.AssertExpectations(t)
+	clientRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
+	refreshTokenRepo.AssertExpectations(t)
+	roleRepo.AssertExpectations(t)
+}
+
+func TestIssueToken_Execute_EmptyRolesInClaims(t *testing.T) {
+	ctx := context.Background()
+	verifier, _ := generatePKCEPair()
+
+	authCodeRepo := new(MockAuthCodeRepository)
+	clientRepo := new(MockClientRepositoryForToken)
+	refreshTokenRepo := new(MockRefreshTokenRepository)
+	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
+
+	authCode := createValidAuthCode(verifier)
+	client := createValidClient()
+
+	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
+	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
+	authCodeRepo.On("MarkAsUsed", ctx, "test-auth-code").Return(nil)
+	roleRepo.On("GetActiveRoles", ctx, "test-user-id", "test-client-id").Return([]string{}, nil)
+
+	// Verify that empty roles array (not nil) is included in claims
+	tokenService.On("SignIDToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return claims.Roles != nil && len(claims.Roles) == 0
+	})).Return("id-token-jwt", nil)
+
+	tokenService.On("SignAccessToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return claims.Roles != nil && len(claims.Roles) == 0
+	})).Return("access-token-jwt", nil)
+
+	refreshTokenRepo.On("Create", ctx, mock.AnythingOfType("*entities.RefreshToken")).Return(nil)
+
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
+
+	req := auth.TokenRequest{
+		GrantType:    "authorization_code",
+		Code:         "test-auth-code",
+		RedirectURI:  "https://app.example.com/callback",
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		CodeVerifier: verifier,
+	}
+
+	resp, err := useCase.Execute(ctx, req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	authCodeRepo.AssertExpectations(t)
+	clientRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
+	refreshTokenRepo.AssertExpectations(t)
+	roleRepo.AssertExpectations(t)
+}
+
+func TestIssueToken_Execute_GetActiveRolesError_DefaultsToEmpty(t *testing.T) {
+	ctx := context.Background()
+	verifier, _ := generatePKCEPair()
+
+	authCodeRepo := new(MockAuthCodeRepository)
+	clientRepo := new(MockClientRepositoryForToken)
+	refreshTokenRepo := new(MockRefreshTokenRepository)
+	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
+
+	authCode := createValidAuthCode(verifier)
+	client := createValidClient()
+
+	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
+	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(client, nil)
+	authCodeRepo.On("MarkAsUsed", ctx, "test-auth-code").Return(nil)
+	roleRepo.On("GetActiveRoles", ctx, "test-user-id", "test-client-id").Return([]string(nil), errors.New("db error"))
+
+	// When GetActiveRoles fails, roles should default to empty slice
+	tokenService.On("SignIDToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return len(claims.Roles) == 0
+	})).Return("id-token-jwt", nil)
+
+	tokenService.On("SignAccessToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return len(claims.Roles) == 0
+	})).Return("access-token-jwt", nil)
+
+	refreshTokenRepo.On("Create", ctx, mock.AnythingOfType("*entities.RefreshToken")).Return(nil)
+
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
+
+	req := auth.TokenRequest{
+		GrantType:    "authorization_code",
+		Code:         "test-auth-code",
+		RedirectURI:  "https://app.example.com/callback",
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		CodeVerifier: verifier,
+	}
+
+	resp, err := useCase.Execute(ctx, req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	authCodeRepo.AssertExpectations(t)
+	clientRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
+	refreshTokenRepo.AssertExpectations(t)
+	roleRepo.AssertExpectations(t)
 }
 
 func TestValidateTokenRequest_MissingFields(t *testing.T) {

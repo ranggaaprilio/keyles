@@ -42,8 +42,12 @@ func (h *UserinfoHandler) UserInfo(c *gin.Context) {
 		return
 	}
 
+	// Extract client ID from JWT claims (set by auth middleware)
+	clientID, _ := c.Get("client_id")
+	clientIDStr, _ := clientID.(string)
+
 	// Execute use case
-	userInfo, err := h.getUserInfoUC.Execute(c.Request.Context(), userIDStr)
+	userInfo, err := h.getUserInfoUC.Execute(c.Request.Context(), userIDStr, clientIDStr)
 	if err != nil {
 		if err.Error() == "user not found" || err.Error() == "invalid user_id format" {
 			c.JSON(http.StatusNotFound, gin.H{

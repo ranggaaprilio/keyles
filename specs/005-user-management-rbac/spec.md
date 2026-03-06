@@ -207,7 +207,7 @@ A resource server (API) behind the SSO needs to make authorization decisions bas
 - **FR-002**: System MUST validate invited email addresses for proper format and reject invitations for emails that are already associated with an active or pending user in the same tenant.
 - **FR-003**: System MUST generate a cryptographically secure, unique, single-use invitation token per invitation and dispatch an activation email containing the time-limited link.
 - **FR-004**: Invitation links MUST expire after 72 hours from the time of creation. Expired links MUST display a clear expiry message and direct the user to request a new invitation.
-- **FR-005**: System MUST provide a password-creation form when an invited user follows a valid activation link, accepting the email as read-only and requiring a new password meeting minimum strength requirements.
+- **FR-005**: System MUST provide a password-creation form when an invited user follows a valid activation link, accepting the email as read-only and requiring a new password meeting minimum strength requirements (minimum 8 characters, at least one uppercase letter, one lowercase letter, and one digit).
 - **FR-006**: Upon successful password creation, the user account status MUST transition from `pending` to `active`, and the invitation token MUST be immediately invalidated so it cannot be reused.
 - **FR-007**: System MUST allow administrators to resend an invitation for any user in `pending` status; resending MUST invalidate the previous token and generate a new one with a fresh 72-hour window.
 - **FR-008**: System MUST display pending invitations in the user list with their expiry timestamp and a "Resend Invitation" action.
@@ -291,7 +291,7 @@ A resource server (API) behind the SSO needs to make authorization decisions bas
 - **SC-004**: Disabling a user account terminates all active sessions within 1 second of the administrator confirming the action, preventing any further use of existing refresh tokens.
 - **SC-005**: Deleted user access tokens are blocked at resource servers within 1 second of deletion (via blacklist propagation), regardless of the token's remaining TTL.
 - **SC-006**: User list with 10,000 entries loads within 2 seconds and supports pagination, search, and filter operations that return results within 1 second.
-- **SC-007**: All 19 user management event types (invitation sent, accepted, expired, resent; role assigned, revoked; account disabled, enabled, deleted; session terminated; etc.) are captured in the audit log with 100% accuracy.
+- **SC-007**: All 14 user management event types (`login_success`, `login_failure`, `token_refresh`, `logout`, `session_terminated`, `account_disabled`, `account_enabled`, `role_assigned`, `role_revoked`, `user_invited`, `invitation_accepted`, `invitation_expired`, `invitation_resent`, `user_deleted`) are captured in the audit log with 100% accuracy.
 - **SC-008**: JWT `roles` claims contain only the roles for the authenticating client; cross-client role leakage is zero across all test scenarios.
 - **SC-009**: Users with zero active role assignments for a client are denied authorization at the SSO layer with 100% consistency; no access tokens are ever issued to unauthorized users.
 - **SC-010**: Tenant isolation is maintained with 100% accuracy: administrators can only view, modify, and act upon users within their own tenant.

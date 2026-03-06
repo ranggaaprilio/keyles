@@ -32,4 +32,16 @@ type RefreshTokenRepository interface {
 
 	// RevokeByClientID revokes all refresh tokens issued to a specific client
 	RevokeByClientID(ctx context.Context, clientID string) error
+
+	// RevokeByUserID revokes all active refresh tokens for a user across all client applications.
+	// Used by disable_user and delete_user use cases.
+	RevokeByUserID(ctx context.Context, userID string) error
+
+	// ListByUserID returns all refresh tokens for a user (including revoked/expired).
+	// Used by list_sessions use case to display active sessions.
+	ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error)
+
+	// GetByID retrieves a refresh token by its database ID.
+	// Used by revoke_session use case.
+	GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error)
 }

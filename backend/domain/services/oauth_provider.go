@@ -98,4 +98,7 @@ type TokenClaims struct {
 	TenantID string `json:"tenant_id,omitempty"`
 	ClientID string `json:"client_id,omitempty"`
 	Scope    string `json:"scope,omitempty"`
+
+	// RBAC claims (feature 005)
+	Roles []string `json:"roles,omitempty"`
 }

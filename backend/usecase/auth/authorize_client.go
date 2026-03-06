@@ -12,6 +12,9 @@ import (
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
+// ErrAccountDisabled is returned when a disabled user tries to authorize
+const ErrAccountDisabled = "Your account has been disabled. Please contact your administrator."
+
 // AuthorizeRequest represents the OAuth authorization request parameters
 type AuthorizeRequest struct {
 	ClientID            string
@@ -65,6 +68,7 @@ type AuthorizeClient struct {
 	clientRepo   repositories.ClientRepository
 	roleRepo     repositories.RoleRepository
 	authCodeRepo repositories.AuthCodeRepository
+	endUserRepo  repositories.EndUserRepository
 }
 
 // NewAuthorizeClient creates a new AuthorizeClient use case
@@ -72,11 +76,13 @@ func NewAuthorizeClient(
 	clientRepo repositories.ClientRepository,
 	roleRepo repositories.RoleRepository,
 	authCodeRepo repositories.AuthCodeRepository,
+	endUserRepo repositories.EndUserRepository,
 ) *AuthorizeClient {
 	return &AuthorizeClient{
 		clientRepo:   clientRepo,
 		roleRepo:     roleRepo,
 		authCodeRepo: authCodeRepo,
+		endUserRepo:  endUserRepo,
 	}
 }
 
@@ -119,6 +125,16 @@ func (uc *AuthorizeClient) Execute(ctx context.Context, req AuthorizeRequest) (*
 		return nil, &OAuthError{
 			Code:        ErrInvalidRequest,
 			Description: "redirect_uri does not match any registered redirect URI",
+		}
+	}
+
+	// Check user is not disabled (FR-028)
+	// This prevents disabled users from initiating new OAuth flows
+	endUser, err := uc.endUserRepo.GetByID(ctx, req.UserID)
+	if err == nil && endUser != nil && endUser.Status == entities.UserStatusDisabled {
+		return nil, &OAuthError{
+			Code:        ErrAccessDenied,
+			Description: ErrAccountDisabled,
 		}
 	}
 

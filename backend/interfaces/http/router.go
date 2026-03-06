@@ -2,7 +2,8 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/ranggaaprilio/keyles/infrastructure/services"
+	"github.com/ranggaaprilio/keyles/domain/services"
+	infraServices "github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 )
@@ -22,8 +23,13 @@ type Router struct {
 	oauthHandler         *handlers.OAuthHandler
 	discoveryHandler     *handlers.DiscoveryHandler
 	roleHandler          *handlers.RoleHandler
+	sessionHandler       *handlers.SessionHandler
+	userHandler          *handlers.UserHandler
+	invitationHandler    *handlers.InvitationHandler
+	activityHandler      *handlers.ActivityHandler
 	userinfoHandler      *handlers.UserinfoHandler
-	jwtService           *services.JWTService
+	jwtService           *infraServices.JWTService
+	userBlacklist        services.UserBlacklist
 }
 
 // NewRouter creates a new HTTP router
@@ -40,8 +46,13 @@ func NewRouter(
 	oauthHandler *handlers.OAuthHandler,
 	discoveryHandler *handlers.DiscoveryHandler,
 	roleHandler *handlers.RoleHandler,
+	sessionHandler *handlers.SessionHandler,
+	userHandler *handlers.UserHandler,
+	invitationHandler *handlers.InvitationHandler,
+	activityHandler *handlers.ActivityHandler,
 	userinfoHandler *handlers.UserinfoHandler,
-	jwtService *services.JWTService,
+	jwtService *infraServices.JWTService,
+	userBlacklist services.UserBlacklist,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
 	engine := gin.New()
@@ -66,12 +77,22 @@ func NewRouter(
 		oauthHandler:        oauthHandler,
 		discoveryHandler:    discoveryHandler,
 		roleHandler:         roleHandler,
+		sessionHandler:      sessionHandler,
+		userHandler:         userHandler,
+		invitationHandler:   invitationHandler,
+		activityHandler:     activityHandler,
 		userinfoHandler:     userinfoHandler,
 		jwtService:          jwtService,
+		userBlacklist:       userBlacklist,
 	}
 }
 // Setup configures all routes
 func (r *Router) Setup() {
+	blacklistCheck := func(c *gin.Context) { c.Next() }
+	if r.userBlacklist != nil {
+		blacklistCheck = middleware.BlacklistCheckMiddleware(r.userBlacklist)
+	}
+
 	// Root health check
 	r.engine.GET("/health", r.healthHandler.Health)
 	r.engine.GET("/health/db", r.healthHandler.HealthDB)
@@ -112,17 +133,21 @@ func (r *Router) Setup() {
 
 		// Auth routes (public) - Phase 5
 		v1.POST("/login", r.authHandler.Login)
+		if r.invitationHandler != nil {
+			v1.GET("/invitations/:token/validate", r.invitationHandler.ValidateInvitation)
+			v1.POST("/invitations/:token/accept", r.invitationHandler.AcceptInvitation)
+		}
 
 		// Protected routes (require JWT) - Phase 5
 		protected := v1.Group("/")
-		protected.Use(middleware.AuthMiddleware(r.jwtService))
+		protected.Use(middleware.AuthMiddleware(r.jwtService), blacklistCheck)
 		{
 			protected.GET("/dashboard", r.dashboardHandler.GetDashboard)
 		}
 
 		// Admin routes (require JWT) - Client Management
 		admin := v1.Group("/admin")
-		admin.Use(middleware.AuthMiddleware(r.jwtService))
+		admin.Use(middleware.AuthMiddleware(r.jwtService), blacklistCheck)
 		{
 			// Client management routes
 			clients := admin.Group("/clients")
@@ -142,6 +167,35 @@ func (r *Router) Setup() {
 				roles.POST("/revoke", r.roleHandler.RevokeRole)
 				roles.GET("/users/:userId", r.roleHandler.ListUserRoles)
 				roles.GET("/clients/:clientId", r.roleHandler.ListClientRoles)
+			}
+
+			// User management routes
+			if r.userHandler != nil {
+				users := admin.Group("/users")
+				{
+					users.GET("", r.userHandler.ListUsers)
+					users.POST("/invite", r.userHandler.InviteUser)
+					users.GET("/:id", r.userHandler.GetUser)
+					users.PATCH("/:id", r.userHandler.UpdateUser)
+					users.PATCH("/:id/status", r.userHandler.UpdateUserStatus)
+					users.DELETE("/:id", r.userHandler.DeleteUser)
+					users.POST("/:id/resend-invitation", r.userHandler.ResendInvitation)
+
+					if r.roleHandler != nil {
+						users.GET("/:id/roles", r.roleHandler.ListUserRolesForUser)
+						users.POST("/:id/roles", r.roleHandler.AssignUserRole)
+						users.DELETE("/:id/roles/:assignmentId", r.roleHandler.RevokeUserRole)
+					}
+
+					if r.sessionHandler != nil {
+						users.GET("/:id/sessions", r.sessionHandler.ListUserSessions)
+						users.DELETE("/:id/sessions/:sessionId", r.sessionHandler.RevokeUserSession)
+					}
+
+					if r.activityHandler != nil {
+						users.GET("/:id/activity", r.activityHandler.ListUserActivity)
+					}
+				}
 			}
 		}
 	}

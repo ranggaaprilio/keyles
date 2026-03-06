@@ -182,6 +182,16 @@ func (m *MockIntegrationRefreshTokenRepository) RevokeByClientID(ctx context.Con
 	return nil
 }
 
+func (m *MockIntegrationRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockIntegrationRefreshTokenRepository) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	return []*entities.RefreshToken{}, nil
+}
+func (m *MockIntegrationRefreshTokenRepository) GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+	return nil, errors.New("not found")
+}
+
 var _ repositories.RefreshTokenRepository = (*MockIntegrationRefreshTokenRepository)(nil)
 
 // MockIntegrationClientCountCache for integration tests

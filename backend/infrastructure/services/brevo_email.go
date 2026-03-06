@@ -152,3 +152,65 @@ func (s *BrevoEmailService) SendWelcomeEmail(ctx context.Context, toEmail, toNam
 
 	return nil
 }
+
+// SendInvitationEmail sends an invitation email to a new end-user
+func (s *BrevoEmailService) SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error {
+	subject := fmt.Sprintf("You've been invited to join %s", orgName)
+
+	htmlContent := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		</head>
+		<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+			<div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px;">
+				<h1 style="color: #2563eb; margin-bottom: 20px;">You're Invited!</h1>
+
+				<p>Hello %s,</p>
+
+				<p>You've been invited to join <strong>%s</strong> on Keyles SSO platform.</p>
+
+				<p>Click the button below to set your password and activate your account:</p>
+
+				<div style="text-align: center; margin: 30px 0;">
+					<a href="%s" style="background-color: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Accept Invitation</a>
+				</div>
+
+				<p><strong>Important:</strong> This invitation will expire in <strong>72 hours</strong>.</p>
+
+				<p>If you didn't expect this invitation, you can safely ignore this email.</p>
+
+				<hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
+
+				<p style="font-size: 12px; color: #6c757d;">
+					Need help? Contact us at <a href="mailto:support@keyles.com" style="color: #2563eb;">support@keyles.com</a>
+				</p>
+			</div>
+		</body>
+		</html>
+	`, toName, orgName, inviteURL)
+
+	email := brevo.SendSmtpEmail{
+		Sender: &brevo.SendSmtpEmailSender{
+			Name:  s.senderName,
+			Email: s.senderEmail,
+		},
+		To: []brevo.SendSmtpEmailTo{
+			{
+				Email: toEmail,
+				Name:  toName,
+			},
+		},
+		Subject:     subject,
+		HtmlContent: htmlContent,
+	}
+
+	_, _, err := s.client.TransactionalEmailsApi.SendTransacEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("failed to send invitation email: %w", err)
+	}
+
+	return nil
+}

@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -116,7 +117,7 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 			errMsg:  "role cannot be empty",
 		},
 		{
-			name: "Invalid role value",
+			name: "Custom role value is now valid",
 			role: &entities.UserRoleAssignment{
 				ID:        8,
 				UserID:    "user-123",
@@ -126,8 +127,7 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 				IsActive:  true,
 				GrantedAt: time.Now(),
 			},
-			wantErr: true,
-			errMsg:  "invalid role",
+			wantErr: false,
 		},
 	}
 
@@ -144,25 +144,35 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 	}
 }
 
-// TestUserRoleAssignment_IsValidRole tests role validation
-func TestUserRoleAssignment_IsValidRole(t *testing.T) {
+// TestUserRoleAssignment_RoleValidation tests role validation via Validate()
+func TestUserRoleAssignment_RoleValidation(t *testing.T) {
 	tests := []struct {
-		name     string
-		role     string
-		expected bool
+		name      string
+		role      string
+		expectErr bool
 	}{
-		{"admin is valid", "admin", true},
-		{"user is valid", "user", true},
-		{"viewer is valid", "viewer", true},
-		{"superuser is invalid", "superuser", false},
-		{"empty is invalid", "", false},
-		{"random is invalid", "random", false},
+		{"admin is valid", "admin", false},
+		{"custom role is valid", "billing_manager", false},
+		{"empty role is invalid", "", true},
+		{"whitespace-only role is invalid", "   ", true},
+		{"role exceeding max length is invalid", strings.Repeat("a", entities.MaxRoleNameLength+1), true},
+		{"role at max length is valid", strings.Repeat("a", entities.MaxRoleNameLength), false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assignment := &entities.UserRoleAssignment{Role: tt.role}
-			assert.Equal(t, tt.expected, assignment.IsValidRole())
+			assignment := &entities.UserRoleAssignment{
+				UserID:   "user-1",
+				ClientID: "client-1",
+				TenantID: "tenant-1",
+				Role:     tt.role,
+			}
+			err := assignment.Validate()
+			if tt.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

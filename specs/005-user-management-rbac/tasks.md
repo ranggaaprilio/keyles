@@ -40,13 +40,13 @@
 
 **⚠️ PREREQUISITE**: Enable `pg_trgm` extension before running 000009: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
 
-- [ ] T001 Create migration files `backend/migrations/000009_extend_users.up.sql` and `backend/migrations/000009_extend_users.down.sql` per data-model.md §000009: add `display_name VARCHAR(255)`, `status VARCHAR(20) NOT NULL DEFAULT 'active'` + `users_valid_status` CHECK constraint, `last_login_at TIMESTAMPTZ`; create indexes `idx_users_status`, `idx_users_tenant_status`, `idx_users_tenant_email_lower`, `idx_users_display_name_trgm`, `idx_users_email_trgm`
+- [x] T001 Create migration files `backend/migrations/000009_extend_users.up.sql` and `backend/migrations/000009_extend_users.down.sql` per data-model.md §000009: add `display_name VARCHAR(255)`, `status VARCHAR(20) NOT NULL DEFAULT 'active'` + `users_valid_status` CHECK constraint, `last_login_at TIMESTAMPTZ`; create indexes `idx_users_status`, `idx_users_tenant_status`, `idx_users_tenant_email_lower`, `idx_users_display_name_trgm`, `idx_users_email_trgm`
 
-- [ ] T002 Create migration files `backend/migrations/000010_create_invitations.up.sql` and `backend/migrations/000010_create_invitations.down.sql` per data-model.md §000010: new `invitations` table with columns id, tenant_id (FK→tenants), email, display_name, token_hash (UNIQUE), status + CHECK constraint, invited_by (FK→users), expires_at, accepted_at, timestamps; create indexes `idx_invitations_tenant`, `idx_invitations_email`, `idx_invitations_status`, `idx_invitations_expires_at`; add `update_updated_at_column()` trigger
+- [x] T002 Create migration files `backend/migrations/000010_create_invitations.up.sql` and `backend/migrations/000010_create_invitations.down.sql` per data-model.md §000010: new `invitations` table with columns id, tenant_id (FK→tenants), email, display_name, token_hash (UNIQUE), status + CHECK constraint, invited_by (FK→users), expires_at, accepted_at, timestamps; create indexes `idx_invitations_tenant`, `idx_invitations_email`, `idx_invitations_status`, `idx_invitations_expires_at`; add `update_updated_at_column()` trigger
 
-- [ ] T003 Create migration files `backend/migrations/000011_extend_user_role_assignments.up.sql` and `backend/migrations/000011_extend_user_role_assignments.down.sql` per data-model.md §000011: add `revoked_at TIMESTAMPTZ` and `revoked_by VARCHAR(255) REFERENCES users(id)` columns to `user_role_assignments`; create partial index `idx_ura_user_client_active ON user_role_assignments(user_id, client_id) WHERE is_active = true`
+- [x] T003 Create migration files `backend/migrations/000011_extend_user_role_assignments.up.sql` and `backend/migrations/000011_extend_user_role_assignments.down.sql` per data-model.md §000011: add `revoked_at TIMESTAMPTZ` and `revoked_by VARCHAR(255) REFERENCES users(id)` columns to `user_role_assignments`; create partial index `idx_ura_user_client_active ON user_role_assignments(user_id, client_id) WHERE is_active = true`
 
-- [ ] T004 Create migration files `backend/migrations/000012_create_user_events.up.sql` and `backend/migrations/000012_create_user_events.down.sql` per data-model.md §000012: new `user_events` table with BIGSERIAL id, tenant_id, user_id, client_id (nullable), event_type + 14-value CHECK constraint, ip_address INET, country_code CHAR(2), details JSONB, occurred_at; create indexes `idx_user_events_user_recent`, `idx_user_events_tenant_type`, `idx_user_events_occurred_at`
+- [x] T004 Create migration files `backend/migrations/000012_create_user_events.up.sql` and `backend/migrations/000012_create_user_events.down.sql` per data-model.md §000012: new `user_events` table with BIGSERIAL id, tenant_id, user_id, client_id (nullable), event_type + 14-value CHECK constraint, ip_address INET, country_code CHAR(2), details JSONB, occurred_at; create indexes `idx_user_events_user_recent`, `idx_user_events_tenant_type`, `idx_user_events_occurred_at`
 
 ---
 
@@ -58,40 +58,43 @@
 
 ### New Domain Entities
 
-- [ ] T005 Create domain entity `backend/domain/entities/user.go`: define `UserStatus` type with constants `UserStatusPending`, `UserStatusActive`, `UserStatusDisabled`; define `User` struct with fields ID, TenantID, Email, DisplayName, PasswordHash, Status, LastLoginAt *time.Time, CreatedAt, UpdatedAt; add `MaxUsersPerTenant = 10_000` constant; add `NewUser()` constructor and `Validate()` method (email format, status enum, display name max 255 chars)
+- [x] T005 Create domain entity `backend/domain/entities/user.go`: define `UserStatus` type with constants `UserStatusPending`, `UserStatusActive`, `UserStatusDisabled`; define `User` struct with fields ID, TenantID, Email, DisplayName, PasswordHash, Status, LastLoginAt \*time.Time, CreatedAt, UpdatedAt; add `MaxUsersPerTenant = 10_000` constant; add `NewUser()` constructor and `Validate()` method (email format, status enum, display name max 255 chars)
 
-- [ ] T006 [P] Create domain entity `backend/domain/entities/invitation.go`: define `InvitationStatus` type with constants `InvitationStatusPending`, `InvitationStatusAccepted`, `InvitationStatusExpired`; define `Invitation` struct (ID, TenantID, Email, DisplayName, TokenHash, Status, InvitedBy, ExpiresAt, AcceptedAt *time.Time, CreatedAt, UpdatedAt); add `InvitationTTL = 72 * time.Hour` constant; add `IsExpired() bool` and `IsAccepted() bool` helper methods
+- [x] T006 [P] Create domain entity `backend/domain/entities/invitation.go`: define `InvitationStatus` type with constants `InvitationStatusPending`, `InvitationStatusAccepted`, `InvitationStatusExpired`; define `Invitation` struct (ID, TenantID, Email, DisplayName, TokenHash, Status, InvitedBy, ExpiresAt, AcceptedAt _time.Time, CreatedAt, UpdatedAt); add `InvitationTTL = 72 _ time.Hour`constant; add`IsExpired() bool`and`IsAccepted() bool` helper methods
 
-- [ ] T007 [P] Create domain entity `backend/domain/entities/user_event.go`: define `UserEventType` type; add all 14 event-type constants: `EventTypeLoginSuccess`, `EventTypeLoginFailure`, `EventTypeTokenRefresh`, `EventTypeLogout`, `EventTypeSessionTerminated`, `EventTypeAccountDisabled`, `EventTypeAccountEnabled`, `EventTypeRoleAssigned`, `EventTypeRoleRevoked`, `EventTypeUserInvited`, `EventTypeInvitationAccepted`, `EventTypeInvitationExpired`, `EventTypeInvitationResent`, `EventTypeUserDeleted`; define `UserEvent` struct with all fields from data-model.md (ID int64, TenantID, UserID, ClientID *string, EventType, IPAddress *string, CountryCode *string, Details map[string]any, OccurredAt)
+- [x] T007 [P] Create domain entity `backend/domain/entities/user_event.go`: define `UserEventType` type; add all 14 event-type constants: `EventTypeLoginSuccess`, `EventTypeLoginFailure`, `EventTypeTokenRefresh`, `EventTypeLogout`, `EventTypeSessionTerminated`, `EventTypeAccountDisabled`, `EventTypeAccountEnabled`, `EventTypeRoleAssigned`, `EventTypeRoleRevoked`, `EventTypeUserInvited`, `EventTypeInvitationAccepted`, `EventTypeInvitationExpired`, `EventTypeInvitationResent`, `EventTypeUserDeleted`; define `UserEvent` struct with all fields from data-model.md (ID int64, TenantID, UserID, ClientID *string, EventType, IPAddress *string, CountryCode \*string, Details map[string]any, OccurredAt)
 
-- [ ] T008 Modify domain entity `backend/domain/entities/user_role.go`: remove `ValidRoles` var and `IsValidRole()` method; add `RevokedAt *time.Time` and `RevokedBy *string` fields to `UserRoleAssignment` struct; add `MaxRoleNameLength = 100` constant; update `Validate()` to replace whitelist check with length validation: `len(role) >= 1 && len(role) <= MaxRoleNameLength`; update all existing tests in `backend/tests/unit/usecase/assign_role_test.go` and `backend/tests/unit/usecase/revoke_role_test.go` that assert on old valid/invalid role names
+- [x] T008 Modify domain entity `backend/domain/entities/user_role.go`: remove `ValidRoles` var and `IsValidRole()` method; add `RevokedAt *time.Time` and `RevokedBy *string` fields to `UserRoleAssignment` struct; add `MaxRoleNameLength = 100` constant; update `Validate()` to replace whitelist check with length validation: `strings.TrimSpace(role)` must be non-empty and `len(role) <= MaxRoleNameLength` (reject whitespace-only role names)
 
 ### New Repository Interfaces
 
-- [ ] T009 Create repository interface `backend/domain/repositories/end_user_repository.go`: define `EndUserRepository` interface with methods `GetByID(ctx, userID string) (*entities.User, error)`, `GetByEmail(ctx, tenantID, email string) (*entities.User, error)`, `Create(ctx, user *entities.User) error`, `Update(ctx, user *entities.User) error`, `ListByTenant(ctx, tenantID, search string, status entities.UserStatus, page, pageSize int) ([]*entities.User, int, error)`, `CountByTenant(ctx, tenantID string) (int, error)`, `UpdateStatus(ctx, userID string, status entities.UserStatus) error`, `UpdateLastLogin(ctx, userID string, at time.Time) error`, `Delete(ctx, userID string) error`
+- [x] T009 Create repository interface `backend/domain/repositories/end_user_repository.go`: define `EndUserRepository` interface with methods `GetByID(ctx, userID string) (*entities.User, error)`, `GetByEmail(ctx, tenantID, email string) (*entities.User, error)`, `Create(ctx, user *entities.User) error`, `Update(ctx, user *entities.User) error`, `ListByTenant(ctx, tenantID, search string, status entities.UserStatus, page, pageSize int) ([]*entities.User, int, error)`, `CountByTenant(ctx, tenantID string) (int, error)`, `UpdateStatus(ctx, userID string, status entities.UserStatus) error`, `UpdateLastLogin(ctx, userID string, at time.Time) error`, `Delete(ctx, userID string) error`
 
-- [ ] T010 [P] Create repository interface `backend/domain/repositories/invitation_repository.go`: define `InvitationRepository` interface with methods `Create(ctx, inv *entities.Invitation) error`, `GetByToken(ctx, plainToken string) (*entities.Invitation, error)`, `GetPendingByEmail(ctx, tenantID, email string) (*entities.Invitation, error)`, `UpdateStatus(ctx, invitationID string, status entities.InvitationStatus, acceptedAt *time.Time) error`, `ListByTenant(ctx, tenantID string, page, pageSize int) ([]*entities.Invitation, int, error)`, `ExpireStalePending(ctx context.Context) (int64, error)`
+- [x] T010 [P] Create repository interface `backend/domain/repositories/invitation_repository.go`: define `InvitationRepository` interface with methods `Create(ctx, inv *entities.Invitation) error`, `GetByToken(ctx, plainToken string) (*entities.Invitation, error)`, `GetPendingByEmail(ctx, tenantID, email string) (*entities.Invitation, error)`, `UpdateStatus(ctx, invitationID string, status entities.InvitationStatus, acceptedAt *time.Time) error`, `ListByTenant(ctx, tenantID string, page, pageSize int) ([]*entities.Invitation, int, error)`, `ExpireStalePending(ctx context.Context) (int64, error)`
 
-- [ ] T011 [P] Create repository interface `backend/domain/repositories/user_event_repository.go`: define `UserEventRepository` interface with methods `Record(ctx, event *entities.UserEvent) error`, `ListByUser(ctx, userID string, page, pageSize int) ([]*entities.UserEvent, int, error)`, `DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)`
+- [x] T011 [P] Create repository interface `backend/domain/repositories/user_event_repository.go`: define `UserEventRepository` interface with methods `Record(ctx, event *entities.UserEvent) error`, `ListByUser(ctx, userID string, page, pageSize int) ([]*entities.UserEvent, int, error)`, `DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)`
 
 ### Modified Repository Interfaces
 
-- [ ] T012 Modify repository interface `backend/domain/repositories/role_repository.go`: add new methods `Assign(ctx, assignment *entities.UserRoleAssignment) error`, `Revoke(ctx, assignmentID int64, revokedByUserID string) error`, `ListByUser(ctx, userID string) ([]*entities.UserRoleAssignment, error)`, `ListByClient(ctx, clientID string, page, pageSize int) ([]*entities.UserRoleAssignment, int, error)`, `RevokeAllForUser(ctx, userID, revokedByUserID string) error`; preserve all existing method signatures unchanged (`AssignRole`, `RevokeRole`, `GetUserRoles`, `HasRole`, `HasAnyRole`, `ListRolesByClient`, `ListRolesByUser`)
+- [x] T012 Modify repository interface `backend/domain/repositories/role_repository.go`: add new methods `Assign(ctx, assignment *entities.UserRoleAssignment) error`, `Revoke(ctx, assignmentID int64, revokedByUserID string) error`, `ListByUser(ctx, userID string) ([]*entities.UserRoleAssignment, error)`, `ListByClient(ctx, clientID string, page, pageSize int) ([]*entities.UserRoleAssignment, int, error)`, `RevokeAllForUser(ctx, userID, revokedByUserID string) error`, `GetActiveRoles(ctx, userID, clientID string) ([]string, error)` (returns only active role name strings for a user-client pair — used by `issue_token.go` and `get_userinfo.go` for JWT claim injection); preserve all existing method signatures unchanged (`AssignRole`, `RevokeRole`, `GetUserRoles`, `HasRole`, `HasAnyRole`, `ListRolesByClient`, `ListRolesByUser`); **deprecation note**: `AssignRole` and `RevokeRole` are superseded by `Assign` and `Revoke` — audit callers after implementation and remove legacy methods in a follow-up cleanup if no remaining callers
 
-- [ ] T013 [P] Modify repository interface `backend/domain/repositories/refresh_token_repository.go`: add `RevokeByUserID(ctx context.Context, userID string) error` method to support revoking all sessions for a user across all client applications (needed by disable_user and delete_user use cases); preserve all existing method signatures unchanged
+- [x] T013 [P] Modify repository interface `backend/domain/repositories/refresh_token_repository.go`: add `RevokeByUserID(ctx context.Context, userID string) error` method to support revoking all sessions for a user across all client applications (needed by disable_user and delete_user use cases); preserve all existing method signatures unchanged
 
 ### New Service Interfaces
 
-- [ ] T014 [P] Create service interface `backend/domain/services/user_blacklist.go`: define `UserBlacklist` interface with methods `Add(ctx context.Context, userID string, ttl time.Duration) error` and `IsBlacklisted(ctx context.Context, userID string) (bool, error)`; add godoc comment explaining the Redis key pattern `user_blacklist:{user_id}` and 900s TTL purpose
+- [x] T014 [P] Create service interface `backend/domain/services/user_blacklist.go`: define `UserBlacklist` interface with methods `Add(ctx context.Context, userID string, ttl time.Duration) error` and `IsBlacklisted(ctx context.Context, userID string) (bool, error)`; add godoc comment explaining the Redis key pattern `user_blacklist:{user_id}` and 900s TTL purpose
 
-- [ ] T015 [P] Modify service interface `backend/domain/services/email_service.go`: add `SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error` method to the `EmailService` interface; preserve all existing method signatures (`SendOTPEmail`, `SendWelcomeEmail`) unchanged
+- [x] T014b [P] Create service interface `backend/domain/services/user_count_cache.go`: define `UserCountCache` interface with methods `Get(ctx context.Context, tenantID string) (int, bool, error)` (returns count + cache-hit bool), `Set(ctx context.Context, tenantID string, count int) error`, `Invalidate(ctx context.Context, tenantID string) error`; add godoc comment explaining this abstracts the Redis-backed tenant user count cache behind a domain interface for DIP compliance
+
+- [x] T015 [P] Modify service interface `backend/domain/services/email_service.go`: add `SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error` method to the `EmailService` interface; preserve all existing method signatures (`SendOTPEmail`, `SendWelcomeEmail`) unchanged
 
 ### Domain Layer Tests
 
-- [ ] T016 [P] Create unit tests `backend/tests/unit/domain/user_test.go`: test `User.Validate()` (valid user passes, empty email fails, empty tenantID fails, invalid status fails, display name >255 chars fails), test `NewUser()` sets correct defaults, test `UserStatus` constants
-- [ ] T017 [P] Create unit tests `backend/tests/unit/domain/invitation_test.go`: test `Invitation.IsExpired()` (past expiry returns true, future expiry returns false), test `Invitation.IsAccepted()`, test `InvitationStatus` constants, test `InvitationTTL = 72h`
+- [x] T016 [P] Create unit tests `backend/tests/unit/domain/user_test.go`: test `User.Validate()` (valid user passes, empty email fails, empty tenantID fails, invalid status fails, display name >255 chars fails), test `NewUser()` sets correct defaults, test `UserStatus` constants
+- [x] T017 [P] Create unit tests `backend/tests/unit/domain/invitation_test.go`: test `Invitation.IsExpired()` (past expiry returns true, future expiry returns false), test `Invitation.IsAccepted()`, test `InvitationStatus` constants, test `InvitationTTL = 72h`
 
 **Clean Architecture Checkpoint**:
+
 - Domain layer has no imports from `infrastructure/`, `interfaces/`, or external frameworks ✓
 - All repository and service interfaces defined in domain layer ✓
 - `UserRepository` (serving `AdminUser`) is untouched ✓
@@ -108,29 +111,29 @@
 
 ### Postgres Implementations
 
-- [ ] T018 Create `backend/infrastructure/persistence/postgres/end_user_repository.go`: define `PostgresUser` GORM model (extends existing `users` table) with `DisplayName *string`, `Status string`, `LastLoginAt *time.Time`, `IsActive bool` fields and `TableName() = "users"`; implement all `EndUserRepository` methods: `Create` (INSERT), `GetByID` and `GetByEmail` (SELECT by PK/tenant+email), `ListByTenant` (SELECT with `ILIKE` search on display_name/email using trgm indexes + status filter + LIMIT/OFFSET pagination), `CountByTenant` (SELECT COUNT), `UpdateStatus` (UPDATE status WHERE id), `UpdateLastLogin` (UPDATE last_login_at WHERE id), `Update` (UPDATE display_name WHERE id), `Delete` (DELETE WHERE id)
+- [x] T018 Create `backend/infrastructure/persistence/postgres/end_user_repository.go`: define `PostgresUser` GORM model (extends existing `users` table) with `DisplayName *string`, `Status string`, `LastLoginAt *time.Time`, `IsActive bool` fields and `TableName() = "users"`; implement all `EndUserRepository` methods: `Create` (INSERT), `GetByID` and `GetByEmail` (SELECT by PK/tenant+email), `ListByTenant` (SELECT with `ILIKE` search on display_name/email using trgm indexes + status filter + LIMIT/OFFSET pagination), `CountByTenant` (SELECT COUNT), `UpdateStatus` (UPDATE status WHERE id), `UpdateLastLogin` (UPDATE last_login_at WHERE id), `Update` (UPDATE display_name WHERE id), `Delete` (DELETE WHERE id)
 
-- [ ] T019 [P] Create `backend/infrastructure/persistence/postgres/invitation_repository.go`: define `PostgresInvitation` GORM model with all fields from data-model.md and `TableName() = "invitations"`; implement `InvitationRepository`: `Create` (INSERT + store 8-char prefix in Redis key `invitation_exists:{prefix}` with 72h TTL), `GetByToken` (check Redis prefix index first → iterate candidates → bcrypt comparison → return ErrNotFound if no match), `GetPendingByEmail` (SELECT WHERE tenant_id + email + status='pending'), `UpdateStatus` (UPDATE status + accepted_at), `ListByTenant` (paginated SELECT), `ExpireStalePending` (bulk UPDATE WHERE expires_at < NOW() AND status='pending')
+- [x] T019 [P] Create `backend/infrastructure/persistence/postgres/invitation_repository.go`: define `PostgresInvitation` GORM model with all fields from data-model.md and `TableName() = "invitations"`; implement `InvitationRepository`: `Create` (INSERT + store 8-char prefix in Redis key `invitation_exists:{prefix}` with 72h TTL), `GetByToken` (check Redis prefix index first → iterate candidates → bcrypt comparison → return ErrNotFound if no match), `GetPendingByEmail` (SELECT WHERE tenant_id + email + status='pending'), `UpdateStatus` (UPDATE status + accepted_at), `ListByTenant` (paginated SELECT), `ExpireStalePending` (bulk UPDATE WHERE expires_at < NOW() AND status='pending')
 
-- [ ] T020 [P] Create `backend/infrastructure/persistence/postgres/user_event_repository.go`: define `PostgresUserEvent` GORM model with all fields from data-model.md using `datatypes.JSON` for details and `TableName() = "user_events"`; implement `UserEventRepository`: `Record` (fire-and-forget INSERT — errors are logged but not propagated to caller), `ListByUser` (SELECT WHERE user_id ORDER BY occurred_at DESC with LIMIT/OFFSET, returns total count), `DeleteOlderThan` (DELETE WHERE occurred_at < before)
+- [x] T020 [P] Create `backend/infrastructure/persistence/postgres/user_event_repository.go`: define `PostgresUserEvent` GORM model with all fields from data-model.md using `datatypes.JSON` for details and `TableName() = "user_events"`; implement `UserEventRepository`: `Record` (fire-and-forget INSERT — errors are logged but not propagated to caller), `ListByUser` (SELECT WHERE user_id ORDER BY occurred_at DESC with LIMIT/OFFSET, returns total count), `DeleteOlderThan` (DELETE WHERE occurred_at < before)
 
-- [ ] T021 Modify `backend/infrastructure/persistence/postgres/role_repository.go`: add implementations for all 5 new `RoleRepository` methods: `Assign` (INSERT with duplicate-key error handling → return ErrDuplicateRole if `(user_id, client_id, role, is_active=true)` already exists), `Revoke` (UPDATE is_active=false, revoked_at=NOW(), revoked_by=revokedByUserID WHERE id), `ListByUser` (SELECT all assignments for userID including inactive), `ListByClient` (SELECT active assignments for clientID with pagination), `RevokeAllForUser` (UPDATE is_active=false, revoked_at=NOW(), revoked_by=revokedByUserID WHERE user_id + is_active=true); preserve all existing method implementations unchanged
+- [x] T021 Modify `backend/infrastructure/persistence/postgres/role_repository.go`: add implementations for all 5 new `RoleRepository` methods: `Assign` (INSERT with duplicate-key error handling → return ErrDuplicateRole if `(user_id, client_id, role, is_active=true)` already exists), `Revoke` (UPDATE is_active=false, revoked_at=NOW(), revoked_by=revokedByUserID WHERE id), `ListByUser` (SELECT all assignments for userID including inactive), `ListByClient` (SELECT active assignments for clientID with pagination), `RevokeAllForUser` (UPDATE is_active=false, revoked_at=NOW(), revoked_by=revokedByUserID WHERE user_id + is_active=true); preserve all existing method implementations unchanged
 
-- [ ] T022 [P] Modify `backend/infrastructure/persistence/postgres/refresh_token_repository.go` (or `refresh_token_repository_gorm.go`): implement new `RevokeByUserID(ctx, userID string) error` method using `UPDATE refresh_tokens SET is_revoked=true WHERE user_id = ?`; add appropriate index hint comment referencing `idx_refresh_tokens_user`
+- [x] T022 [P] Modify `backend/infrastructure/persistence/postgres/refresh_token_repository.go` (or `refresh_token_repository_gorm.go`): implement new `RevokeByUserID(ctx, userID string) error` method using `UPDATE refresh_tokens SET is_revoked=true WHERE user_id = ?`; add appropriate index hint comment referencing `idx_refresh_tokens_user`
 
 ### Redis Implementations
 
-- [ ] T023 [P] Create `backend/infrastructure/persistence/redis/user_blacklist.go`: implement `UserBlacklist` interface using go-redis v9; `Add(ctx, userID, ttl)` → `SET user_blacklist:{userID} "1" EX 900`; `IsBlacklisted(ctx, userID)` → `EXISTS user_blacklist:{userID}` returns bool; include godoc and key-pattern constants
+- [x] T023 [P] Create `backend/infrastructure/persistence/redis/user_blacklist.go`: implement `UserBlacklist` interface using go-redis v9; `Add(ctx, userID, ttl)` → `SET user_blacklist:{userID} "1" EX 900`; `IsBlacklisted(ctx, userID)` → `EXISTS user_blacklist:{userID}` returns bool; include godoc and key-pattern constants
 
-- [ ] T024 [P] Create `backend/infrastructure/persistence/redis/user_count_cache.go`: implement a `UserCountCache` struct with `Get(ctx, tenantID string) (int, bool, error)` → `GET user_count:{tenantID}` (returns value + cache-hit bool), `Set(ctx, tenantID string, count int) error` → `SET user_count:{tenantID} {count} EX 60`, `Invalidate(ctx, tenantID string) error` → `DEL user_count:{tenantID}`; expose the struct (not an interface — it is a concrete cache utility used directly by use cases)
+- [x] T024 [P] Create `backend/infrastructure/persistence/redis/user_count_cache.go`: implement the `UserCountCache` domain interface using go-redis v9; `Get(ctx, tenantID)` → `GET user_count:{tenantID}` (returns value + cache-hit bool), `Set(ctx, tenantID, count)` → `SET user_count:{tenantID} {count} EX 60`, `Invalidate(ctx, tenantID)` → `DEL user_count:{tenantID}`
 
 ### Email Service
 
-- [ ] T025 [P] Modify `backend/infrastructure/services/brevo_email.go`: add `SendInvitationEmail(ctx, toEmail, toName, inviteURL, orgName string) error` using the existing Brevo client and a new transactional template ID from env var `BREVO_INVITATION_TEMPLATE_ID`; read `INVITATION_BASE_URL` env var and prepend to token when building inviteURL; preserve all existing `SendOTPEmail` and `SendWelcomeEmail` implementations
+- [x] T025 [P] Modify `backend/infrastructure/services/brevo_email.go`: add `SendInvitationEmail(ctx, toEmail, toName, inviteURL, orgName string) error` using the existing Brevo client and a new transactional template ID from env var `BREVO_INVITATION_TEMPLATE_ID`; read `INVITATION_BASE_URL` env var and prepend to token when building inviteURL; preserve all existing `SendOTPEmail` and `SendWelcomeEmail` implementations
 
 ### Mock Generation
 
-- [ ] T026 Generate GoMock mocks for all new interfaces — run `go generate ./...` after adding `//go:generate mockgen` directives on each new interface file:
+- [x] T026 Generate GoMock mocks for all new interfaces — run `go generate ./...` after adding `//go:generate mockgen` directives on each new interface file:
   - `backend/tests/mocks/end_user_repository.go` (mock for `EndUserRepository`)
   - `backend/tests/mocks/invitation_repository.go` (mock for `InvitationRepository`)
   - `backend/tests/mocks/user_event_repository.go` (mock for `UserEventRepository`)
@@ -162,17 +165,17 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T027 [P] [US7] Modify unit test `backend/tests/unit/usecase/authorize_client_test.go`: add test case "user with no active role for client → returns access_denied error"; add test case "user with active role(s) → authorization succeeds and code is returned"; use mock `RoleRepository.HasAnyRole` returning false/true respectively
+- [x] T027 [P] [US7] Modify unit test `backend/tests/unit/usecase/authorize_client_test.go`: add test case "user with no active role for client → returns access_denied error"; add test case "user with active role(s) → authorization succeeds and code is returned"; add test case "disabled user → returns access_denied error with disabled message" (FR-028); add test case "pending user with active roles → authorization succeeds"; use mock `RoleRepository.HasAnyRole` returning false/true and mock `EndUserRepository.GetByID` returning user with various statuses
 
-- [ ] T028 [P] [US7] Modify unit test `backend/tests/unit/usecase/issue_token_test.go` (or create alongside): add test case "issued access token JWT contains `roles` claim with active role names for the user+client pair"; add test case "roles claim contains only roles for the authenticating client, not other clients"; use mock `RoleRepository.GetActiveRoles` returning test role slices; verify token payload parsing
+- [x] T028 [P] [US7] Modify unit test `backend/tests/unit/usecase/issue_token_test.go` (or create alongside): add test case "issued access token JWT contains `roles` claim with active role names for the user+client pair"; add test case "roles claim contains only roles for the authenticating client, not other clients"; use mock `RoleRepository.GetActiveRoles` returning test role slices; verify token payload parsing
 
 #### Implementation for US7
 
-- [ ] T029 [US7] Modify `backend/usecase/auth/authorize_client.go`: inject `RoleRepository repositories.RoleRepository` as a new dependency in `AuthorizeClient` struct; before generating the authorization code, call `roleRepo.HasAnyRole(ctx, req.UserID, req.ClientID)` — if false, return `&OAuthError{Code: ErrAccessDenied, Description: "user has no active role for this application"}` (FR-021); update `NewAuthorizeClient` constructor accordingly
+- [x] T029 [US7] Modify `backend/usecase/auth/authorize_client.go`: the `HasAnyRole` check (FR-021) is already implemented; **add disabled-user status check (FR-028)**: inject `EndUserRepository` as a new dependency in `AuthorizeClient` struct; before the existing `HasAnyRole` check, call `endUserRepo.GetByID(ctx, req.UserID)` and verify `user.Status != entities.UserStatusDisabled` — if disabled, return `&OAuthError{Code: ErrAccessDenied, Description: "Your account has been disabled. Please contact your administrator."}` (FR-028); update `NewAuthorizeClient` constructor accordingly; this is security-critical: the blacklist middleware only covers token-based requests, not fresh OAuth login flows
 
-- [ ] T030 [US7] Modify `backend/usecase/auth/issue_token.go`: inject `RoleRepository repositories.RoleRepository` dependency in `IssueToken` struct; before signing the JWT, call `roleRepo.GetActiveRoles(ctx, userID, clientID)` to fetch `[]string` of active role names; add `roles` field (array of strings) to both the access token JWT claims and the ID token JWT claims (FR-022, FR-024); update `NewIssueToken` constructor; if `GetActiveRoles` returns an empty slice, include an empty array `[]` in the claim (not null)
+- [x] T030 [US7] Modify `backend/usecase/auth/issue_token.go`: inject `RoleRepository repositories.RoleRepository` dependency in `IssueToken` struct; before signing the JWT, call `roleRepo.GetActiveRoles(ctx, userID, clientID)` to fetch `[]string` of active role names; add `roles` field (array of strings) to both the access token JWT claims and the ID token JWT claims (FR-022, FR-024); update `NewIssueToken` constructor; if `GetActiveRoles` returns an empty slice, include an empty array `[]` in the claim (not null)
 
-- [ ] T031 [US7] Modify `backend/usecase/auth/get_userinfo.go`: after fetching user info, extract `clientID` from the access token claims; call `roleRepo.GetActiveRoles(ctx, userID, clientID)` and add `Roles []string` field to the `UserInfoClaims` response struct (FR-025); update `NewGetUserInfo` constructor with `RoleRepository` dependency
+- [x] T031 [US7] Modify `backend/usecase/auth/get_userinfo.go`: after fetching user info, extract `clientID` from the access token claims; call `roleRepo.GetActiveRoles(ctx, userID, clientID)` and add `Roles []string` field to the `UserInfoClaims` response struct (FR-025); update `NewGetUserInfo` constructor with `RoleRepository` dependency
 
 ---
 
@@ -186,19 +189,19 @@
 
 > **Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T032 [P] [US1] Create unit test `backend/tests/unit/usecase/invite_user_test.go`: test quota enforcement (CountByTenant at 10,000 → reject); test email-already-exists rejection; test happy path (token generated, bcrypt hashed, invitation created, email sent, `user_invited` event recorded); test pending invitation already exists for same email → reject with conflict; mocks: `EndUserRepository`, `InvitationRepository`, `EmailService`, `UserEventRepository`, `UserCountCache`
+- [x] T032 [P] [US1] Create unit test `backend/tests/unit/usecase/invite_user_test.go`: test quota enforcement (CountByTenant at 10,000 → reject); test email-already-exists rejection; test happy path (token generated, bcrypt hashed, invitation created, email sent, `user_invited` event recorded); test pending invitation already exists for same email → reject with conflict; mocks: `EndUserRepository`, `InvitationRepository`, `EmailService`, `UserEventRepository`, `UserCountCache`
 
-- [ ] T033 [P] [US1] Create unit test `backend/tests/unit/usecase/accept_invitation_test.go`: test valid token + valid password → user created (status=active), invitation marked accepted, token invalidated; test expired invitation → error; test already-accepted invitation → error; test weak password rejection; mocks: `EndUserRepository`, `InvitationRepository`
+- [x] T033 [P] [US1] Create unit test `backend/tests/unit/usecase/accept_invitation_test.go`: test valid token + valid password → user created (status=active), invitation marked accepted, token invalidated; test expired invitation → error; test already-accepted invitation → error; test weak password rejection; mocks: `EndUserRepository`, `InvitationRepository`
 
-- [ ] T034 [P] [US1] Create unit test `backend/tests/unit/usecase/resend_invitation_test.go`: test user in `pending` status → old invitation expired, new invitation created, email sent; test user NOT in `pending` status → error; test new token has fresh 72h expiry; mocks: `EndUserRepository`, `InvitationRepository`, `EmailService`
+- [x] T034 [P] [US1] Create unit test `backend/tests/unit/usecase/resend_invitation_test.go`: test user in `pending` status → old invitation expired, new invitation created, email sent; test user NOT in `pending` status → error; test new token has fresh 72h expiry; mocks: `EndUserRepository`, `InvitationRepository`, `EmailService`
 
 #### Implementation for US1
 
-- [ ] T035 [US1] Create `backend/usecase/user/invite_user.go`: implement `InviteUser` use case; quota check via `EndUserRepository.CountByTenant` (with `UserCountCache` — read cache first, fall back to DB, write-through); email uniqueness check via `EndUserRepository.GetByEmail`; generate 32-byte cryptographically secure token via `crypto/rand`; bcrypt-hash the token; create `Invitation` record via `InvitationRepository.Create`; call `EmailService.SendInvitationEmail`; record `user_invited` event via `UserEventRepository.Record`; create a `pending` `User` record; invalidate `UserCountCache` on success
+- [x] T035 [US1] Create `backend/usecase/user/invite_user.go`: implement `InviteUser` use case; quota check via `EndUserRepository.CountByTenant` (with `UserCountCache` — read cache first, fall back to DB, write-through); email uniqueness check via `EndUserRepository.GetByEmail`; generate 32-byte cryptographically secure token via `crypto/rand`; bcrypt-hash the token; create `Invitation` record via `InvitationRepository.Create`; call `EmailService.SendInvitationEmail`; record `user_invited` event via `UserEventRepository.Record`; create a `pending` `User` record; invalidate `UserCountCache` on success
 
-- [ ] T036 [US1] Create `backend/usecase/user/accept_invitation.go`: implement `AcceptInvitation` use case; call `InvitationRepository.GetByToken(plainToken)` (bcrypt comparison); verify invitation is `pending` and not expired; validate password strength (min 8 chars, mix of cases and digits as per existing password validation); hash password with bcrypt cost≥12; call `EndUserRepository.Update` to set `PasswordHash` and `Status=active`; call `InvitationRepository.UpdateStatus(accepted, now)`; record `invitation_accepted` event
+- [x] T036 [US1] Create `backend/usecase/user/accept_invitation.go`: implement `AcceptInvitation` use case; call `InvitationRepository.GetByToken(plainToken)` (bcrypt comparison); verify invitation is `pending` and not expired; validate password strength (min 8 chars, mix of cases and digits as per existing password validation); hash password with bcrypt cost≥12; call `EndUserRepository.Update` to set `PasswordHash` and `Status=active`; call `InvitationRepository.UpdateStatus(accepted, now)`; record `invitation_accepted` event
 
-- [ ] T037 [US1] Create `backend/usecase/user/resend_invitation.go`: implement `ResendInvitation` use case; verify target user exists and has `pending` status (reject otherwise); expire current pending invitation via `InvitationRepository.UpdateStatus(expired, nil)`; generate new token (same crypto/rand approach); create new `Invitation` with fresh `ExpiresAt = now + 72h`; call `EmailService.SendInvitationEmail`; record `invitation_resent` event
+- [x] T037 [US1] Create `backend/usecase/user/resend_invitation.go`: implement `ResendInvitation` use case; verify target user exists and has `pending` status (reject otherwise); expire current pending invitation via `InvitationRepository.UpdateStatus(expired, nil)`; generate new token (same crypto/rand approach); create new `Invitation` with fresh `ExpiresAt = now + 72h`; call `EmailService.SendInvitationEmail`; record `invitation_resent` event
 
 ---
 
@@ -210,17 +213,19 @@
 
 #### Tests for US3 (MANDATORY) ⚠️
 
-- [ ] T038 [P] [US3] Create unit test `backend/tests/unit/usecase/list_users_test.go`: test default pagination (page=1, pageSize=25); test custom page/pageSize; test search filter passed to repository; test status filter; test page/pageSize clamping (max 100); test tenant isolation (tenantID from caller context); mocks: `EndUserRepository`
+- [x] T038 [P] [US3] Create unit test `backend/tests/unit/usecase/list_users_test.go`: test default pagination (page=1, pageSize=25); test custom page/pageSize; test search filter passed to repository; test status filter; test page/pageSize clamping (max 100); test tenant isolation (tenantID from caller context); mocks: `EndUserRepository`
 
-- [ ] T039 [P] [US3] Create unit test `backend/tests/unit/usecase/get_user_test.go`: test happy path returns user with role assignments and active sessions; test cross-tenant access → returns not-found error (tenant isolation); mocks: `EndUserRepository`, `RoleRepository`
+- [x] T039 [P] [US3] Create unit test `backend/tests/unit/usecase/get_user_test.go`: test happy path returns user with role assignments and active sessions; test cross-tenant access → returns not-found error (tenant isolation); mocks: `EndUserRepository`, `RoleRepository`
 
 #### Implementation for US3
 
-- [ ] T040 [US3] Create `backend/usecase/user/list_users.go`: implement `ListUsers` use case; accept `ListUsersInput` (TenantID, Search string, StatusFilter UserStatus, Page int, PageSize int); validate/clamp pagination (default page=1, pageSize=25, max pageSize=100); call `EndUserRepository.ListByTenant`; return `ListUsersOutput` with users slice + total count + pagination metadata (total pages)
+- [x] T040 [US3] Create `backend/usecase/user/list_users.go`: implement `ListUsers` use case; accept `ListUsersInput` (TenantID, Search string, StatusFilter UserStatus, Page int, PageSize int); validate/clamp pagination (default page=1, pageSize=25, max pageSize=100); call `EndUserRepository.ListByTenant`; return `ListUsersOutput` with users slice + total count + pagination metadata (total pages)
 
-- [ ] T041 [US3] Create `backend/usecase/user/get_user.go`: implement `GetUser` use case; fetch user by ID scoped to caller's tenantID (return ErrNotFound if tenantID mismatch); fetch all role assignments via `RoleRepository.ListByUser`; fetch active sessions count via `RefreshTokenRepository` (or include raw count in response); return a `GetUserOutput` with user + role assignments grouped by clientID
+- [x] T041 [US3] Create `backend/usecase/user/get_user.go`: implement `GetUser` use case; fetch user by ID scoped to caller's tenantID (return ErrNotFound if tenantID mismatch); fetch all role assignments via `RoleRepository.ListByUser`; fetch active sessions count via `RefreshTokenRepository` (or include raw count in response); return a `GetUserOutput` with user + role assignments grouped by clientID
 
-- [ ] T042 [US3] Create `backend/usecase/user/update_user.go`: implement `UpdateUser` use case; accept `UpdateUserInput` (UserID, TenantID, DisplayName string); validate tenantID scoping; call `EndUserRepository.Update` with new display name; record `audit_log` entry with event type `user_updated`; this use case only allows updating `display_name` — status changes go through `EnableUser`/`DisableUser`
+- [x] T042 [US3] Create `backend/usecase/user/update_user.go`: implement `UpdateUser` use case; accept `UpdateUserInput` (UserID, TenantID, DisplayName string); validate tenantID scoping; call `EndUserRepository.Update` with new display name; record `audit_log` entry with event type `user_updated`; this use case only allows updating `display_name` — status changes go through `EnableUser`/`DisableUser`
+
+- [x] T042b [P] [US3] Create unit test `backend/tests/unit/usecase/update_user_test.go`: test happy path (display name updated, audit log recorded); test cross-tenant rejection (tenantID mismatch → ErrNotFound); test display name exceeding 255 chars → validation error; test empty display name is allowed (nullable field); mocks: `EndUserRepository`, `AuditRepository`
 
 ---
 
@@ -232,15 +237,15 @@
 
 #### Tests for US2 (MANDATORY) ⚠️
 
-- [ ] T043 [P] [US2] Modify unit test `backend/tests/unit/usecase/assign_role_test.go`: update existing tests to use new free-form validation (1–100 chars) instead of whitelist; add test: empty role name → error; add test: role name > 100 chars → error; add test: duplicate active assignment → ErrDuplicateRole; add test: `role_assigned` user event recorded; add test: cross-tenant assignment rejected; verify `RoleRepository.Assign` (not legacy `AssignRole`) is called
+- [x] T043 [P] [US2] Modify unit test `backend/tests/unit/usecase/assign_role_test.go`: update existing tests to use new free-form validation (1–100 chars) instead of whitelist; add test: empty role name → error; add test: role name > 100 chars → error; add test: duplicate active assignment → ErrDuplicateRole; add test: `role_assigned` user event recorded; add test: cross-tenant assignment rejected; verify `RoleRepository.Assign` (not legacy `AssignRole`) is called
 
-- [ ] T044 [P] [US2] Modify unit test `backend/tests/unit/usecase/revoke_role_test.go`: update existing tests to verify `RoleRepository.Revoke(assignmentID, revokedByUserID)` (soft delete) is called instead of `RevokeRole`; add test: `role_revoked` user event recorded with acting admin ID; add test: revoking non-existent assignment → not-found error
+- [x] T044 [P] [US2] Modify unit test `backend/tests/unit/usecase/revoke_role_test.go`: update existing tests to verify `RoleRepository.Revoke(assignmentID, revokedByUserID)` (soft delete) is called instead of `RevokeRole`; add test: `role_revoked` user event recorded with acting admin ID; add test: revoking non-existent assignment → not-found error
 
 #### Implementation for US2
 
-- [ ] T045 [US2] Modify `backend/usecase/role/assign_role.go`: replace `tempAssignment.IsValidRole()` whitelist check with length validation `len(req.Role) >= 1 && len(req.Role) <= entities.MaxRoleNameLength`; replace `roleRepo.AssignRole` call with `roleRepo.Assign` (new method with full assignment object); inject `UserEventRepository` dependency; add `UserEventRepository.Record` call for `EventTypeRoleAssigned` event after successful assignment; add `AuditLogRepository` entry; update constructor
+- [x] T045 [US2] Modify `backend/usecase/role/assign_role.go`: replace `tempAssignment.IsValidRole()` whitelist check with length validation `strings.TrimSpace(req.Role)` must be non-empty and `len(req.Role) <= entities.MaxRoleNameLength` (reject whitespace-only names); replace `roleRepo.AssignRole` call with `roleRepo.Assign` (new method with full assignment object); inject `UserEventRepository` dependency; add `UserEventRepository.Record` call for `EventTypeRoleAssigned` event after successful assignment; add `AuditLogRepository` entry; update constructor
 
-- [ ] T046 [US2] Modify `backend/usecase/role/revoke_role.go`: update to call `roleRepo.Revoke(assignmentID int64, revokedByUserID string)` (soft delete with metadata) instead of `roleRepo.RevokeRole`; inject `UserEventRepository` dependency; add `UserEventRepository.Record` call for `EventTypeRoleRevoked` event; add `AuditLogRepository` entry; update constructor; function signature accepts `assignmentID int64` and `revokedBy string`
+- [x] T046 [US2] Modify `backend/usecase/role/revoke_role.go`: update to call `roleRepo.Revoke(assignmentID int64, revokedByUserID string)` (soft delete with metadata) instead of `roleRepo.RevokeRole`; inject `UserEventRepository` dependency; add `UserEventRepository.Record` call for `EventTypeRoleRevoked` event; add `AuditLogRepository` entry; update constructor; function signature accepts `assignmentID int64` and `revokedBy string`
 
 ---
 
@@ -252,17 +257,19 @@
 
 #### Tests for US4 (MANDATORY) ⚠️
 
-- [ ] T047 [P] [US4] Create unit test `backend/tests/unit/usecase/list_sessions_test.go`: test returns only non-revoked, non-expired refresh tokens for a given userID; test tenant isolation (sessions from another tenant not returned); test empty result returns empty slice (not nil); mocks: `RefreshTokenRepository`
+- [x] T047 [P] [US4] Create unit test `backend/tests/unit/usecase/list_sessions_test.go`: test returns only non-revoked, non-expired refresh tokens for a given userID; test tenant isolation (sessions from another tenant not returned); test empty result returns empty slice (not nil); mocks: `RefreshTokenRepository`
 
-- [ ] T048 [P] [US4] Create unit test `backend/tests/unit/usecase/revoke_session_test.go`: test happy path: `RefreshTokenRepository.Revoke` called with correct tokenHash + revokedBy; test `session_terminated` event recorded; test cross-tenant session revocation → error; test already-revoked session → error; mocks: `RefreshTokenRepository`, `UserEventRepository`
+- [x] T048 [P] [US4] Create unit test `backend/tests/unit/usecase/revoke_session_test.go`: test happy path: `RefreshTokenRepository.Revoke` called with correct tokenHash + revokedBy; test `session_terminated` event recorded; test cross-tenant session revocation → error; test already-revoked session → error; mocks: `RefreshTokenRepository`, `UserEventRepository`
 
 #### Implementation for US4
 
-- [ ] T049 [US4] Create `backend/usecase/user/list_sessions.go`: implement `ListSessions` use case; fetch all non-revoked, non-expired refresh tokens for `userID` from `RefreshTokenRepository` (scoped to caller's tenantID); map tokens to `SessionOutput` structs (token ID, clientID, createdAt, lastUsedAt, expiresAt); return slice
+- [x] T049 [US4] Create `backend/usecase/user/list_sessions.go`: implement `ListSessions` use case; fetch all non-revoked, non-expired refresh tokens for `userID` from `RefreshTokenRepository` (scoped to caller's tenantID); map tokens to `SessionOutput` structs (token ID, clientID, createdAt, lastUsedAt, expiresAt); return slice
 
-- [ ] T050 [US4] Create `backend/usecase/user/revoke_session.go`: implement `RevokeSession` use case; look up refresh token by ID and verify it belongs to the target userID within the caller's tenant; call `RefreshTokenRepository.Revoke(tokenHash, adminUserID)`; record `EventTypeSessionTerminated` event via `UserEventRepository.Record`
+- [x] T050 [US4] Create `backend/usecase/user/revoke_session.go`: implement `RevokeSession` use case; look up refresh token by ID and verify it belongs to the target userID within the caller's tenant; call `RefreshTokenRepository.Revoke(tokenHash, adminUserID)`; record `EventTypeSessionTerminated` event via `UserEventRepository.Record`
 
-- [ ] T051 [US4] Create `backend/usecase/user/list_user_activity.go`: implement `ListUserActivity` use case; call `UserEventRepository.ListByUser(userID, page, pageSize)` with default pageSize=25, max=100; verify tenantID scoping; return events slice + total count + pagination metadata
+- [x] T051 [US4] Create `backend/usecase/user/list_user_activity.go`: implement `ListUserActivity` use case; call `UserEventRepository.ListByUser(userID, page, pageSize)` with default pageSize=25, max=100; verify tenantID scoping; return events slice + total count + pagination metadata
+
+- [x] T051b [P] [US4] Create unit test `backend/tests/unit/usecase/list_user_activity_test.go`: test happy path returns paginated events with correct total count; test default pageSize=25 and max clamping to 100; test tenant isolation (events from another tenant’s user not returned); test empty result returns empty slice (not nil); mocks: `UserEventRepository`, `EndUserRepository`
 
 ---
 
@@ -274,13 +281,15 @@
 
 #### Tests for US5 (MANDATORY) ⚠️
 
-- [ ] T052 [P] [US5] Create unit test `backend/tests/unit/usecase/disable_user_test.go`: test admin disabling self → error "cannot disable your own account"; test admin disabling another admin → error "cannot disable an administrator account"; test happy path: status set to disabled, `RevokeByUserID` called, `UserBlacklist.Add` called with 900s TTL, `account_disabled` event recorded, audit log entry created; mocks: `EndUserRepository`, `RefreshTokenRepository`, `UserBlacklist`, `UserEventRepository`, `AuditRepository`
+- [x] T052 [P] [US5] Create unit test `backend/tests/unit/usecase/disable_user_test.go`: test admin disabling self → error "cannot disable your own account"; test admin disabling another admin → error "cannot disable an administrator account"; test happy path: status set to disabled, `RevokeByUserID` called, `UserBlacklist.Add` called with 900s TTL, `account_disabled` event recorded, audit log entry created; mocks: `EndUserRepository`, `RefreshTokenRepository`, `UserBlacklist`, `UserEventRepository`, `AuditRepository`
+
+- [x] T052b [P] [US5] Create unit test `backend/tests/unit/usecase/enable_user_test.go`: test happy path: status set to active, `account_enabled` event recorded, audit log entry created; test enabling an already-active user → no-op or idempotent success; test enabling a pending user → error (can only enable disabled users); test tenant isolation (cross-tenant → ErrNotFound); mocks: `EndUserRepository`, `UserEventRepository`, `AuditRepository`
 
 #### Implementation for US5
 
-- [ ] T053 [US5] Create `backend/usecase/user/disable_user.go`: implement `DisableUser` use case; guard: reject if `req.TargetUserID == req.AdminUserID` (cannot disable self); guard: fetch target user, reject if target is also a tenant admin (check user role via `RoleRepository` or admin flag); call `EndUserRepository.UpdateStatus(userID, disabled)`; call `RefreshTokenRepository.RevokeByUserID(userID)` to revoke all active sessions; call `UserBlacklist.Add(userID, 900*time.Second)` for immediate token invalidation; record `EventTypeAccountDisabled` event; create audit log entry
+- [x] T053 [US5] Create `backend/usecase/user/disable_user.go`: implement `DisableUser` use case; guard: reject if `req.TargetUserID == req.AdminUserID` (cannot disable self); guard: fetch the `AdminUser` from `UserRepository.FindByID(targetUserID)` to determine if the target is a tenant admin — the admin identity check is against the `admin_users` table (`AdminUser.Role` field), NOT against end-user RBAC roles. If the target has role `admin` or `owner` in the `AdminUser` entity, reject with "cannot disable an administrator account" (FR-030); call `EndUserRepository.UpdateStatus(userID, disabled)`; call `RefreshTokenRepository.RevokeByUserID(userID)` to revoke all active sessions; call `UserBlacklist.Add(userID, 900*time.Second)` for immediate token invalidation; record `EventTypeAccountDisabled` event; create audit log entry
 
-- [ ] T054 [US5] Create `backend/usecase/user/enable_user.go`: implement `EnableUser` use case (simpler counterpart to DisableUser); call `EndUserRepository.UpdateStatus(userID, active)`; record `EventTypeAccountEnabled` event; create audit log entry; note: previously revoked sessions are NOT restored — user must re-authenticate to create a new session
+- [x] T054 [US5] Create `backend/usecase/user/enable_user.go`: implement `EnableUser` use case (simpler counterpart to DisableUser); call `EndUserRepository.UpdateStatus(userID, active)`; record `EventTypeAccountEnabled` event; create audit log entry; note: previously revoked sessions are NOT restored — user must re-authenticate to create a new session
 
 ---
 
@@ -292,11 +301,11 @@
 
 #### Tests for US6 (MANDATORY) ⚠️
 
-- [ ] T055 [P] [US6] Create unit test `backend/tests/unit/usecase/delete_user_test.go`: test admin deleting self → error "cannot delete your own account"; test cascade order: `RoleRepository.RevokeAllForUser` called, then `RefreshTokenRepository.RevokeByUserID` called, then `UserBlacklist.Add` called, then `EndUserRepository.Delete` called — all in same logical transaction; test `user_deleted` audit log entry written with deleted user's email + ID; mocks: `EndUserRepository`, `RoleRepository`, `RefreshTokenRepository`, `UserBlacklist`, `AuditRepository`
+- [x] T055 [P] [US6] Create unit test `backend/tests/unit/usecase/delete_user_test.go`: test admin deleting self → error "cannot delete your own account"; test cascade order: `RoleRepository.RevokeAllForUser` called, then `RefreshTokenRepository.RevokeByUserID` called, then `UserBlacklist.Add` called, then `EndUserRepository.Delete` called — all in same logical transaction; test `user_deleted` audit log entry written with deleted user's email + ID; mocks: `EndUserRepository`, `RoleRepository`, `RefreshTokenRepository`, `UserBlacklist`, `AuditRepository`
 
 #### Implementation for US6
 
-- [ ] T056 [US6] Create `backend/usecase/user/delete_user.go`: implement `DeleteUser` use case; guard: reject if `req.TargetUserID == req.AdminUserID` (cannot delete self); soft-cascade: call `RoleRepository.RevokeAllForUser(userID, adminUserID)` to soft-delete all role assignments; call `RefreshTokenRepository.RevokeByUserID(userID)` to revoke all sessions; call `UserBlacklist.Add(userID, 900*time.Second)` for access-token blacklist (FR-037); call `EndUserRepository.Delete(userID)` (hard delete — cascade in DB handles invitations); write `user_deleted` audit log entry with deleted user's email, ID, and acting admin identity
+- [x] T056 [US6] Create `backend/usecase/user/delete_user.go`: implement `DeleteUser` use case; guard: reject if `req.TargetUserID == req.AdminUserID` (cannot delete self); soft-cascade: call `RoleRepository.RevokeAllForUser(userID, adminUserID)` to soft-delete all role assignments; call `RefreshTokenRepository.RevokeByUserID(userID)` to revoke all sessions; call `UserBlacklist.Add(userID, 900*time.Second)` for access-token blacklist (FR-037); call `EndUserRepository.Delete(userID)` (hard delete — cascade in DB handles invitations); write `user_deleted` audit log entry with deleted user's email, ID, and acting admin identity
 
 **Checkpoint**: All 12 use cases implemented and unit-tested. Auth token flow (US7) enhanced. Proceed to HTTP interfaces.
 
@@ -308,37 +317,37 @@
 
 ### Middleware
 
-- [ ] T057 Create `backend/interfaces/http/middleware/blacklist_check.go`: implement `BlacklistCheckMiddleware` as a Gin middleware; on every authenticated request, extract `userID` from JWT claims context; call `UserBlacklist.IsBlacklisted(ctx, userID)` → if true, abort with 401 JSON `{"error": "token_invalid", "error_description": "account has been revoked"}` (covers deleted and disabled users); inject `UserBlacklist` dependency; middleware must execute before (or immediately after) the existing auth middleware parses the token
+- [x] T057 Create `backend/interfaces/http/middleware/blacklist_check.go`: implement `BlacklistCheckMiddleware` as a Gin middleware; on every authenticated request, extract `userID` from JWT claims context; call `UserBlacklist.IsBlacklisted(ctx, userID)` → if true, abort with 401 JSON `{"error": "token_invalid", "error_description": "account has been revoked"}` (covers deleted and disabled users); inject `UserBlacklist` dependency; middleware must execute before (or immediately after) the existing auth middleware parses the token
 
 ### Integration Tests (write first)
 
-- [ ] T058 [P] Create integration test `backend/tests/integration/user_handler_test.go`: test all 7 admin user endpoints: `POST /api/v1/admin/users/invite` (201 pending user + invitation, 409 duplicate email, 409 quota exceeded, 400 bad email), `GET /api/v1/admin/users` (200 paginated list, search, status filter), `GET /api/v1/admin/users/{id}` (200 user detail with roles, 404 not found, 403 cross-tenant), `PATCH /api/v1/admin/users/{id}` (200 updated display name), `PATCH /api/v1/admin/users/{id}/status` (200 enabled/disabled, 400 cannot disable self, 400 cannot disable admin), `DELETE /api/v1/admin/users/{id}` (204 deleted, 400 cannot delete self), `POST /api/v1/admin/users/{id}/resend-invitation` (200 new invitation sent, 400 user not pending)
+- [x] T058 [P] Create integration test `backend/tests/integration/user_handler_test.go`: test all 7 admin user endpoints: `POST /api/v1/admin/users/invite` (201 pending user + invitation, 409 duplicate email, 409 quota exceeded, 400 bad email), `GET /api/v1/admin/users` (200 paginated list, search, status filter), `GET /api/v1/admin/users/{id}` (200 user detail with roles, 404 not found, 403 cross-tenant), `PATCH /api/v1/admin/users/{id}` (200 updated display name), `PATCH /api/v1/admin/users/{id}/status` (200 enabled/disabled, 400 cannot disable self, 400 cannot disable admin), `DELETE /api/v1/admin/users/{id}` (204 deleted, 400 cannot delete self), `POST /api/v1/admin/users/{id}/resend-invitation` (200 new invitation sent, 400 user not pending)
 
-- [ ] T059 [P] Create integration test `backend/tests/integration/invitation_handler_test.go`: test public `POST /api/v1/invitations/{token}/accept` endpoint: 200 with valid token + strong password, 410 with expired token, 410 with already-used token, 400 with weak password, 400 with missing fields — **no auth middleware on this route**
+- [x] T059 [P] Create integration test `backend/tests/integration/invitation_handler_test.go`: test public `GET /api/v1/invitations/{token}/validate` endpoint: 200 returns email + displayName + expiresAt with valid token, 410 with expired token, 410 with already-used token; test public `POST /api/v1/invitations/{token}/accept` endpoint: 200 with valid token + strong password, 410 with expired token, 410 with already-used token, 400 with weak password, 400 with missing fields — **no auth middleware on either route**
 
-- [ ] T060 [P] Modify integration test `backend/tests/integration/role_handler_test.go`: add tests for 3 new role endpoints: `GET /api/v1/admin/users/{userId}/roles` (200 paginated list grouped by client, 404 user not found), `POST /api/v1/admin/users/{userId}/roles` (201 assignment created, 409 duplicate, 400 role name too long, 400 empty role name), `DELETE /api/v1/admin/users/{userId}/roles/{assignmentId}` (204 revoked, 404 not found, 403 cross-tenant)
+- [x] T060 [P] Modify integration test `backend/tests/integration/role_handler_test.go`: add tests for 3 new role endpoints: `GET /api/v1/admin/users/{userId}/roles` (200 paginated list grouped by client, 404 user not found), `POST /api/v1/admin/users/{userId}/roles` (201 assignment created, 409 duplicate, 400 role name too long, 400 empty role name), `DELETE /api/v1/admin/users/{userId}/roles/{assignmentId}` (204 revoked, 404 not found, 403 cross-tenant)
 
-- [ ] T061 [P] Modify integration test `backend/tests/integration/session_handler_test.go`: add tests for 3 new session/activity endpoints: `GET /api/v1/admin/users/{userId}/sessions` (200 active sessions list, empty state), `DELETE /api/v1/admin/users/{userId}/sessions/{sessionId}` (204 revoked, 404 not found), `GET /api/v1/admin/users/{userId}/activity` (200 paginated activity events, 25 per page default, 404 user not found)
+- [x] T061 [P] Modify integration test `backend/tests/integration/session_handler_test.go`: add tests for 3 new session/activity endpoints: `GET /api/v1/admin/users/{userId}/sessions` (200 active sessions list, empty state), `DELETE /api/v1/admin/users/{userId}/sessions/{sessionId}` (204 revoked, 404 not found), `GET /api/v1/admin/users/{userId}/activity` (200 paginated activity events, 25 per page default, 404 user not found)
 
 ### New Handlers
 
-- [ ] T062 Create `backend/interfaces/http/handlers/user_handler.go`: implement `UserHandler` struct wiring all 7 admin user operations (InviteUser, GetUser, ListUsers, UpdateUser, UpdateUserStatus, DeleteUser, ResendInvitation); implement Gin handler methods: `InviteUser` (parse email + display_name, call InviteUser UC, return 201 with user stub), `GetUser` (return user + roles + active session count), `ListUsers` (parse page/pageSize/search/status query params), `UpdateUser` (PATCH display_name only), `UpdateUserStatus` (PATCH status field — routes to EnableUser or DisableUser UC based on value), `DeleteUser` (DELETE → 204), `ResendInvitation` (POST → 200 confirmation); all endpoints extract tenantID and adminUserID from JWT claims context
+- [x] T062 Create `backend/interfaces/http/handlers/user_handler.go`: implement `UserHandler` struct wiring all 7 admin user operations (InviteUser, GetUser, ListUsers, UpdateUser, UpdateUserStatus, DeleteUser, ResendInvitation); implement Gin handler methods: `InviteUser` (parse email + display_name, call InviteUser UC, return 201 with user stub), `GetUser` (return user + roles + active session count), `ListUsers` (parse page/pageSize/search/status query params), `UpdateUser` (PATCH display_name only), `UpdateUserStatus` (PATCH status field — routes to EnableUser or DisableUser UC based on value), `DeleteUser` (DELETE → 204), `ResendInvitation` (POST → 200 confirmation); all endpoints extract tenantID and adminUserID from JWT claims context
 
-- [ ] T063 Create `backend/interfaces/http/handlers/invitation_handler.go`: implement `InvitationHandler` with single public `AcceptInvitation` handler method; parse `{token}` path param and `{"password": "..."}` JSON body; call `AcceptInvitation` UC; on success return 200 `{"message": "Account activated successfully"}`; on expired/used token return 410 Gone with `{"error": "invitation_expired", "error_description": "..."}`; **this route must have NO auth middleware**
+- [x] T063 Create `backend/interfaces/http/handlers/invitation_handler.go`: implement `InvitationHandler` with two public handler methods: (1) `ValidateInvitation` — `GET /api/v1/invitations/{token}/validate` — calls `InvitationRepository.GetByToken(plainToken)` and returns `{"email": "...", "displayName": "...", "expiresAt": "..."}` without consuming the token (used by frontend to pre-populate the password-creation form); on expired/used token return 410 Gone; (2) `AcceptInvitation` — `POST /api/v1/invitations/{token}/accept` — parse `{"password": "..."}` JSON body; call `AcceptInvitation` UC; on success return 200 `{"message": "Account activated successfully"}`; on expired/used token return 410 Gone with `{"error": "invitation_expired", "error_description": "..."}`. **Both routes must have NO auth middleware**
 
-- [ ] T064 Create `backend/interfaces/http/handlers/activity_handler.go`: implement `ActivityHandler` with `ListUserActivity` handler method; parse `{userId}` path param + `page`, `page_size` query params; call `ListUserActivity` UC; return 200 with paginated events; enforce tenantID scoping from JWT claims
+- [x] T064 Create `backend/interfaces/http/handlers/activity_handler.go`: implement `ActivityHandler` with `ListUserActivity` handler method; parse `{userId}` path param + `page`, `page_size` query params; call `ListUserActivity` UC; return 200 with paginated events; enforce tenantID scoping from JWT claims
 
-- [ ] T065 Modify `backend/interfaces/http/handlers/role_handler.go`: add `ListUserRoles` handler (GET roles for a user, grouped by clientID); extend `AssignRole` to use new path pattern `/users/{userId}/roles` and call updated `AssignRole` UC; extend `RevokeRole` to use path `/users/{userId}/roles/{assignmentId}` (int64 ID, not legacy string triple) and call updated `RevokeRole` UC; preserve all existing role handler methods and paths
+- [x] T065 Modify `backend/interfaces/http/handlers/role_handler.go`: add `ListUserRoles` handler (GET roles for a user, grouped by clientID); extend `AssignRole` to use new path pattern `/users/{userId}/roles` and call updated `AssignRole` UC; extend `RevokeRole` to use path `/users/{userId}/roles/{assignmentId}` (int64 ID, not legacy string triple) and call updated `RevokeRole` UC; preserve all existing role handler methods and paths
 
-- [ ] T066 Modify `backend/interfaces/http/handlers/session_handler.go`: add `ListUserSessions` handler (GET active sessions for a user); add `RevokeUserSession` handler (DELETE single session by ID with confirmation); preserve all existing session handler methods
+- [x] T066 Modify `backend/interfaces/http/handlers/session_handler.go`: add `ListUserSessions` handler (GET active sessions for a user); add `RevokeUserSession` handler (DELETE single session by ID with confirmation); preserve all existing session handler methods
 
 ### Router & Wiring
 
-- [ ] T067 Modify `backend/interfaces/http/router.go`: register all 17 new routes; wire `BlacklistCheckMiddleware` into the authenticated middleware chain (before admin route group); admin user routes under `/api/v1/admin/users/`: GET / (list), POST /invite, GET /{id}, PATCH /{id}, PATCH /{id}/status, DELETE /{id}, POST /{id}/resend-invitation, GET /{id}/roles, POST /{id}/roles, DELETE /{id}/roles/{assignmentId}, GET /{id}/sessions, DELETE /{id}/sessions/{sessionId}, GET /{id}/activity; public route: POST `/api/v1/invitations/{token}/accept` (no auth middleware)
+- [x] T067 Modify `backend/interfaces/http/router.go`: register all 18 new routes (17 original + 1 GET validate); wire `BlacklistCheckMiddleware` into the authenticated middleware chain (before admin route group); admin user routes under `/api/v1/admin/users/`: GET / (list), POST /invite, GET /{id}, PATCH /{id}, PATCH /{id}/status, DELETE /{id}, POST /{id}/resend-invitation, GET /{id}/roles, POST /{id}/roles, DELETE /{id}/roles/{assignmentId}, GET /{id}/sessions, DELETE /{id}/sessions/{sessionId}, GET /{id}/activity; public routes: GET `/api/v1/invitations/{token}/validate` (no auth), POST `/api/v1/invitations/{token}/accept` (no auth middleware)
 
-- [ ] T068 Update DI wiring in `backend/cmd/server/main.go`: instantiate `EndUserRepository`, `InvitationRepository`, `UserEventRepository`, `UserBlacklist` (Redis), `UserCountCache` (Redis); instantiate all 12 new user use cases with their dependencies; inject updated `RoleRepository` implementation and `RefreshTokenRepository` (with `RevokeByUserID`) into `DisableUser`, `DeleteUser`; inject `RoleRepository` into `AuthorizeClient` and `IssueToken`; wire `UserHandler`, `InvitationHandler`, `ActivityHandler` into router
+- [x] T068 Update DI wiring in `backend/cmd/server/main.go`: instantiate `EndUserRepository`, `InvitationRepository`, `UserEventRepository`, `UserBlacklist` (Redis), `UserCountCache` (Redis, implements domain `UserCountCache` interface); instantiate all 12 new user use cases with their dependencies; inject updated `RoleRepository` implementation and `RefreshTokenRepository` (with `RevokeByUserID`) into `DisableUser`, `DeleteUser`; inject `RoleRepository` into `IssueToken`; inject `EndUserRepository` into `AuthorizeClient` for disabled-user status check (FR-028); wire `UserHandler`, `InvitationHandler`, `ActivityHandler` into router
 
-**Checkpoint**: All 17 endpoints wired and integration-tested. End-to-end backend flow from admin request to JWT claims working.
+**Checkpoint**: All 18 endpoints wired and integration-tested. End-to-end backend flow from admin request to JWT claims working.
 
 ---
 
@@ -346,7 +355,7 @@
 
 **Purpose**: Scheduled cleanup jobs for invitation expiry and user-event retention. Extends the existing `cmd/cleanup` pattern.
 
-- [ ] T069 Modify `backend/cmd/cleanup/main.go`: add `--expire-invitations` CLI flag that calls `InvitationRepository.ExpireStalePending(ctx)` and logs the count of affected rows; add `--purge-user-events` CLI flag that calls `UserEventRepository.DeleteOlderThan(ctx, time.Now().Add(-90*24*time.Hour))` and logs the count of deleted rows; update the help text and README/docs comment to document both new flags and suggested cron schedules (expire-invitations: every hour; purge-user-events: daily at 02:00 UTC)
+- [x] T069 Modify `backend/cmd/cleanup/main.go`: add `--expire-invitations` CLI flag that calls `InvitationRepository.ExpireStalePending(ctx)` and logs the count of affected rows; add `--purge-user-events` CLI flag that calls `UserEventRepository.DeleteOlderThan(ctx, time.Now().Add(-90*24*time.Hour))` and logs the count of deleted rows; update the help text and README/docs comment to document both new flags and suggested cron schedules (expire-invitations: every hour; purge-user-events: daily at 02:00 UTC)
 
 ---
 
@@ -356,25 +365,26 @@
 
 **⚠️ CRITICAL**: F2–F5 components depend on these hooks and types. Complete this phase before component work begins.
 
-- [ ] T070 Create `frontend/src/types/user.ts`: define TypeScript types: `UserStatus` (union `'pending' | 'active' | 'disabled'`), `User` (id, tenantId, email, displayName, passwordHash excluded, status, lastLoginAt, createdAt, updatedAt, roleCount), `Invitation` (id, tenantId, email, displayName, status, expiresAt, createdAt), `RoleAssignment` (id, userId, clientId, clientName, roleName, isActive, grantedAt, grantedBy, revokedAt, revokedBy), `UserEvent` (id, eventType, clientId, clientName, ipAddress, countryCode, details, occurredAt), `UserSession` (id, clientId, clientName, createdAt, lastUsedAt, expiresAt); add `PaginatedResponse<T>` with total/page/pageSize/totalPages; add `UserListFilters` (search, status, page, pageSize); add `InviteUserRequest`, `AcceptInvitationRequest`, `AssignRoleRequest` request types
+- [x] T070 Create `frontend/src/types/user.ts`: define TypeScript types: `UserStatus` (union `'pending' | 'active' | 'disabled'`), `User` (id, tenantId, email, displayName, passwordHash excluded, status, lastLoginAt, createdAt, updatedAt, roleCount), `Invitation` (id, tenantId, email, displayName, status, expiresAt, createdAt), `RoleAssignment` (id, userId, clientId, clientName, roleName, isActive, grantedAt, grantedBy, revokedAt, revokedBy), `UserEvent` (id, eventType, clientId, clientName, ipAddress, countryCode, details, occurredAt), `UserSession` (id, clientId, clientName, createdAt, lastUsedAt, expiresAt); add `PaginatedResponse<T>` with total/page/pageSize/totalPages; add `UserListFilters` (search, status, page, pageSize); add `InviteUserRequest`, `AcceptInvitationRequest`, `AssignRoleRequest` request types
 
-- [ ] T071 [P] Create `frontend/src/services/api/user.ts`: implement typed API functions: `listUsers(filters: UserListFilters): Promise<PaginatedResponse<User>>`, `inviteUser(req: InviteUserRequest): Promise<User>`, `getUser(id: string): Promise<User>`, `updateUser(id: string, req: {displayName: string}): Promise<User>`, `deleteUser(id: string): Promise<void>`, `updateUserStatus(id: string, status: UserStatus): Promise<User>`, `resendInvitation(userId: string): Promise<void>`; all use the existing Axios base client
+- [x] T071 [P] Create `frontend/src/services/api/user.ts`: implement typed API functions: `listUsers(filters: UserListFilters): Promise<PaginatedResponse<User>>`, `inviteUser(req: InviteUserRequest): Promise<User>`, `getUser(id: string): Promise<User>`, `updateUser(id: string, req: {displayName: string}): Promise<User>`, `deleteUser(id: string): Promise<void>`, `updateUserStatus(id: string, status: UserStatus): Promise<User>`, `resendInvitation(userId: string): Promise<void>`; all use the existing Axios base client
 
-- [ ] T072 [P] Modify `frontend/src/services/api/role.ts` (or create if not exists): add `listUserRoles(userId: string): Promise<RoleAssignment[]>`, `assignRole(userId: string, req: AssignRoleRequest): Promise<RoleAssignment>`, `revokeRole(userId: string, assignmentId: number): Promise<void>`; preserve any existing role API functions
+- [x] T072 [P] Modify `frontend/src/services/api/role.ts` (or create if not exists): add `listUserRoles(userId: string): Promise<RoleAssignment[]>`, `assignRole(userId: string, req: AssignRoleRequest): Promise<RoleAssignment>`, `revokeRole(userId: string, assignmentId: number): Promise<void>`; preserve any existing role API functions
 
-- [ ] T073 [P] Create `frontend/src/services/api/session.ts`: implement `listSessions(userId: string): Promise<UserSession[]>`, `revokeSession(userId: string, sessionId: string): Promise<void>`, `listUserActivity(userId: string, page: number, pageSize?: number): Promise<PaginatedResponse<UserEvent>>`
+- [x] T073 [P] Create `frontend/src/services/api/session.ts`: implement `listSessions(userId: string): Promise<UserSession[]>`, `revokeSession(userId: string, sessionId: string): Promise<void>`, `listUserActivity(userId: string, page: number, pageSize?: number): Promise<PaginatedResponse<UserEvent>>`
 
-- [ ] T074 Create `frontend/src/hooks/useUsers.ts`: implement TanStack Query v5 hooks: `useUsers(filters: UserListFilters)` (query with staleTime=30s), `useUser(id: string)` (query), `useInviteUser()` (mutation that invalidates `['users']` on success), `useUpdateUser()` (mutation), `useDeleteUser()` (mutation that invalidates `['users']`), `useUpdateUserStatus()` (mutation that invalidates specific `['user', id]`), `useResendInvitation()` (mutation)
+- [x] T074 Create `frontend/src/hooks/useUsers.ts`: implement TanStack Query v5 hooks: `useUsers(filters: UserListFilters)` (query with staleTime=30s), `useUser(id: string)` (query), `useInviteUser()` (mutation that invalidates `['users']` on success), `useUpdateUser()` (mutation), `useDeleteUser()` (mutation that invalidates `['users']`), `useUpdateUserStatus()` (mutation that invalidates specific `['user', id]`), `useResendInvitation()` (mutation)
 
-- [ ] T075 [P] Create `frontend/src/hooks/useRoles.ts`: implement `useUserRoles(userId: string)` (query), `useAssignRole()` (mutation that invalidates `['user', userId, 'roles']`), `useRevokeRole()` (mutation that invalidates `['user', userId, 'roles']`)
+- [x] T075 [P] Create `frontend/src/hooks/useRoles.ts`: implement `useUserRoles(userId: string)` (query), `useAssignRole()` (mutation that invalidates `['user', userId, 'roles']`), `useRevokeRole()` (mutation that invalidates `['user', userId, 'roles']`)
 
-- [ ] T076 [P] Create `frontend/src/hooks/useSessions.ts`: implement `useUserSessions(userId: string)` (query with staleTime=15s), `useRevokeSession()` (mutation that invalidates `['user', userId, 'sessions']`), `useUserActivity(userId: string, page: number)` (query)
+- [x] T076 [P] Create `frontend/src/hooks/useSessions.ts`: implement `useUserSessions(userId: string)` (query with staleTime=15s), `useRevokeSession()` (mutation that invalidates `['user', userId, 'sessions']`), `useUserActivity(userId: string, page: number)` (query)
 
-- [ ] T077 Create `frontend/src/pages/UserManagementPage.tsx` and wire admin routes in `frontend/src/App.tsx`: add `/admin/users` route (renders `UserManagementPage`) and `/admin/users/:id` route (renders user detail) both wrapped in `ProtectedRoute` with admin role check; add public route `/invite/:token` (renders `AcceptInvitationPage`); `UserManagementPage` renders `UserList` with a header toolbar "Invite User" button
+- [x] T077 Create `frontend/src/pages/UserManagementPage.tsx` and wire admin routes in `frontend/src/App.tsx`: add `/admin/users` route (renders `UserManagementPage`) and `/admin/users/:id` route (renders user detail) both wrapped in `ProtectedRoute` with admin role check; add public route `/invite/:token` (renders `AcceptInvitationPage`); `UserManagementPage` renders `UserList` with a header toolbar "Invite User" button
 
-- [ ] T078 [P] Create `frontend/src/pages/AcceptInvitationPage.tsx`: public page (no auth); extracts `token` from URL params; renders `AcceptInvitationForm` or `InvitationExpired` based on whether token is present and valid; handles `useAcceptInvitation` mutation; on success redirect to login page with success message
+- [x] T078 [P] Create `frontend/src/pages/AcceptInvitationPage.tsx`: public page (no auth); extracts `token` from URL params; on mount calls `GET /api/v1/invitations/{token}/validate` to pre-fetch invitation details (email, displayName, expiresAt); if 200: render `AcceptInvitationForm` with pre-populated email; if 410: render `InvitationExpired`; handles `useAcceptInvitation` mutation; on success redirect to login page with success message
 
 **Clean Architecture Checkpoint** (Frontend):
+
 - API calls abstracted in `services/api/*.ts`, not called from components ✓
 - Components receive data via hooks, not direct API calls ✓
 - TypeScript strict mode enforced ✓
@@ -389,21 +399,21 @@
 
 ### Tests for F2 (MANDATORY) ⚠️
 
-- [ ] T079 [P] [US3] Create frontend unit test `frontend/tests/unit/components/users/UserList.test.tsx`: test renders user rows with correct columns (name, email, status badge, last login, role count); test search input calls `useUsers` with updated search param after debounce; test status tab switch updates filter; test pagination next/prev buttons; test empty state renders when no users; test loading skeleton shown while fetching; use MSW to mock list endpoint
+- [x] T079 [P] [US3] Create frontend unit test `frontend/tests/unit/components/users/UserList.test.tsx`: test renders user rows with correct columns (name, email, status badge, last login, role count); test search input calls `useUsers` with updated search param after debounce; test status tab switch updates filter; test pagination next/prev buttons; test empty state renders when no users; test loading skeleton shown while fetching; use MSW to mock list endpoint
 
-- [ ] T080 [P] [US3] Create frontend unit test `frontend/tests/unit/components/users/InviteUserDialog.test.tsx`: test form renders with email (required) and display name (optional) fields; test submit with valid email → calls `useInviteUser` mutation; test submit with invalid email format → shows validation error; test quota-exceeded API error → shows quota message; test dialog closes on success
+- [x] T080 [P] [US3] Create frontend unit test `frontend/tests/unit/components/users/InviteUserDialog.test.tsx`: test form renders with email (required) and display name (optional) fields; test submit with valid email → calls `useInviteUser` mutation; test submit with invalid email format → shows validation error; test quota-exceeded API error → shows quota message; test dialog closes on success
 
 ### Implementation for F2
 
-- [ ] T081 [P] [US3] Create `frontend/src/components/users/UserStatusBadge.tsx`: reusable colour-coded badge; `active` → green, `pending` → yellow, `disabled` → grey/red; accepts `status: UserStatus` prop; use shadcn/ui `Badge` variant; export as named component
+- [x] T081 [P] [US3] Create `frontend/src/components/users/UserStatusBadge.tsx`: reusable colour-coded badge; `active` → green, `pending` → yellow, `disabled` → grey/red; accepts `status: UserStatus` prop; use shadcn/ui `Badge` variant; export as named component
 
-- [ ] T082 [P] [US3] Create `frontend/src/components/users/UserListFilters.tsx`: search input with 300ms debounce (update URL search params); status tab bar with four tabs: All / Active / Pending / Disabled; emits `onFiltersChange(filters: UserListFilters)` callback; controlled component accepting current filter values as props
+- [x] T082 [P] [US3] Create `frontend/src/components/users/UserListFilters.tsx`: search input with 300ms debounce (update URL search params); status tab bar with four tabs: All / Active / Pending / Disabled; emits `onFiltersChange(filters: UserListFilters)` callback; controlled component accepting current filter values as props
 
-- [ ] T083 [P] [US3] Create `frontend/src/components/users/InviteUserDialog.tsx`: modal dialog (shadcn/ui `Dialog`); react-hook-form + Zod validation (email: RFC 5322 format, displayName: optional max 255 chars); shows remaining quota `{10000 - currentCount} slots remaining`; uses `useInviteUser()` mutation; shows loading state on submit; closes and shows success toast on completion; shows API error inline on failure
+- [x] T083 [P] [US3] Create `frontend/src/components/users/InviteUserDialog.tsx`: modal dialog (shadcn/ui `Dialog`); react-hook-form + Zod validation (email: RFC 5322 format, displayName: optional max 255 chars); shows remaining quota `{10000 - currentCount} slots remaining`; uses `useInviteUser()` mutation; shows loading state on submit; closes and shows success toast on completion; shows API error inline on failure
 
-- [ ] T084 [P] [US3] Create `frontend/src/components/users/DeleteUserDialog.tsx`: confirmation dialog with destructive styling; displays `"This will permanently delete {email} and all their role assignments. This action cannot be undone."`; require the admin to type the user's email to confirm; uses `useDeleteUser()` mutation; redirects to user list on success
+- [x] T084 [P] [US3] Create `frontend/src/components/users/DeleteUserDialog.tsx`: confirmation dialog with destructive styling; displays `"This will permanently delete {email} and all their role assignments. This action cannot be undone."`; require the admin to type the user's email to confirm; uses `useDeleteUser()` mutation; redirects to user list on success
 
-- [ ] T085 [US3] Create `frontend/src/components/users/UserList.tsx`: paginated table using `useUsers(filters)` hook; columns: display name (link to detail), email, `UserStatusBadge`, last login (formatted relative time), role count, actions menu (Edit, Disable/Enable, Delete); integrate `UserListFilters` for search + tab filter; pagination controls (prev/next/page numbers); loading skeleton (10 rows); empty state component; "Invite User" button opens `InviteUserDialog`; clicking row name navigates to `/admin/users/:id`
+- [x] T085 [US3] Create `frontend/src/components/users/UserList.tsx`: paginated table using `useUsers(filters)` hook; columns: display name (link to detail), email, `UserStatusBadge`, last login (formatted relative time), role count, actions menu (Edit, Disable/Enable, Delete); integrate `UserListFilters` for search + tab filter; pagination controls (prev/next/page numbers); loading skeleton (10 rows); empty state component; "Invite User" button opens `InviteUserDialog`; clicking row name navigates to `/admin/users/:id`
 
 **Checkpoint**: User list dashboard fully functional. Admins can see, search, filter, invite, and delete users.
 
@@ -417,17 +427,17 @@
 
 ### Tests for F3 (MANDATORY) ⚠️
 
-- [ ] T086 [P] [US2] Create frontend unit test `frontend/tests/unit/components/users/UserRoles.test.tsx`: test roles render grouped by client application name; test "Assign Role" button opens `AssignRoleDialog`; test assigning a role calls `useAssignRole` mutation and updates list; test clicking revoke on a role shows confirmation and calls `useRevokeRole`; test empty state when no roles assigned
+- [x] T086 [P] [US2] Create frontend unit test `frontend/tests/unit/components/users/UserRoles.test.tsx`: test roles render grouped by client application name; test "Assign Role" button opens `AssignRoleDialog`; test assigning a role calls `useAssignRole` mutation and updates list; test clicking revoke on a role shows confirmation and calls `useRevokeRole`; test empty state when no roles assigned
 
 ### Implementation for F3
 
-- [ ] T087 [P] [US2] Create `frontend/src/components/users/AssignRoleDialog.tsx`: modal dialog; client dropdown populated from existing clients API (`useClients` hook); free-form role name text input; Zod validation (1–100 chars, no leading/trailing whitespace); uses `useAssignRole()` mutation; shows duplicate-role API error inline; closes on success and shows toast
+- [x] T087 [P] [US2] Create `frontend/src/components/users/AssignRoleDialog.tsx`: modal dialog; client dropdown populated from existing clients API (`useClients` hook); free-form role name text input; Zod validation (1–100 chars, no leading/trailing whitespace); uses `useAssignRole()` mutation; shows duplicate-role API error inline; closes on success and shows toast
 
-- [ ] T088 [P] [US2] Create `frontend/src/components/users/EnableDisableDialog.tsx`: confirmation dialog; messaging adapts to current status: disable → "This will immediately terminate all active sessions for {email}."; enable → "This will restore {email}'s ability to authenticate."; uses `useUpdateUserStatus()` mutation; shows loading state; closes and refreshes user detail on success
+- [x] T088 [P] [US2] Create `frontend/src/components/users/EnableDisableDialog.tsx`: confirmation dialog; messaging adapts to current status: disable → "This will immediately terminate all active sessions for {email}."; enable → "This will restore {email}'s ability to authenticate."; uses `useUpdateUserStatus()` mutation; shows loading state; closes and refreshes user detail on success
 
-- [ ] T089 [P] [US2] Create `frontend/src/components/users/UserRoles.tsx`: role assignments table grouped by client application name (accordion or section headers); columns: role name, granted at, granted by, revoke button; "Assign Role" button at top-right opens `AssignRoleDialog`; revoke confirmation inline (popover or inline confirm); uses `useUserRoles(userId)` and `useRevokeRole()` hooks; empty state: "No roles assigned. Assign a role to grant access to a client application."
+- [x] T089 [P] [US2] Create `frontend/src/components/users/UserRoles.tsx`: role assignments table grouped by client application name (accordion or section headers); columns: role name, granted at, granted by, revoke button; "Assign Role" button at top-right opens `AssignRoleDialog`; revoke confirmation inline (popover or inline confirm); uses `useUserRoles(userId)` and `useRevokeRole()` hooks; empty state: "No roles assigned. Assign a role to grant access to a client application."
 
-- [ ] T090 [US2] Create `frontend/src/components/users/UserDetail.tsx`: profile header (avatar initials, display name, email, `UserStatusBadge`, last login); action buttons toolbar: "Edit Display Name" (inline edit), "Disable / Enable Account" (opens `EnableDisableDialog`), "Delete User" (opens `DeleteUserDialog`); tabbed content (shadcn/ui `Tabs`): **Roles** tab renders `UserRoles`, **Sessions** tab renders `UserSessions`, **Activity** tab renders `UserActivity`; uses `useUser(id)` hook; back navigation to user list
+- [x] T090 [US2] Create `frontend/src/components/users/UserDetail.tsx`: profile header (avatar initials, display name, email, `UserStatusBadge`, last login); action buttons toolbar: "Edit Display Name" (inline edit), "Disable / Enable Account" (opens `EnableDisableDialog`), "Delete User" (opens `DeleteUserDialog`); tabbed content (shadcn/ui `Tabs`): **Roles** tab renders `UserRoles`, **Sessions** tab renders `UserSessions`, **Activity** tab renders `UserActivity`; uses `useUser(id)` hook; back navigation to user list
 
 **Checkpoint**: User detail page with role management working end-to-end.
 
@@ -441,15 +451,15 @@
 
 ### Tests for F4 (MANDATORY) ⚠️
 
-- [ ] T091 [P] [US1] Create frontend unit test `frontend/tests/unit/components/users/AcceptInvitationForm.test.tsx`: test form renders with read-only email field pre-populated; test password strength indicator updates as user types; test mismatched confirm password shows validation error; test password < 8 chars shows validation error; test successful submit calls `acceptInvitation` API and redirects to login; test API 410 expired error renders `InvitationExpired` component
+- [x] T091 [P] [US1] Create frontend unit test `frontend/tests/unit/components/users/AcceptInvitationForm.test.tsx`: test form renders with read-only email field pre-populated; test password strength indicator updates as user types; test mismatched confirm password shows validation error; test password < 8 chars shows validation error; test successful submit calls `acceptInvitation` API and redirects to login; test API 410 expired error renders `InvitationExpired` component
 
 ### Implementation for F4
 
-- [ ] T092 [P] [US1] Create `frontend/src/components/users/InvitationExpired.tsx`: error state component shown when invitation token is expired or already used; displays clear message: "This invitation link has expired or has already been used."; provides guidance: "Please contact your administrator to request a new invitation."; styled with appropriate error icon; no interactive controls needed (read-only state)
+- [x] T092 [P] [US1] Create `frontend/src/components/users/InvitationExpired.tsx`: error state component shown when invitation token is expired or already used; displays clear message: "This invitation link has expired or has already been used."; provides guidance: "Please contact your administrator to request a new invitation."; styled with appropriate error icon; no interactive controls needed (read-only state)
 
-- [ ] T093 [P] [US1] Create `frontend/src/components/users/AcceptInvitationForm.tsx`: form with read-only email address display (extracted from invitation token pre-fetch); password input with strength indicator (visual bar: weak/fair/strong); confirm password input with match validation; submit button disabled until passwords match and meet minimum strength; uses `useAcceptInvitation()` mutation from a new `useInvitation` hook wrapping `POST /api/v1/invitations/{token}/accept`; on 200: redirect to login with `?activated=true` query param for success toast; on 410: render `InvitationExpired`; on 400: display inline field errors
+- [x] T093 [P] [US1] Create `frontend/src/components/users/AcceptInvitationForm.tsx`: form receives pre-fetched invitation data (email, displayName) from parent `AcceptInvitationPage` via props (fetched from `GET /api/v1/invitations/{token}/validate`); read-only email address display; password input with strength indicator (visual bar: weak/fair/strong); confirm password input with match validation; submit button disabled until passwords match and meet minimum strength; uses `useAcceptInvitation()` mutation from a new `useInvitation` hook wrapping `POST /api/v1/invitations/{token}/accept`; on 200: redirect to login with `?activated=true` query param for success toast; on 410: render `InvitationExpired`; on 400: display inline field errors
 
-- [ ] T094 [US1] Add `useAcceptInvitation` mutation hook to `frontend/src/hooks/useSessions.ts` or create `frontend/src/hooks/useInvitation.ts`: wrap `POST /api/v1/invitations/{token}/accept`; no auth required; handle 200 (success), 410 (expired/used), 400 (validation error) response shapes; update `AcceptInvitationPage.tsx` to use this hook and pass token from URL params
+- [x] T094 [US1] Add `useAcceptInvitation` mutation hook to `frontend/src/hooks/useSessions.ts` or create `frontend/src/hooks/useInvitation.ts`: wrap `POST /api/v1/invitations/{token}/accept`; no auth required; handle 200 (success), 410 (expired/used), 400 (validation error) response shapes; update `AcceptInvitationPage.tsx` to use this hook and pass token from URL params
 
 **Checkpoint**: Invitation acceptance flow complete. Full US1 story testable end-to-end from invite email to activated account.
 
@@ -461,9 +471,9 @@
 
 **Independent Test**: Authenticate user via two different clients. Open Sessions tab → 2 rows visible with client names and last-activity times. Click "Terminate" → session removed. Open Activity tab → login events listed in reverse-chronological order with pagination.
 
-- [ ] T095 [P] [US4] Create `frontend/src/components/users/UserSessions.tsx`: active sessions table using `useUserSessions(userId)` hook; columns: client application name, session created at, last activity (formatted relative time), masked origin (IP prefix or country code if available); "Terminate" button per row (with inline confirmation popover — no full modal needed); uses `useRevokeSession()` mutation (invalidates sessions query on success); empty state: "No active sessions for this user."; loading skeleton (3 rows)
+- [x] T095 [P] [US4] Create `frontend/src/components/users/UserSessions.tsx`: active sessions table using `useUserSessions(userId)` hook; columns: client application name, session created at, last activity (formatted relative time), masked origin (IP prefix or country code if available); "Terminate" button per row (with inline confirmation popover — no full modal needed); uses `useRevokeSession()` mutation (invalidates sessions query on success); empty state: "No active sessions for this user."; loading skeleton (3 rows)
 
-- [ ] T096 [P] [US4] Create `frontend/src/components/users/UserActivity.tsx`: paginated activity log using `useUserActivity(userId, page)` hook; each row: event type icon (colour-coded by severity: login_failure = red, session_terminated = orange, others = grey), event type label (human-readable), client application name (if applicable), formatted timestamp (relative + absolute on hover), IP address / country code; pagination controls (prev/next); empty state: "No activity recorded for this user."; loading skeleton (5 rows); default 25 events per page
+- [x] T096 [P] [US4] Create `frontend/src/components/users/UserActivity.tsx`: paginated activity log using `useUserActivity(userId, page)` hook; each row: event type icon (colour-coded by severity: login_failure = red, session_terminated = orange, others = grey), event type label (human-readable), client application name (if applicable), formatted timestamp (relative + absolute on hover), IP address / country code; pagination controls (prev/next); empty state: "No activity recorded for this user."; loading skeleton (5 rows); default 25 events per page
 
 **Checkpoint**: Full session management and activity log working. US4 and US5 fully supported.
 
@@ -473,17 +483,17 @@
 
 **Purpose**: Coverage verification, architecture compliance, frontend hook tests, performance validation.
 
-- [ ] T097 [P] Create frontend unit tests `frontend/tests/unit/hooks/useUsers.test.ts` and `frontend/tests/unit/hooks/useRoles.test.ts`: test `useUsers` query hook with MSW handlers (correct URL params, paginated response shape); test `useInviteUser` mutation (optimistic updates, cache invalidation of `['users']`); test `useUserRoles` query; test `useAssignRole` mutation (cache invalidation); test `useRevokeRole` mutation; use `renderHook` from React Testing Library
+- [x] T097 [P] Create frontend unit tests `frontend/tests/unit/hooks/useUsers.test.ts` and `frontend/tests/unit/hooks/useRoles.test.ts`: test `useUsers` query hook with MSW handlers (correct URL params, paginated response shape); test `useInviteUser` mutation (optimistic updates, cache invalidation of `['users']`); test `useUserRoles` query; test `useAssignRole` mutation (cache invalidation); test `useRevokeRole` mutation; use `renderHook` from React Testing Library
 
-- [ ] T098 [P] Verify ≥85% unit test coverage on all new backend packages — run `go test -coverprofile=coverage.out ./backend/...` and `go tool cover -func=coverage.out`; check coverage for: `domain/entities/` (user.go, invitation.go, user_event.go, user_role.go), `usecase/user/` (all 12 use cases), `usecase/auth/` (authorize_client.go, issue_token.go, get_userinfo.go), `usecase/role/` (assign_role.go, revoke_role.go); file a gap ticket for any package below 85%
+- [x] T098 [P] Verify ≥85% unit test coverage on all new backend packages — run `go test -coverprofile=coverage.out ./backend/...` and `go tool cover -func=coverage.out`; check coverage for: `domain/entities/` (user.go, invitation.go, user_event.go, user_role.go), `usecase/user/` (all 12 use cases), `usecase/auth/` (authorize_client.go, issue_token.go, get_userinfo.go), `usecase/role/` (assign_role.go, revoke_role.go); file a gap ticket for any package below 85%
 
-- [ ] T099 [P] Architecture compliance review — verify: (1) no `infrastructure/` or `interfaces/` imports from `domain/`; (2) no `infrastructure/` imports from `usecase/`; (3) `UserRepository` (AdminUser auth) is entirely untouched (run `git diff backend/domain/repositories/user_repository.go` and `backend/infrastructure/persistence/postgres/user_repository.go`); (4) all new `usecase/user/` files import only `domain/` packages; use `go list -f '{{.Imports}}' ./...` to audit
+- [x] T099 [P] Architecture compliance review — verify: (1) no `infrastructure/` or `interfaces/` imports from `domain/`; (2) no `infrastructure/` imports from `usecase/`; (3) `UserRepository` (AdminUser auth) is entirely untouched (run `git diff backend/domain/repositories/user_repository.go` and `backend/infrastructure/persistence/postgres/user_repository.go`); (4) all new `usecase/user/` files import only `domain/` packages; use `go list -f '{{.Imports}}' ./...` to audit
 
-- [ ] T100 [P] Performance validation — run `EXPLAIN ANALYZE` on key query patterns: `ListByTenant` with trgm search (confirm `idx_users_display_name_trgm` used), `GetActiveRoles` (confirm `idx_ura_user_client_active` partial index used), `ListByUser` on user_events (confirm `idx_user_events_user_recent` used); benchmark Redis blacklist check latency with `redis-benchmark`; run `ANALYZE users, invitations, user_role_assignments, user_events;` after all migrations
+- [x] T100 [P] Performance validation — run `EXPLAIN ANALYZE` on key query patterns: `ListByTenant` with trgm search (confirm `idx_users_display_name_trgm` used), `GetActiveRoles` (confirm `idx_ura_user_client_active` partial index used), `ListByUser` on user_events (confirm `idx_user_events_user_recent` used); benchmark Redis blacklist check latency with `redis-benchmark`; run `ANALYZE users, invitations, user_role_assignments, user_events;` after all migrations
 
-- [ ] T101 [P] Add GoDoc comments on all exported types and functions in new files: `backend/domain/entities/user.go`, `backend/domain/entities/invitation.go`, `backend/domain/entities/user_event.go`, `backend/domain/repositories/end_user_repository.go`, `backend/domain/repositories/invitation_repository.go`, `backend/domain/repositories/user_event_repository.go`, `backend/domain/services/user_blacklist.go`; verify all JSON field names in handler responses use snake_case consistently; verify error messages match OpenAPI contract examples in `specs/005-user-management-rbac/contracts/openapi.yaml`
+- [x] T101 [P] Add GoDoc comments on all exported types and functions in new files: `backend/domain/entities/user.go`, `backend/domain/entities/invitation.go`, `backend/domain/entities/user_event.go`, `backend/domain/repositories/end_user_repository.go`, `backend/domain/repositories/invitation_repository.go`, `backend/domain/repositories/user_event_repository.go`, `backend/domain/services/user_blacklist.go`; verify all JSON field names in handler responses use snake_case consistently; verify error messages match OpenAPI contract examples in `specs/005-user-management-rbac/contracts/openapi.yaml`
 
-- [ ] T102 [P] Document deployment additions in project README or ops runbook: add `INVITATION_BASE_URL` and `BREVO_INVITATION_TEMPLATE_ID` to environment variable table; document cron entries: `0 * * * * ./cleanup --expire-invitations` and `0 2 * * * ./cleanup --purge-user-events`; document Redis key namespaces (`user_blacklist:*`, `user_count:*`, `invitation_exists:*`); document rollback procedure (migrate down 4 removes 000009–000012)
+- [x] T102 [P] Document deployment additions in project README or ops runbook: add `INVITATION_BASE_URL` and `BREVO_INVITATION_TEMPLATE_ID` to environment variable table; document cron entries: `0 * * * * ./cleanup --expire-invitations` and `0 2 * * * ./cleanup --purge-user-events`; document Redis key namespaces (`user_blacklist:*`, `user_count:*`, `invitation_exists:*`); document rollback procedure (migrate down 4 removes 000009–000012)
 
 ---
 
@@ -507,15 +517,15 @@
 
 ### User Story Dependencies
 
-| Story | Depends On | Notes |
-| ----- | ---------- | ----- |
-| US7 (JWT Claims) | B1, B2 only | Implement first; enables RBAC enforcement in auth flow |
-| US3 (User List) | B1, B2 only | No inter-story deps; read-only query path |
-| US1 (Invite) | US3 (list users helps test invitation), B1, B2 | Invitation acceptance is fully independent (public endpoint) |
-| US2 (Roles) | US1 (need active users to assign roles to), US7 (roles → JWT) | Frontend role management lives in UserDetail from US3 |
-| US4 (Sessions) | US1 (need sessions to exist), B1, B2 | UI lives in UserDetail tab from US3 |
-| US5 (Enable/Disable) | US1 (need active users), B1, B2 | Simple status change; reuses infrastructure from US4 (RevokeByUserID) |
-| US6 (Delete) | US1, US2, US4, US5 | Cascade operation; all sub-systems must exist first |
+| Story                | Depends On                                                    | Notes                                                                 |
+| -------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| US7 (JWT Claims)     | B1, B2 only                                                   | Implement first; enables RBAC enforcement in auth flow                |
+| US3 (User List)      | B1, B2 only                                                   | No inter-story deps; read-only query path                             |
+| US1 (Invite)         | US3 (list users helps test invitation), B1, B2                | Invitation acceptance is fully independent (public endpoint)          |
+| US2 (Roles)          | US1 (need active users to assign roles to), US7 (roles → JWT) | Frontend role management lives in UserDetail from US3                 |
+| US4 (Sessions)       | US1 (need sessions to exist), B1, B2                          | UI lives in UserDetail tab from US3                                   |
+| US5 (Enable/Disable) | US1 (need active users), B1, B2                               | Simple status change; reuses infrastructure from US4 (RevokeByUserID) |
+| US6 (Delete)         | US1, US2, US4, US5                                            | Cascade operation; all sub-systems must exist first                   |
 
 ### Within Each User Story (use case phase)
 
@@ -529,14 +539,16 @@
 ### Parallel Opportunities
 
 **Phase 2 (B1 Domain)**:
+
 ```
 Parallel batch 1: T006, T007, T008 (different entity files, after T005 entity is defined)
-Parallel batch 2: T010, T011, T013, T014, T015 (different interface files, after T009 EndUserRepository defined)
+Parallel batch 2: T010, T011, T013, T014, T014b, T015 (different interface files, after T009 EndUserRepository defined)
 Sequential: T005 (User entity, depended on by all repos), T009 (EndUserRepository), T012 (RoleRepository extends existing)
 Parallel: T016, T017 (domain unit tests, independent of each other)
 ```
 
 **Phase 3 (B2 Infrastructure)**:
+
 ```
 Sequential: T018 (EndUserRepository, core GORM model)
 Parallel batch 1: T019, T020, T022, T023, T024, T025 (different files, all depend on T018 model pattern)
@@ -544,17 +556,19 @@ Sequential: T021 (extends existing role_repository.go), T026 (mocks, must be las
 ```
 
 **Phase 4 (B3 Use Cases)**:
+
 ```
 US7: T027, T028 parallel (test files) → T029 → T030 → T031 (sequential, each depends on previous)
 US1: T032, T033, T034 parallel (test files) → T035 → T036 → T037 (sequential use cases)
-US3: T038, T039 parallel (test files) → T040 → T041 → T042 (sequential)
+US3: T038, T039 parallel (test files) → T040 → T041 → T042 → T042b (unit test)
 US2: T043, T044 parallel (test files) → T045 → T046 (sequential)
-US4: T047, T048 parallel (test files) → T049 → T050 → T051 (sequential)
-US5: T052 (test) → T053 → T054
+US4: T047, T048 parallel (test files) → T049 → T050 → T051 → T051b (unit test)
+US5: T052, T052b parallel (test files) → T053 → T054
 US6: T055 (test) → T056
 ```
 
 **Phase 5 (B4 HTTP)**:
+
 ```
 T057 (middleware, no deps)
 Parallel: T058, T059, T060, T061 (integration tests for different handlers)
@@ -563,6 +577,7 @@ Sequential: T067 (router, depends on all handlers) → T068 (DI, depends on rout
 ```
 
 **Frontend (Phases 7–11)**:
+
 ```
 Phase 7: T070 first (types) → T071, T072, T073 parallel → T074 (useUsers, after types+services) → T075, T076 parallel → T077, T078 parallel
 Phase 8: T079, T080 parallel (tests) → T081, T082, T083, T084 parallel → T085
@@ -617,20 +632,20 @@ Task T094: "Update AcceptInvitationPage.tsx with useInvitation hook"
 
 ### Summary
 
-| Phase | Tasks | Story Coverage |
-| ----- | ----- | -------------- |
-| Setup (Migrations) | T001–T004 | — |
-| B1 Domain | T005–T017 | Foundational |
-| B2 Infrastructure | T018–T026 | Foundational |
-| B3 Use Cases | T027–T056 | US1–US7 |
-| B4 HTTP Interfaces | T057–T068 | US1–US7 |
-| B5 Background Jobs | T069 | — |
-| F1 Frontend Foundation | T070–T078 | Foundational |
-| F2 User List & Search | T079–T085 | US3 |
-| F3 User Detail & Roles | T086–T090 | US2 |
-| F4 Invitation Flow | T091–T094 | US1 |
-| F5 Sessions & Activity | T095–T096 | US4, US5 |
-| Polish | T097–T102 | Cross-cutting |
-| **Total** | **102 tasks** | **US1–US7** |
+| Phase                  | Tasks                           | Story Coverage |
+| ---------------------- | ------------------------------- | -------------- |
+| Setup (Migrations)     | T001–T004                       | —              |
+| B1 Domain              | T005–T017 + T014b               | Foundational   |
+| B2 Infrastructure      | T018–T026                       | Foundational   |
+| B3 Use Cases           | T027–T056 + T042b, T051b, T052b | US1–US7        |
+| B4 HTTP Interfaces     | T057–T068                       | US1–US7        |
+| B5 Background Jobs     | T069                            | —              |
+| F1 Frontend Foundation | T070–T078                       | Foundational   |
+| F2 User List & Search  | T079–T085                       | US3            |
+| F3 User Detail & Roles | T086–T090                       | US2            |
+| F4 Invitation Flow     | T091–T094                       | US1            |
+| F5 Sessions & Activity | T095–T096                       | US4, US5       |
+| Polish                 | T097–T102                       | Cross-cutting  |
+| **Total**              | **106 tasks**                   | **US1–US7**    |
 
 **Parallel opportunities identified**: 40+ tasks marked [P] across all phases.

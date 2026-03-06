@@ -22,3 +22,9 @@ func (m *MockEmailService) SendWelcomeEmail(ctx context.Context, toEmail, toName
 	args := m.Called(ctx, toEmail, toName, organizationName)
 	return args.Error(0)
 }
+
+// SendInvitationEmail sends an invitation email
+func (m *MockEmailService) SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error {
+	args := m.Called(ctx, toEmail, toName, inviteURL, orgName)
+	return args.Error(0)
+}

@@ -119,15 +119,112 @@ func (m *MockIntegrationRoleRepository) ListRolesByUser(ctx context.Context, use
 	return nil, nil
 }
 
+func (m *MockIntegrationRoleRepository) Assign(ctx context.Context, assignment *entities.UserRoleAssignment) error {
+	key := assignment.UserID + ":" + assignment.ClientID
+	m.roles[key] = append(m.roles[key], assignment)
+	return nil
+}
+
+func (m *MockIntegrationRoleRepository) Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error {
+	return nil
+}
+
+func (m *MockIntegrationRoleRepository) ListByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error) {
+	return nil, nil
+}
+
+func (m *MockIntegrationRoleRepository) ListByClient(ctx context.Context, clientID string, page, pageSize int) ([]*entities.UserRoleAssignment, int, error) {
+	return nil, 0, nil
+}
+
+func (m *MockIntegrationRoleRepository) RevokeAllForUser(ctx context.Context, userID, revokedByUserID string) error {
+	return nil
+}
+
+func (m *MockIntegrationRoleRepository) GetActiveRoles(ctx context.Context, userID, clientID string) ([]string, error) {
+	key := userID + ":" + clientID
+	var roles []string
+	for _, r := range m.roles[key] {
+		if r.IsActive {
+			roles = append(roles, r.Role)
+		}
+	}
+	return roles, nil
+}
+
 var _ repositories.RoleRepository = (*MockIntegrationRoleRepository)(nil)
 
-func setupOAuthRouter(t *testing.T) (*gin.Engine, *MockIntegrationClientRepository, *MockIntegrationRoleRepository, *MockIntegrationAuthCodeRepository) {
+// MockIntegrationEndUserRepository for integration tests
+type MockIntegrationEndUserRepository struct {
+	users map[string]*entities.User
+}
+
+func NewMockIntegrationEndUserRepository() *MockIntegrationEndUserRepository {
+	return &MockIntegrationEndUserRepository{
+		users: make(map[string]*entities.User),
+	}
+}
+
+func (m *MockIntegrationEndUserRepository) GetByID(ctx context.Context, userID string) (*entities.User, error) {
+	if u, ok := m.users[userID]; ok {
+		return u, nil
+	}
+	return nil, errors.New("user not found")
+}
+
+func (m *MockIntegrationEndUserRepository) GetByEmail(ctx context.Context, tenantID, email string) (*entities.User, error) {
+	for _, u := range m.users {
+		if u.TenantID == tenantID && u.Email == email {
+			return u, nil
+		}
+	}
+	return nil, errors.New("user not found")
+}
+
+func (m *MockIntegrationEndUserRepository) Create(ctx context.Context, user *entities.User) error {
+	m.users[user.ID] = user
+	return nil
+}
+
+func (m *MockIntegrationEndUserRepository) Update(ctx context.Context, user *entities.User) error {
+	m.users[user.ID] = user
+	return nil
+}
+
+func (m *MockIntegrationEndUserRepository) ListByTenant(ctx context.Context, tenantID, search string, status entities.UserStatus, page, pageSize int) ([]*entities.User, int, error) {
+	return nil, 0, nil
+}
+
+func (m *MockIntegrationEndUserRepository) CountByTenant(ctx context.Context, tenantID string) (int, error) {
+	return len(m.users), nil
+}
+
+func (m *MockIntegrationEndUserRepository) UpdateStatus(ctx context.Context, userID string, status entities.UserStatus) error {
+	if u, ok := m.users[userID]; ok {
+		u.Status = status
+	}
+	return nil
+}
+
+func (m *MockIntegrationEndUserRepository) UpdateLastLogin(ctx context.Context, userID string, at time.Time) error {
+	return nil
+}
+
+func (m *MockIntegrationEndUserRepository) Delete(ctx context.Context, userID string) error {
+	delete(m.users, userID)
+	return nil
+}
+
+var _ repositories.EndUserRepository = (*MockIntegrationEndUserRepository)(nil)
+
+func setupOAuthRouter(t *testing.T) (*gin.Engine, *MockIntegrationClientRepository, *MockIntegrationRoleRepository, *MockIntegrationAuthCodeRepository, *MockIntegrationEndUserRepository) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
 	clientRepo := NewMockIntegrationClientRepository()
 	roleRepo := NewMockIntegrationRoleRepository()
 	authCodeRepo := NewMockIntegrationAuthCodeRepository()
+	endUserRepo := NewMockIntegrationEndUserRepository()
 
 	testClient := &entities.Client{
 		ClientID:            "test_client_123",
@@ -150,16 +247,16 @@ func setupOAuthRouter(t *testing.T) (*gin.Engine, *MockIntegrationClientReposito
 		},
 	}
 
-	authorizeClientUC := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
+	authorizeClientUC := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo, endUserRepo)
 	oauthHandler := handlers.NewOAuthHandler(authorizeClientUC, nil, clientRepo)
 
 	router.GET("/oauth2/auth", oauthHandler.Authorize)
 
-	return router, clientRepo, roleRepo, authCodeRepo
+	return router, clientRepo, roleRepo, authCodeRepo, endUserRepo
 }
 
 func TestOAuthHandler_Authorize_Success(t *testing.T) {
-	router, _, _, authCodeRepo := setupOAuthRouter(t)
+	router, _, _, authCodeRepo, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -198,7 +295,7 @@ func TestOAuthHandler_Authorize_Success(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_InvalidClientID(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "invalid_client")
@@ -222,7 +319,7 @@ func TestOAuthHandler_Authorize_InvalidClientID(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_InvalidRedirectURI(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -245,7 +342,7 @@ func TestOAuthHandler_Authorize_InvalidRedirectURI(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_UserWithoutRole(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -268,7 +365,7 @@ func TestOAuthHandler_Authorize_UserWithoutRole(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_MissingPKCE(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -289,7 +386,7 @@ func TestOAuthHandler_Authorize_MissingPKCE(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_InvalidResponseType(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -312,7 +409,7 @@ func TestOAuthHandler_Authorize_InvalidResponseType(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_InvalidScope(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -335,7 +432,7 @@ func TestOAuthHandler_Authorize_InvalidScope(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_MissingState(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")
@@ -357,7 +454,7 @@ func TestOAuthHandler_Authorize_MissingState(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_InactiveClient(t *testing.T) {
-	router, clientRepo, _, _ := setupOAuthRouter(t)
+	router, clientRepo, _, _, _ := setupOAuthRouter(t)
 
 	clientRepo.clients["test_client_123"].IsActive = false
 
@@ -381,7 +478,7 @@ func TestOAuthHandler_Authorize_InactiveClient(t *testing.T) {
 }
 
 func TestOAuthHandler_Authorize_PlainPKCENotAllowed(t *testing.T) {
-	router, _, _, _ := setupOAuthRouter(t)
+	router, _, _, _, _ := setupOAuthRouter(t)
 
 	params := url.Values{}
 	params.Set("client_id", "test_client_123")

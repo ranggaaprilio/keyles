@@ -8,10 +8,10 @@ import (
 
 // RoleRepository defines the interface for user role operations
 type RoleRepository interface {
-	// AssignRole assigns a role to a user for a client
+	// AssignRole assigns a role to a user for a client (legacy — use Assign for new code)
 	AssignRole(ctx context.Context, assignment *entities.UserRoleAssignment) error
 
-	// RevokeRole removes a role assignment
+	// RevokeRole removes a role assignment (legacy — use Revoke for new code)
 	RevokeRole(ctx context.Context, userID, clientID, role string) error
 
 	// GetUserRoles retrieves all roles for a user in a client
@@ -28,5 +28,26 @@ type RoleRepository interface {
 
 	// ListRolesByUser retrieves all role assignments for a user across all clients
 	ListRolesByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error)
+
+	// --- New methods for feature 005 ---
+
+	// Assign creates a new role assignment. Returns ErrDuplicateRole if already active.
+	Assign(ctx context.Context, assignment *entities.UserRoleAssignment) error
+
+	// Revoke soft-deletes a role assignment by ID, recording revokedBy and revokedAt.
+	Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error
+
+	// ListByUser returns all role assignments for a user, including inactive ones.
+	ListByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error)
+
+	// ListByClient returns all active role assignments for a client application (admin view).
+	ListByClient(ctx context.Context, clientID string, page, pageSize int) ([]*entities.UserRoleAssignment, int, error)
+
+	// RevokeAllForUser revokes all active role assignments for a user (used on account disable/delete).
+	RevokeAllForUser(ctx context.Context, userID, revokedByUserID string) error
+
+	// GetActiveRoles returns only active role name strings for a user-client pair.
+	// Used by issue_token.go and get_userinfo.go for JWT claim injection.
+	GetActiveRoles(ctx context.Context, userID, clientID string) ([]string, error)
 }
 

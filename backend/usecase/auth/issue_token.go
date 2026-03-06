@@ -51,6 +51,7 @@ type IssueToken struct {
 	authCodeRepo     repositories.AuthCodeRepository
 	clientRepo       repositories.ClientRepository
 	refreshTokenRepo repositories.RefreshTokenRepository
+	roleRepo         repositories.RoleRepository
 	tokenService     services.TokenService
 	issuer           string
 }
@@ -60,6 +61,7 @@ func NewIssueToken(
 	authCodeRepo repositories.AuthCodeRepository,
 	clientRepo repositories.ClientRepository,
 	refreshTokenRepo repositories.RefreshTokenRepository,
+	roleRepo repositories.RoleRepository,
 	tokenService services.TokenService,
 	issuer string,
 ) *IssueToken {
@@ -67,6 +69,7 @@ func NewIssueToken(
 		authCodeRepo:     authCodeRepo,
 		clientRepo:       clientRepo,
 		refreshTokenRepo: refreshTokenRepo,
+		roleRepo:         roleRepo,
 		tokenService:     tokenService,
 		issuer:           issuer,
 	}
@@ -150,6 +153,16 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		}
 	}
 
+	// Fetch active roles for JWT claims (FR-022, FR-024)
+	roles, err := uc.roleRepo.GetActiveRoles(ctx, authCode.UserID, authCode.ClientID)
+	if err != nil {
+		// Non-fatal: include empty array if roles cannot be fetched
+		roles = []string{}
+	}
+	if roles == nil {
+		roles = []string{}
+	}
+
 	// Generate tokens
 	now := time.Now()
 	accessTokenExp := now.Add(AccessTokenTTL)
@@ -166,6 +179,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		TenantID:  authCode.TenantID,
 		ClientID:  authCode.ClientID,
 		Scope:     authCode.Scope,
+		Roles:     roles,
 	}
 
 	// Sign ID token (FR-036)
@@ -188,6 +202,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		TenantID:  authCode.TenantID,
 		ClientID:  authCode.ClientID,
 		Scope:     authCode.Scope,
+		Roles:     roles,
 	}
 
 	// Sign access token (FR-036)
