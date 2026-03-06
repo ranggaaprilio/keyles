@@ -1,13 +1,14 @@
 package role
 
 import (
-	"context"
-	"errors"
-	"time"
+"context"
+"errors"
+"fmt"
+"time"
 
-	"github.com/google/uuid"
-	"github.com/ranggaaprilio/keyles/domain/entities"
-	"github.com/ranggaaprilio/keyles/domain/repositories"
+"github.com/google/uuid"
+"github.com/ranggaaprilio/keyles/domain/entities"
+"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
 // AssignRoleRequest represents a request to assign a role to a user
@@ -24,18 +25,24 @@ type AssignRole struct {
 	roleRepo   repositories.RoleRepository
 	userRepo   repositories.UserRepository
 	clientRepo repositories.ClientRepository
+	eventRepo  repositories.UserEventRepository
+	auditRepo  repositories.AuditRepository
 }
 
 // NewAssignRole creates a new AssignRole use case
 func NewAssignRole(
-	roleRepo repositories.RoleRepository,
-	userRepo repositories.UserRepository,
-	clientRepo repositories.ClientRepository,
+roleRepo repositories.RoleRepository,
+userRepo repositories.UserRepository,
+clientRepo repositories.ClientRepository,
+eventRepo repositories.UserEventRepository,
+auditRepo repositories.AuditRepository,
 ) *AssignRole {
 	return &AssignRole{
 		roleRepo:   roleRepo,
 		userRepo:   userRepo,
 		clientRepo: clientRepo,
+		eventRepo:  eventRepo,
+		auditRepo:  auditRepo,
 	}
 }
 
@@ -57,10 +64,13 @@ func (uc *AssignRole) Execute(ctx context.Context, req AssignRoleRequest) error 
 
 	// Create a temporary assignment to validate the role
 	tempAssignment := &entities.UserRoleAssignment{
-		Role: req.Role,
+		UserID:   req.UserID,
+		ClientID: req.ClientID,
+		TenantID: req.TenantID,
+		Role:     req.Role,
 	}
-	if !tempAssignment.IsValidRole() {
-		return errors.New("invalid role: must be one of admin, user, viewer")
+	if err := tempAssignment.Validate(); err != nil {
+		return fmt.Errorf("invalid role assignment: %w", err)
 	}
 
 	// Parse user ID as UUID
@@ -111,10 +121,28 @@ func (uc *AssignRole) Execute(ctx context.Context, req AssignRoleRequest) error 
 		GrantedBy: req.GrantedBy,
 	}
 
-	// Save to database
-	if err := uc.roleRepo.AssignRole(ctx, assignment); err != nil {
+	// Save to database using new Assign method
+	if err := uc.roleRepo.Assign(ctx, assignment); err != nil {
 		return errors.New("failed to assign role: " + err.Error())
 	}
+
+	// Record role_assigned event
+	event := &entities.UserEvent{
+		TenantID:   req.TenantID,
+		UserID:     req.UserID,
+		EventType:  entities.EventTypeRoleAssigned,
+		Details:    map[string]any{"client_id": req.ClientID, "role": req.Role, "granted_by": req.GrantedBy},
+		OccurredAt: time.Now(),
+	}
+	_ = uc.eventRepo.Record(ctx, event)
+
+	// Audit log
+	auditLog := entities.NewAuditLog("role_assigned", "", "")
+	auditLog.WithData("user_id", req.UserID)
+	auditLog.WithData("client_id", req.ClientID)
+	auditLog.WithData("role", req.Role)
+	auditLog.WithData("granted_by", req.GrantedBy)
+	_ = uc.auditRepo.Create(ctx, auditLog)
 
 	return nil
 }

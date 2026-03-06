@@ -182,3 +182,70 @@ func (r *refreshTokenRepository) RevokeByClientID(ctx context.Context, clientID 
 
 	return nil
 }
+
+// RevokeByUserID revokes all active refresh tokens for a given user across all clients
+func (r *refreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	query := `
+		UPDATE refresh_tokens
+		SET is_revoked = true, revoked_at = $1, revoked_reason = $2
+		WHERE user_id = $3 AND is_revoked = false
+	`
+
+	_, err := r.pool.Exec(ctx, query, time.Now(), "user account action", userID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh tokens for user: %w", err)
+	}
+
+	return nil
+}
+
+// ListByUserID returns all refresh tokens for a user
+func (r *refreshTokenRepository) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	query := `
+		SELECT id, token, user_id, client_id, tenant_id, scope, expires_at,
+		       created_at, last_used_at, is_revoked, revoked_at, revoked_reason
+		FROM refresh_tokens
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list refresh tokens: %w", err)
+	}
+	defer rows.Close()
+
+	var tokens []*entities.RefreshToken
+	for rows.Next() {
+		t := &entities.RefreshToken{}
+		err := rows.Scan(&t.ID, &t.Token, &t.UserID, &t.ClientID, &t.TenantID, &t.Scope,
+			&t.ExpiresAt, &t.CreatedAt, &t.LastUsedAt, &t.RevokedFlag, &t.RevokedAt, &t.RevokedReason)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan refresh token: %w", err)
+		}
+		tokens = append(tokens, t)
+	}
+
+	if tokens == nil {
+		tokens = []*entities.RefreshToken{}
+	}
+	return tokens, nil
+}
+
+// GetByID retrieves a refresh token by its database ID
+func (r *refreshTokenRepository) GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+	query := `
+		SELECT id, token, user_id, client_id, tenant_id, scope, expires_at,
+		       created_at, last_used_at, is_revoked, revoked_at, revoked_reason
+		FROM refresh_tokens
+		WHERE id = $1
+	`
+
+	t := &entities.RefreshToken{}
+	err := r.pool.QueryRow(ctx, query, id).Scan(&t.ID, &t.Token, &t.UserID, &t.ClientID, &t.TenantID, &t.Scope,
+		&t.ExpiresAt, &t.CreatedAt, &t.LastUsedAt, &t.RevokedFlag, &t.RevokedAt, &t.RevokedReason)
+	if err != nil {
+		return nil, fmt.Errorf("refresh token not found: %w", err)
+	}
+	return t, nil
+}

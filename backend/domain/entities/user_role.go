@@ -2,25 +2,29 @@ package entities
 
 import (
 	"errors"
+	"strings"
 	"time"
 )
 
+// MaxRoleNameLength is the maximum allowed length for a free-form role name
+const MaxRoleNameLength = 100
+
 // UserRoleAssignment represents a role assignment for a user to access a client
 type UserRoleAssignment struct {
-	ID         int64
-	UserID     string
-	ClientID   string
-	TenantID   string
-	Role       string
-	IsActive   bool
-	GrantedAt  time.Time
-	GrantedBy  string
+	ID        int64
+	UserID    string
+	ClientID  string
+	TenantID  string
+	Role      string
+	IsActive  bool
+	GrantedAt time.Time
+	GrantedBy string
+	RevokedAt *time.Time
+	RevokedBy *string
 }
 
-// ValidRoles defines the allowed role values
-var ValidRoles = []string{"admin", "user", "viewer"}
-
-// Validate performs basic validation on the user role entity
+// Validate performs basic validation on the user role entity.
+// Role names are free-form (1–100 characters); whitespace-only names are rejected.
 func (ur *UserRoleAssignment) Validate() error {
 	if ur.UserID == "" {
 		return errors.New("user_id cannot be empty")
@@ -31,26 +35,14 @@ func (ur *UserRoleAssignment) Validate() error {
 	if ur.TenantID == "" {
 		return errors.New("tenant_id cannot be empty")
 	}
-	if ur.Role == "" {
+	if strings.TrimSpace(ur.Role) == "" {
 		return errors.New("role cannot be empty")
 	}
-
-	// Validate role is in the allowed list
-	if !ur.IsValidRole() {
-		return errors.New("invalid role: must be one of admin, user, viewer")
+	if len(ur.Role) > MaxRoleNameLength {
+		return errors.New("role name must not exceed 100 characters")
 	}
 
 	return nil
-}
-
-// IsValidRole checks if the role is in the valid roles list
-func (ur *UserRoleAssignment) IsValidRole() bool {
-	for _, validRole := range ValidRoles {
-		if ur.Role == validRole {
-			return true
-		}
-	}
-	return false
 }
 
 // IsEnabled checks if the role assignment is active

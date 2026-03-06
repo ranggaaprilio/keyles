@@ -13,6 +13,8 @@ import LandingPage from "./pages/LandingPage";
 import ScrollToHashElement from "./components/landing/ScrollToHashElement";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ClientManagementPage } from "./pages/ClientManagementPage";
+import { UserManagementPage } from "./pages/UserManagementPage";
+import { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -56,6 +58,7 @@ export function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-otp" element={<VerifyOTPPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/invite/:token" element={<AcceptInvitationPage />} />
 
             {/* Protected routes */}
             <Route
@@ -95,6 +98,22 @@ export function App() {
               element={
                 <ProtectedRoute>
                   <ClientManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/users"
+              element={
+                <ProtectedRoute>
+                  <UserManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/users/:userId"
+              element={
+                <ProtectedRoute>
+                  <UserManagementPage />
                 </ProtectedRoute>
               }
             />

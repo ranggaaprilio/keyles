@@ -9,4 +9,7 @@ type EmailService interface {
 
 	// SendWelcomeEmail sends a welcome email after successful verification
 	SendWelcomeEmail(ctx context.Context, toEmail, toName, organizationName string) error
+
+	// SendInvitationEmail sends an invitation email with a link for the user to activate their account
+	SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error
 }

@@ -169,5 +169,43 @@ func (r *PostgresRefreshTokenRepository) RevokeByClientID(ctx context.Context, c
 	return result.Error
 }
 
+// RevokeByUserID revokes all active refresh tokens for a given user across all clients
+func (r *PostgresRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	now := time.Now()
+	result := r.db.WithContext(ctx).Model(&RefreshTokenModel{}).
+		Where("user_id = ? AND is_revoked = ?", userID, false).
+		Updates(map[string]interface{}{
+			"is_revoked":     true,
+			"revoked_at":     now,
+			"revoked_reason": "user account action",
+		})
+	return result.Error
+}
+
+// ListByUserID returns all refresh tokens for a user
+func (r *PostgresRefreshTokenRepository) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	var models []RefreshTokenModel
+	result := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&models)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	tokens := make([]*entities.RefreshToken, 0, len(models))
+	for _, m := range models {
+		tokens = append(tokens, m.toEntity())
+	}
+	return tokens, nil
+}
+
+// GetByID retrieves a refresh token by its database ID
+func (r *PostgresRefreshTokenRepository) GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+	var model RefreshTokenModel
+	result := r.db.WithContext(ctx).First(&model, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return model.toEntity(), nil
+}
+
 // Verify interface compliance
 var _ repositories.RefreshTokenRepository = (*PostgresRefreshTokenRepository)(nil)

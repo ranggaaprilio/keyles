@@ -162,6 +162,29 @@ func (m *MockRefreshTokenRepositoryForTest) RevokeByClientID(ctx context.Context
 	return nil
 }
 
+func (m *MockRefreshTokenRepositoryForTest) RevokeByUserID(ctx context.Context, userID string) error {
+	return nil
+}
+
+func (m *MockRefreshTokenRepositoryForTest) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	tokens := make([]*entities.RefreshToken, 0)
+	for _, t := range m.tokens {
+		if t.UserID == userID {
+			tokens = append(tokens, t)
+		}
+	}
+	return tokens, nil
+}
+
+func (m *MockRefreshTokenRepositoryForTest) GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+	for _, t := range m.tokens {
+		if t.ID == id {
+			return t, nil
+		}
+	}
+	return nil, errors.New("token not found")
+}
+
 var _ repositories.RefreshTokenRepository = (*MockRefreshTokenRepositoryForTest)(nil)
 
 // MockTokenServiceForRefreshTest implements TokenService for refresh tests

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -15,8 +16,19 @@ import (
 	"github.com/ranggaaprilio/keyles/infrastructure/config"
 )
 
-// cleanup performs periodic cleanup of expired data
+// cleanup performs periodic cleanup of expired data.
+//
+// Flags:
+//
+//	--expire-invitations    Mark stale pending invitations as expired (suggested cron: every hour)
+//	--purge-user-events     Delete user activity events older than 90 days (suggested cron: daily at 02:00 UTC)
+//
+// When no flags are given, all cleanup tasks run (tokens, keys, Redis scan, invitations, events).
 func main() {
+	expireInvitations := flag.Bool("expire-invitations", false, "Expire stale pending invitations (cron: every hour)")
+	purgeUserEvents := flag.Bool("purge-user-events", false, "Purge user activity events older than 90 days (cron: daily at 02:00 UTC)")
+	flag.Parse()
+
 	// Load .env file
 	_ = godotenv.Load()
 
@@ -40,41 +52,85 @@ func main() {
 		}
 	}()
 
-	// Connect to Redis
-	redisClient, err := initRedis(cfg)
-	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
-	}
-	defer redisClient.Close()
-
 	ctx := context.Background()
 
-	// Run cleanup tasks
-	log.Println("Running cleanup tasks...")
+	// If specific flags are set, run only those tasks
+	flagsSet := *expireInvitations || *purgeUserEvents
 
-	// 1. Delete expired refresh tokens
-	deletedTokens, err := cleanupExpiredRefreshTokens(ctx, db)
-	if err != nil {
-		log.Printf("Error cleaning up refresh tokens: %v", err)
-	} else {
-		log.Printf("Deleted %d expired refresh tokens", deletedTokens)
+	if !flagsSet || *expireInvitations {
+		// Expire stale pending invitations
+		expiredInvs, err := expireStalePendingInvitations(ctx, db)
+		if err != nil {
+			log.Printf("Error expiring stale invitations: %v", err)
+		} else {
+			log.Printf("Expired %d stale pending invitations", expiredInvs)
+		}
 	}
 
-	// 2. Delete expired signing keys
-	deletedKeys, err := cleanupExpiredSigningKeys(ctx, db)
-	if err != nil {
-		log.Printf("Error cleaning up signing keys: %v", err)
-	} else {
-		log.Printf("Deleted %d expired signing keys", deletedKeys)
+	if !flagsSet || *purgeUserEvents {
+		// Purge user events older than 90 days
+		cutoff := time.Now().Add(-90 * 24 * time.Hour)
+		purgedEvents, err := purgeOldUserEvents(ctx, db, cutoff)
+		if err != nil {
+			log.Printf("Error purging old user events: %v", err)
+		} else {
+			log.Printf("Purged %d user events older than %s", purgedEvents, cutoff.Format(time.RFC3339))
+		}
 	}
 
-	// 3. Clean up expired Redis keys (authorization codes, sessions)
-	// Redis handles TTL automatically, but we can check stats
-	scanKeys(ctx, redisClient, "authcode:*")
-	scanKeys(ctx, redisClient, "session:*")
-	scanKeys(ctx, redisClient, "otp:*")
+	if !flagsSet {
+		// Run the default legacy tasks only when no specific flags are set
+		log.Println("Running default cleanup tasks...")
+
+		// 1. Delete expired refresh tokens
+		deletedTokens, err := cleanupExpiredRefreshTokens(ctx, db)
+		if err != nil {
+			log.Printf("Error cleaning up refresh tokens: %v", err)
+		} else {
+			log.Printf("Deleted %d expired refresh tokens", deletedTokens)
+		}
+
+		// 2. Delete expired signing keys
+		deletedKeys, err := cleanupExpiredSigningKeys(ctx, db)
+		if err != nil {
+			log.Printf("Error cleaning up signing keys: %v", err)
+		} else {
+			log.Printf("Deleted %d expired signing keys", deletedKeys)
+		}
+
+		// 3. Connect to Redis and scan keys
+		redisClient, err := initRedis(cfg)
+		if err != nil {
+			log.Printf("Warning: Failed to connect to Redis: %v", err)
+		} else {
+			defer redisClient.Close()
+			scanKeys(ctx, redisClient, "authcode:*")
+			scanKeys(ctx, redisClient, "session:*")
+			scanKeys(ctx, redisClient, "otp:*")
+		}
+	}
 
 	log.Println("Cleanup job completed successfully")
+}
+
+// expireStalePendingInvitations marks pending invitations that have passed their expires_at as expired.
+func expireStalePendingInvitations(ctx context.Context, db *gorm.DB) (int64, error) {
+	result := db.WithContext(ctx).
+		Exec("UPDATE invitations SET status = 'expired', updated_at = NOW() WHERE status = 'pending' AND expires_at < NOW()")
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
+}
+
+// purgeOldUserEvents deletes user activity events older than the given cutoff.
+func purgeOldUserEvents(ctx context.Context, db *gorm.DB, before time.Time) (int64, error) {
+	result := db.WithContext(ctx).
+		Exec("DELETE FROM user_events WHERE occurred_at < ?", before)
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
 }
 
 // cleanupExpiredRefreshTokens deletes expired refresh tokens from database

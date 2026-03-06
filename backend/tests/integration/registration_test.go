@@ -48,6 +48,10 @@ func (m *MockEmailService) SendWelcomeEmail(ctx context.Context, toEmail, toName
 	return nil
 }
 
+func (m *MockEmailService) SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error {
+	return nil
+}
+
 // MockOTPService for testing (generates predictable OTPs)
 type MockOTPService struct{}
 

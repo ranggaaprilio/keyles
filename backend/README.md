@@ -279,6 +279,53 @@ See [quickstart.md Production Deployment Checklist](../specs/003-sso-auth-provid
 - [API Contracts](../specs/003-sso-auth-provider/contracts/openapi.yaml)
 - [Tasks](../specs/003-sso-auth-provider/tasks.md)
 
+## User Management & RBAC (Feature 005)
+
+### Additional Environment Variables
+
+| Variable                       | Description                                                           | Default  |
+| ------------------------------ | --------------------------------------------------------------------- | -------- |
+| `INVITATION_BASE_URL`          | Base URL for invitation links (e.g. `https://app.example.com/invite`) | Required |
+| `BREVO_INVITATION_TEMPLATE_ID` | Brevo transactional email template ID for invitation emails           | Required |
+
+### Cron Jobs
+
+Add the following cron entries for maintenance tasks:
+
+```cron
+# Expire stale invitations (hourly)
+0 * * * * /path/to/cleanup --expire-invitations
+
+# Purge old user events (daily at 2 AM)
+0 2 * * * /path/to/cleanup --purge-user-events
+```
+
+### Redis Key Namespaces
+
+| Pattern                     | Purpose                           | TTL                    |
+| --------------------------- | --------------------------------- | ---------------------- |
+| `user_blacklist:<user_id>`  | Disabled user session blacklist   | Until re-enabled       |
+| `user_count:<tenant_id>`    | Cached user count per tenant      | 5 min                  |
+| `invitation_exists:<token>` | Invitation token validation cache | Matches invitation TTL |
+
+### Database Migrations
+
+Feature 005 adds migrations 000009–000012:
+
+| Migration                             | Description                                                    |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `000009_extend_users`                 | Add `display_name`, `status`, `last_login_at`; trigram indexes |
+| `000010_create_invitations`           | Invitation tracking with token, expiry, status                 |
+| `000011_extend_user_role_assignments` | Partial index for active role lookups                          |
+| `000012_create_user_events`           | Audit event log with composite indexes                         |
+
+**Rollback**: To remove Feature 005 changes, migrate down 4 steps:
+
+```bash
+make migrate-down STEPS=4
+# This removes migrations 000012, 000011, 000010, 000009
+```
+
 ## License
 
 [Your License Here]

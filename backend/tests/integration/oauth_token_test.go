@@ -158,6 +158,18 @@ func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clien
 	return nil
 }
 
+func (m *MockRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	return nil
+}
+
+func (m *MockRefreshTokenRepository) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	return []*entities.RefreshToken{}, nil
+}
+
+func (m *MockRefreshTokenRepository) GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error) {
+	return nil, errors.New("not found")
+}
+
 var _ repositories.RefreshTokenRepository = (*MockRefreshTokenRepository)(nil)
 
 // MockTokenService for token tests
@@ -231,6 +243,7 @@ func setupTokenRouter(t *testing.T) (*gin.Engine, *MockClientRepositoryForTokenT
 	authCodeRepo := NewMockIntegrationAuthCodeRepository()
 	refreshTokenRepo := NewMockRefreshTokenRepository()
 	tokenService := NewMockTokenService()
+	roleRepo := NewMockIntegrationRoleRepository()
 
 	// Create test client with "test-secret" as the raw secret
 	testClient := &entities.Client{
@@ -245,7 +258,7 @@ func setupTokenRouter(t *testing.T) (*gin.Engine, *MockClientRepositoryForTokenT
 	}
 	clientRepo.clients[testClient.ClientID] = testClient
 
-	issueTokenUC := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, "https://sso.test.com")
+	issueTokenUC := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.test.com")
 	oauthHandler := handlers.NewOAuthHandler(nil, issueTokenUC, clientRepo)
 
 	router.POST("/oauth2/token", oauthHandler.Token)

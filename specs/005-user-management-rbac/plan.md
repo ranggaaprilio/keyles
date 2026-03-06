@@ -89,8 +89,8 @@ _GATE: Must pass before implementation. Re-check after each phase._
 │  Use Case Layer (usecase/)                                           │
 │  ┌──────────────────────────────┐  ┌──────────────────────────────┐ │
 │  │  user/                       │  │  auth/ (modified)            │ │
-│  │  invite_user.go              │  │  authorize_client.go → +role │ │
-│  │  accept_invitation.go        │  │    check (FR-021)            │ │
+│  │  invite_user.go              │  │  authorize_client.go →       │ │
+│  │  accept_invitation.go        │  │    +disabled check (FR-028)  │ │
 │  │  resend_invitation.go        │  │  issue_token.go → +roles     │ │
 │  │  list_users.go               │  │    claim (FR-022/024)        │ │
 │  │  get_user.go                 │  │  get_userinfo.go → +roles    │ │
@@ -108,7 +108,8 @@ _GATE: Must pass before implementation. Re-check after each phase._
 │  New entities: UserEvent                                             │
 │  Repositories: EndUserRepository, InvitationRepository,             │
 │                UserEventRepository, RoleRepository (extended)        │
-│  Services: EmailService (extended), UserBlacklist (new)             │
+│  Services: EmailService (extended), UserBlacklist (new),            │
+│            UserCountCache (new)                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Infrastructure Layer (infrastructure/)                              │
 │  ┌──────────────────────────────────────────────────────────────┐   │
@@ -132,14 +133,15 @@ _GATE: Must pass before implementation. Re-check after each phase._
 
 ### Key Design Decisions
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| End-user entity naming | `User` in `domain/entities/user.go`, distinct from `AdminUser` | `AdminUser` is the admin portal user; `User` is the OAuth end-user. Same `users` table but different Go types until a future consolidation PR. |
-| Repository naming | `EndUserRepository` (not `UserRepository`) | `UserRepository` is already defined and used for `AdminUser` auth. Avoids breaking existing flows; clear intent. |
-| Role name validation | Use-case layer length check (1–100 chars) | FR-015: free-form roles. Removes `ValidRoles` whitelist from entity. Validation belongs in use case, not domain. |
-| Token invalidation strategy | Redis blacklist `user_blacklist:{user_id}` TTL=900s | Immediate effect without waiting for JWT natural expiry. TTL matches max access token lifetime (FR-037). |
-| Invitation token storage | bcrypt hash in DB; 8-char prefix in Redis | Raw token never persisted. Redis prefix cache enables fast existence check before expensive bcrypt comparison (FR-042). |
-| Background job approach | `cmd/cleanup/main.go` extended; scheduled via container cron | Reuses existing cleanup command pattern already present in the codebase. |
+| Decision                    | Choice                                                         | Rationale                                                                                                                                                                                                                                           |
+| --------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| End-user entity naming      | `User` in `domain/entities/user.go`, distinct from `AdminUser` | `AdminUser` is the admin portal user; `User` is the OAuth end-user. Same `users` table but different Go types until a future consolidation PR.                                                                                                      |
+| Repository naming           | `EndUserRepository` (not `UserRepository`)                     | `UserRepository` is already defined and used for `AdminUser` auth. Avoids breaking existing flows; clear intent.                                                                                                                                    |
+| Role name validation        | Use-case layer length check (1–100 chars)                      | FR-015: free-form roles. Removes `ValidRoles` whitelist from entity. Validation belongs in use case, not domain.                                                                                                                                    |
+| Token invalidation strategy | Redis blacklist `user_blacklist:{user_id}` TTL=900s            | Immediate effect without waiting for JWT natural expiry. TTL matches max access token lifetime (FR-037).                                                                                                                                            |
+| Invitation token storage    | bcrypt hash in DB; 8-char prefix in Redis                      | Raw token never persisted. Redis prefix cache enables fast existence check before expensive bcrypt comparison (FR-042).                                                                                                                             |
+| Background job approach     | `cmd/cleanup/main.go` extended; scheduled via container cron   | Reuses existing cleanup command pattern already present in the codebase.                                                                                                                                                                            |
+| IP geolocation              | `country_code` column stored as NULL in v1                     | IP-to-country resolution (e.g., MaxMind GeoIP2 Lite) is deferred to a future enhancement. The schema supports it (CHAR(2)), but no runtime resolution is implemented in this feature. Handlers record `ip_address` from the request when available. |
 
 ---
 
@@ -158,12 +160,12 @@ _GATE: Must pass before implementation. Re-check after each phase._
 
 ### Schema Changes Summary
 
-| Migration | Table | Type | Key Changes |
-|---|---|---|---|
-| 000009 | `users` | ALTER | Add `display_name VARCHAR(255)`, `status VARCHAR(20) DEFAULT 'active'` + CHECK constraint, `last_login_at TIMESTAMPTZ`; add trgm + composite indexes |
-| 000010 | `invitations` | CREATE | New table: id, tenant_id, email, display_name, token_hash (UNIQUE), status, invited_by (FK→users), expires_at, accepted_at |
-| 000011 | `user_role_assignments` | ALTER | Add `revoked_at TIMESTAMPTZ`, `revoked_by VARCHAR(255)` (FK→users); add partial index `WHERE is_active = true` |
-| 000012 | `user_events` | CREATE | New table: BIGSERIAL id, tenant_id, user_id, client_id (nullable), event_type + CHECK, ip_address INET, details JSONB, occurred_at |
+| Migration | Table                   | Type   | Key Changes                                                                                                                                          |
+| --------- | ----------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 000009    | `users`                 | ALTER  | Add `display_name VARCHAR(255)`, `status VARCHAR(20) DEFAULT 'active'` + CHECK constraint, `last_login_at TIMESTAMPTZ`; add trgm + composite indexes |
+| 000010    | `invitations`           | CREATE | New table: id, tenant_id, email, display_name, token_hash (UNIQUE), status, invited_by (FK→users), expires_at, accepted_at                           |
+| 000011    | `user_role_assignments` | ALTER  | Add `revoked_at TIMESTAMPTZ`, `revoked_by VARCHAR(255)` (FK→users); add partial index `WHERE is_active = true`                                       |
+| 000012    | `user_events`           | CREATE | New table: BIGSERIAL id, tenant_id, user_id, client_id (nullable), event_type + CHECK, ip_address INET, details JSONB, occurred_at                   |
 
 ### Pre-migration Requirements
 
@@ -173,10 +175,10 @@ _GATE: Must pass before implementation. Re-check after each phase._
 
 ### Post-deployment Jobs (scheduled)
 
-| Job | Command | Schedule | Purpose |
-|---|---|---|---|
-| Expire stale invitations | `InvitationRepository.ExpireStalePending` | Every hour | Mark past-deadline `pending` invitations as `expired` |
-| Purge old user events | `UserEventRepository.DeleteOlderThan(90 days)` | Daily at 02:00 UTC | Enforce 90-day retention (FR-034) |
+| Job                      | Command                                        | Schedule           | Purpose                                               |
+| ------------------------ | ---------------------------------------------- | ------------------ | ----------------------------------------------------- |
+| Expire stale invitations | `InvitationRepository.ExpireStalePending`      | Every hour         | Mark past-deadline `pending` invitations as `expired` |
+| Purge old user events    | `UserEventRepository.DeleteOlderThan(90 days)` | Daily at 02:00 UTC | Enforce 90-day retention (FR-034)                     |
 
 ---
 
@@ -215,14 +217,19 @@ _GATE: Must pass before implementation. Re-check after each phase._
    - `UserEventRepository` interface
 
 8. **`domain/repositories/role_repository.go`** (MODIFY)
-   - Add `Assign`, `Revoke`, `ListByUser`, `ListByClient`, `RevokeAllForUser` methods
+   - Add `Assign`, `Revoke`, `ListByUser`, `ListByClient`, `RevokeAllForUser`, `GetActiveRoles(ctx, userID, clientID string) ([]string, error)` methods
    - Existing `AssignRole`, `RevokeRole`, `GetUserRoles`, `HasRole`, `HasAnyRole`, `ListRolesByClient`, `ListRolesByUser` signatures unchanged
+   - **Deprecation note**: `AssignRole` and `RevokeRole` are superseded by `Assign` and `Revoke` respectively. Existing callers will be migrated in this feature; these legacy methods should be removed in a follow-up cleanup PR if no other callers remain
 
 9. **`domain/services/email_service.go`** (MODIFY)
    - Add `SendInvitationEmail(ctx, toEmail, toName, inviteURL, orgName string) error`
 
 10. **`domain/services/user_blacklist.go`** (NEW)
     - `UserBlacklist` interface: `Add(ctx, userID string, ttl time.Duration) error`, `IsBlacklisted(ctx, userID string) (bool, error)`
+
+11. **`domain/services/user_count_cache.go`** (NEW)
+    - `UserCountCache` interface: `Get(ctx, tenantID string) (int, bool, error)`, `Set(ctx, tenantID string, count int) error`, `Invalidate(ctx, tenantID string) error`
+    - Abstracts the Redis-backed tenant user count cache behind a domain interface (DIP compliance)
 
 ### Phase B2 — Infrastructure Layer
 
@@ -255,6 +262,7 @@ _GATE: Must pass before implementation. Re-check after each phase._
    - Key pattern: `user_blacklist:{user_id}`
 
 10. **`infrastructure/persistence/redis/user_count_cache.go`** (NEW)
+    - Implements `UserCountCache` domain interface
     - `GET` / `SET EX 60` / `DEL` for key `user_count:{tenant_id}`
 
 11. **`infrastructure/services/brevo_email.go`** (MODIFY)
@@ -264,30 +272,30 @@ _GATE: Must pass before implementation. Re-check after each phase._
 
 **Deliverables** (all in `usecase/user/`):
 
-| File | Use Case | Key Logic |
-|---|---|---|
-| `invite_user.go` | `InviteUser` | Quota check → email uniqueness check → generate token (crypto/rand 32 bytes) → bcrypt hash → save Invitation → enqueue email → log `user_invited` event |
-| `accept_invitation.go` | `AcceptInvitation` | Load invitation by token → verify not expired/used → validate password → create `User` (status=active) → mark invitation accepted → log `invitation_accepted` |
-| `resend_invitation.go` | `ResendInvitation` | Verify user is `pending` → expire old invitation → create new invitation → send email → log `invitation_resent` |
-| `list_users.go` | `ListUsers` | Paginated query with optional search + status filter → return users + total count |
-| `get_user.go` | `GetUser` | Fetch user by ID (tenant-scoped) → attach role assignments and active sessions |
-| `update_user.go` | `UpdateUser` | Update `display_name` only → log audit event |
-| `enable_user.go` | `EnableUser` | Set status=active → log `account_enabled` event + audit log |
-| `disable_user.go` | `DisableUser` | Guard: cannot disable self or another admin → set status=disabled → revoke all refresh tokens → add to Redis blacklist → log `account_disabled` event + audit log |
-| `delete_user.go` | `DeleteUser` | Guard: cannot delete self → cascade: revoke roles + sessions → add to Redis blacklist → hard delete user row → log `user_deleted` audit entry |
-| `list_sessions.go` | `ListSessions` | Query active (non-revoked, non-expired) refresh tokens for user |
-| `revoke_session.go` | `RevokeSession` | Revoke single refresh token by ID (tenant-scoped) → log `session_terminated` event |
-| `list_user_activity.go` | `ListUserActivity` | Paginated query of `user_events` for user, descending by `occurred_at` |
+| File                    | Use Case           | Key Logic                                                                                                                                                         |
+| ----------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invite_user.go`        | `InviteUser`       | Quota check → email uniqueness check → generate token (crypto/rand 32 bytes) → bcrypt hash → save Invitation → enqueue email → log `user_invited` event           |
+| `accept_invitation.go`  | `AcceptInvitation` | Load invitation by token → verify not expired/used → validate password → create `User` (status=active) → mark invitation accepted → log `invitation_accepted`     |
+| `resend_invitation.go`  | `ResendInvitation` | Verify user is `pending` → expire old invitation → create new invitation → send email → log `invitation_resent`                                                   |
+| `list_users.go`         | `ListUsers`        | Paginated query with optional search + status filter → return users + total count                                                                                 |
+| `get_user.go`           | `GetUser`          | Fetch user by ID (tenant-scoped) → attach role assignments and active sessions                                                                                    |
+| `update_user.go`        | `UpdateUser`       | Update `display_name` only → log audit event                                                                                                                      |
+| `enable_user.go`        | `EnableUser`       | Set status=active → log `account_enabled` event + audit log                                                                                                       |
+| `disable_user.go`       | `DisableUser`      | Guard: cannot disable self or another admin → set status=disabled → revoke all refresh tokens → add to Redis blacklist → log `account_disabled` event + audit log |
+| `delete_user.go`        | `DeleteUser`       | Guard: cannot delete self → cascade: revoke roles + sessions → add to Redis blacklist → hard delete user row → log `user_deleted` audit entry                     |
+| `list_sessions.go`      | `ListSessions`     | Query active (non-revoked, non-expired) refresh tokens for user                                                                                                   |
+| `revoke_session.go`     | `RevokeSession`    | Revoke single refresh token by ID (tenant-scoped) → log `session_terminated` event                                                                                |
+| `list_user_activity.go` | `ListUserActivity` | Paginated query of `user_events` for user, descending by `occurred_at`                                                                                            |
 
 **Modified use cases**:
 
-| File | Change |
-|---|---|
-| `usecase/auth/authorize_client.go` | **Before issuing code**: call `RoleRepository.HasAnyRole(userID, clientID)` → reject with `access_denied` if false (FR-021) |
-| `usecase/auth/issue_token.go` | **Before signing**: call `RoleRepository.GetActiveRoles(userID, clientID)` → add `roles []string` claim to access token and ID token (FR-022/024) |
-| `usecase/auth/get_userinfo.go` | **On response**: fetch roles for the client extracted from the access token → add `roles` field to `UserInfoClaims` (FR-025) |
-| `usecase/role/assign_role.go` | Replace whitelist validation with 1–100 char length check; call new `RoleRepository.Assign` method; log `role_assigned` event |
-| `usecase/role/revoke_role.go` | Call new `RoleRepository.Revoke` method (soft delete with revokedBy); log `role_revoked` event |
+| File                               | Change                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `usecase/auth/authorize_client.go` | **VERIFY existing**: `RoleRepository.HasAnyRole(userID, clientID)` check already implemented. **ADD**: inject `EndUserRepository` and check `user.Status != disabled` before issuing code → reject disabled users with `access_denied` error and message "Your account has been disabled" (FR-028). This is critical for security: the blacklist middleware only covers token-based requests, not fresh login flows. |
+| `usecase/auth/issue_token.go`      | **Before signing**: call `RoleRepository.GetActiveRoles(userID, clientID)` → add `roles []string` claim to access token and ID token (FR-022/024)                                                                                                                                                                                                                                                                    |
+| `usecase/auth/get_userinfo.go`     | **On response**: fetch roles for the client extracted from the access token → add `roles` field to `UserInfoClaims` (FR-025)                                                                                                                                                                                                                                                                                         |
+| `usecase/role/assign_role.go`      | Replace whitelist validation with 1–100 char length check (with `strings.TrimSpace` — reject whitespace-only names); call new `RoleRepository.Assign` method; log `role_assigned` event                                                                                                                                                                                                                              |
+| `usecase/role/revoke_role.go`      | Call new `RoleRepository.Revoke` method (soft delete with revokedBy); log `role_revoked` event                                                                                                                                                                                                                                                                                                                       |
 
 ### Phase B4 — HTTP Interfaces
 
@@ -298,8 +306,10 @@ _GATE: Must pass before implementation. Re-check after each phase._
    - Endpoints: `ListUsers`, `InviteUser`, `GetUser`, `UpdateUser`, `DeleteUser`, `UpdateUserStatus`, `ResendInvitation`
 
 2. **`interfaces/http/handlers/invitation_handler.go`** (NEW)
-   - `InvitationHandler` for the public `POST /api/v1/invitations/{token}/accept` endpoint
-   - No authentication middleware on this route
+   - `InvitationHandler` for public invitation endpoints:
+     - `GET /api/v1/invitations/{token}/validate` — returns `{email, displayName, expiresAt}` without consuming the token (used by frontend to pre-populate the password-creation form)
+     - `POST /api/v1/invitations/{token}/accept` — accepts password, activates account
+   - No authentication middleware on either route
 
 3. **`interfaces/http/handlers/role_handler.go`** (MODIFY)
    - Add `ListUserRoles`, extend `AssignRole` (new role path), extend `RevokeRole` (assignment ID path)
@@ -315,7 +325,7 @@ _GATE: Must pass before implementation. Re-check after each phase._
    - Integrates before the admin auth middleware chain
 
 7. **`interfaces/http/router.go`** (MODIFY)
-   - Register all 17 new routes under `/api/v1/admin/users/…` and `/api/v1/invitations/…`
+   - Register all 18 new routes under `/api/v1/admin/users/…` and `/api/v1/invitations/…` (17 original + 1 GET validate)
    - Wire blacklist middleware
 
 ### Phase B5 — Background Jobs
@@ -405,47 +415,47 @@ _GATE: Must pass before implementation. Re-check after each phase._
 
 Target coverage: **≥85%** across all new files.
 
-| Package | Test File | Mocks Required |
-|---|---|---|
-| `usecase/user` | `invite_user_test.go` | `EndUserRepository`, `InvitationRepository`, `EmailService`, `UserEventRepository` |
-| `usecase/user` | `accept_invitation_test.go` | `EndUserRepository`, `InvitationRepository`, `PasswordService` |
-| `usecase/user` | `resend_invitation_test.go` | `EndUserRepository`, `InvitationRepository`, `EmailService` |
-| `usecase/user` | `list_users_test.go` | `EndUserRepository` |
-| `usecase/user` | `get_user_test.go` | `EndUserRepository`, `RoleRepository` |
-| `usecase/user` | `disable_user_test.go` | `EndUserRepository`, `UserBlacklist`, `RefreshTokenRepository`, `UserEventRepository`, `AuditRepository` |
-| `usecase/user` | `delete_user_test.go` | `EndUserRepository`, `RoleRepository`, `RefreshTokenRepository`, `UserBlacklist`, `AuditRepository` |
-| `usecase/user` | `list_sessions_test.go` | `RefreshTokenRepository` |
-| `usecase/user` | `revoke_session_test.go` | `RefreshTokenRepository`, `UserEventRepository` |
-| `usecase/auth` | `authorize_client_test.go` (MODIFY) | Add test: user with no roles → `access_denied` |
-| `usecase/auth` | `issue_token_test.go` (MODIFY) | Add test: `roles` claim present in token payload |
-| `usecase/role` | `assign_role_test.go` (MODIFY) | Update: free-form role validation; add: `role_assigned` event |
-| `usecase/role` | `revoke_role_test.go` (MODIFY) | Update: uses `RoleRepository.Revoke`; add: `role_revoked` event |
-| `domain` | `user_test.go` (NEW) | None (pure domain logic) |
-| `domain` | `invitation_test.go` (NEW) | None |
+| Package        | Test File                           | Mocks Required                                                                                           |
+| -------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `usecase/user` | `invite_user_test.go`               | `EndUserRepository`, `InvitationRepository`, `EmailService`, `UserEventRepository`                       |
+| `usecase/user` | `accept_invitation_test.go`         | `EndUserRepository`, `InvitationRepository`, `PasswordService`                                           |
+| `usecase/user` | `resend_invitation_test.go`         | `EndUserRepository`, `InvitationRepository`, `EmailService`                                              |
+| `usecase/user` | `list_users_test.go`                | `EndUserRepository`                                                                                      |
+| `usecase/user` | `get_user_test.go`                  | `EndUserRepository`, `RoleRepository`                                                                    |
+| `usecase/user` | `disable_user_test.go`              | `EndUserRepository`, `UserBlacklist`, `RefreshTokenRepository`, `UserEventRepository`, `AuditRepository` |
+| `usecase/user` | `delete_user_test.go`               | `EndUserRepository`, `RoleRepository`, `RefreshTokenRepository`, `UserBlacklist`, `AuditRepository`      |
+| `usecase/user` | `list_sessions_test.go`             | `RefreshTokenRepository`                                                                                 |
+| `usecase/user` | `revoke_session_test.go`            | `RefreshTokenRepository`, `UserEventRepository`                                                          |
+| `usecase/auth` | `authorize_client_test.go` (MODIFY) | Add test: user with no roles → `access_denied`                                                           |
+| `usecase/auth` | `issue_token_test.go` (MODIFY)      | Add test: `roles` claim present in token payload                                                         |
+| `usecase/role` | `assign_role_test.go` (MODIFY)      | Update: free-form role validation; add: `role_assigned` event                                            |
+| `usecase/role` | `revoke_role_test.go` (MODIFY)      | Update: uses `RoleRepository.Revoke`; add: `role_revoked` event                                          |
+| `domain`       | `user_test.go` (NEW)                | None (pure domain logic)                                                                                 |
+| `domain`       | `invitation_test.go` (NEW)          | None                                                                                                     |
 
 **Mock generation**: Run `go generate ./...` after each new interface is defined. Mock files live in `backend/tests/mocks/`.
 
 ### Backend — Integration Tests
 
-| Test File | Endpoints Covered |
-|---|---|
-| `tests/integration/user_handler_test.go` (NEW) | All 7 admin user endpoints |
-| `tests/integration/invitation_handler_test.go` (NEW) | `POST /api/v1/invitations/{token}/accept` |
-| `tests/integration/role_handler_test.go` (MODIFY) | 3 new role endpoints |
+| Test File                                            | Endpoints Covered                            |
+| ---------------------------------------------------- | -------------------------------------------- |
+| `tests/integration/user_handler_test.go` (NEW)       | All 7 admin user endpoints                   |
+| `tests/integration/invitation_handler_test.go` (NEW) | `POST /api/v1/invitations/{token}/accept`    |
+| `tests/integration/role_handler_test.go` (MODIFY)    | 3 new role endpoints                         |
 | `tests/integration/session_handler_test.go` (MODIFY) | 2 new session endpoints, 1 activity endpoint |
 
 Integration tests use a real PostgreSQL test database (`docker-compose.test.yml`), applied migrations, and `httptest.NewRecorder`. Each test suite runs migrations up in `TestMain` and truncates tables between tests.
 
 ### Frontend — Unit Tests (Vitest + RTL)
 
-| Test File | Coverage |
-|---|---|
-| `tests/unit/components/users/UserList.test.tsx` | Renders, pagination, filter tabs, search debounce |
-| `tests/unit/components/users/InviteUserDialog.test.tsx` | Form validation, quota error display |
-| `tests/unit/components/users/UserRoles.test.tsx` | Role list render, assign dialog, revoke confirm |
+| Test File                                                   | Coverage                                                 |
+| ----------------------------------------------------------- | -------------------------------------------------------- |
+| `tests/unit/components/users/UserList.test.tsx`             | Renders, pagination, filter tabs, search debounce        |
+| `tests/unit/components/users/InviteUserDialog.test.tsx`     | Form validation, quota error display                     |
+| `tests/unit/components/users/UserRoles.test.tsx`            | Role list render, assign dialog, revoke confirm          |
 | `tests/unit/components/users/AcceptInvitationForm.test.tsx` | Password validation, submit success, expired token state |
-| `tests/unit/hooks/useUsers.test.ts` | Query/mutation hooks with MSW handlers |
-| `tests/unit/hooks/useRoles.test.ts` | Assign/revoke hooks |
+| `tests/unit/hooks/useUsers.test.ts`                         | Query/mutation hooks with MSW handlers                   |
+| `tests/unit/hooks/useRoles.test.ts`                         | Assign/revoke hooks                                      |
 
 MSW handlers in `tests/mocks/handlers/user.ts` mirror the OpenAPI contract for all 17 endpoints.
 
@@ -498,7 +508,7 @@ backend/
 │   │   ├── revoke_session.go           # NEW
 │   │   └── list_user_activity.go       # NEW
 │   ├── auth/
-│   │   ├── authorize_client.go         # MODIFY: add HasAnyRole check before issuing auth code
+│   │   ├── authorize_client.go         # MODIFY: add disabled-user status check (FR-028); HasAnyRole already exists
 │   │   ├── issue_token.go              # MODIFY: add roles claim to access + ID token
 │   │   └── get_userinfo.go             # MODIFY: add roles field to UserInfoClaims
 │   └── role/
@@ -620,10 +630,10 @@ frontend/
 
 ### Environment Variables (additions)
 
-| Variable | Description | Example |
-|---|---|---|
-| `INVITATION_BASE_URL` | Base URL prepended to invitation tokens for email links | `https://app.keyles.io` |
-| `BREVO_INVITATION_TEMPLATE_ID` | Brevo transactional email template ID for invitations | `42` |
+| Variable                       | Description                                             | Example                 |
+| ------------------------------ | ------------------------------------------------------- | ----------------------- |
+| `INVITATION_BASE_URL`          | Base URL prepended to invitation tokens for email links | `https://app.keyles.io` |
+| `BREVO_INVITATION_TEMPLATE_ID` | Brevo transactional email template ID for invitations   | `42`                    |
 
 ### Rollout Sequence
 
