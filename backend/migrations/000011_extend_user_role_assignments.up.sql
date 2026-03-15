@@ -6,7 +6,7 @@ WITH
     TIME ZONE;
 
 ALTER TABLE user_role_assignments
-ADD COLUMN IF NOT EXISTS revoked_by VARCHAR(255) REFERENCES users (id);
+ADD COLUMN IF NOT EXISTS revoked_by UUID REFERENCES users (id);
 
 -- Index for active-only role lookups (most common query path)
 CREATE INDEX IF NOT EXISTS idx_ura_user_client_active ON user_role_assignments (user_id, client_id)

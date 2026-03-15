@@ -141,9 +141,13 @@ func (uc *RegisterTenantUseCase) Execute(
 		return nil, fmt.Errorf("failed to store OTP: %w", err)
 	}
 
-	// Step 11: Send OTP email
+	// Step 11: Send OTP email (non-fatal — user can resend via /resend-otp)
+	emailSent := true
 	if err := uc.emailSvc.SendOTPEmail(ctx, adminEmail, adminFullName, otpCode, organizationName); err != nil {
-		return nil, fmt.Errorf("failed to send OTP email: %w", err)
+		// Log the error but allow registration to succeed.
+		// The OTP is already stored; user can request a resend.
+		fmt.Printf("[WARN] Failed to send OTP email to %s: %v\n", adminEmail, err)
+		emailSent = false
 	}
 
 	// Step 12: Create audit log
@@ -160,11 +164,16 @@ func (uc *RegisterTenantUseCase) Execute(
 	}
 
 	// Step 13: Return result
+	message := "Registration successful. Please check your email for verification code."
+	if !emailSent {
+		message = "Registration successful. We could not send the verification email — please use 'Resend OTP' to receive your code."
+	}
+
 	return &RegisterTenantResult{
 		TenantID:         tenant.ID,
 		AdminUserID:      adminUser.ID,
 		OrganizationName: tenant.OrganizationName,
 		Status:           tenant.Status,
-		Message:          "Registration successful. Please check your email for verification code.",
+		Message:          message,
 	}, nil
 }

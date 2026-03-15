@@ -2,8 +2,8 @@
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     token VARCHAR(255) PRIMARY KEY,
     client_id VARCHAR(255) NOT NULL REFERENCES clients (client_id) ON DELETE CASCADE,
-    user_id VARCHAR(255) NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    tenant_id VARCHAR(255) NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
     scope TEXT NOT NULL,
     created_at TIMESTAMP
     WITH

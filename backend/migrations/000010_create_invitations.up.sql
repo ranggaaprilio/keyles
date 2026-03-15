@@ -1,12 +1,12 @@
 -- migrations/000010_create_invitations.up.sql
 CREATE TABLE IF NOT EXISTS invitations (
     id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(255) NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     display_name VARCHAR(255),
     token_hash VARCHAR(255) NOT NULL UNIQUE,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    invited_by VARCHAR(255) NOT NULL REFERENCES users (id),
+    invited_by UUID NOT NULL REFERENCES users (id),
     expires_at TIMESTAMP
     WITH
         TIME ZONE NOT NULL,

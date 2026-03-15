@@ -92,6 +92,9 @@ func (uc *AuthenticateAdminUseCase) Execute(ctx context.Context, email, password
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
 
 	// Step 3: Verify password
 	err = uc.passwordService.Compare(user.PasswordHash, password)
@@ -102,6 +105,9 @@ func (uc *AuthenticateAdminUseCase) Execute(ctx context.Context, email, password
 	// Step 4: Load tenant
 	tenant, err := uc.tenantRepo.FindByID(ctx, user.TenantID)
 	if err != nil {
+		return nil, errors.New("tenant not found")
+	}
+	if tenant == nil {
 		return nil, errors.New("tenant not found")
 	}
 

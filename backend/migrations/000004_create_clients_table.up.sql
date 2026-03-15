@@ -1,7 +1,7 @@
 -- Create clients table for OAuth2/OIDC client applications
 CREATE TABLE IF NOT EXISTS clients (
     client_id VARCHAR(255) PRIMARY KEY,
-    tenant_id VARCHAR(255) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     client_secret VARCHAR(255) NOT NULL,
     client_name VARCHAR(255) NOT NULL,
     redirect_uris TEXT[] NOT NULL,
