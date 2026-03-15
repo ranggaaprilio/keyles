@@ -15,6 +15,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ClientManagementPage } from "./pages/ClientManagementPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
+import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -60,12 +61,14 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/invite/:token" element={<AcceptInvitationPage />} />
 
-            {/* Protected routes */}
+            {/* Protected routes — wrapped in DashboardLayout */}
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <DashboardLayout>
+                    <DashboardPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -73,7 +76,9 @@ export function App() {
               path="/dashboard/clients"
               element={
                 <ProtectedRoute>
-                  <ClientManagementPage />
+                  <DashboardLayout>
+                    <ClientManagementPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -81,7 +86,9 @@ export function App() {
               path="/dashboard/clients/new"
               element={
                 <ProtectedRoute>
-                  <ClientManagementPage />
+                  <DashboardLayout>
+                    <ClientManagementPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -89,7 +96,9 @@ export function App() {
               path="/dashboard/clients/:clientId"
               element={
                 <ProtectedRoute>
-                  <ClientManagementPage />
+                  <DashboardLayout>
+                    <ClientManagementPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -97,7 +106,9 @@ export function App() {
               path="/dashboard/clients/:clientId/edit"
               element={
                 <ProtectedRoute>
-                  <ClientManagementPage />
+                  <DashboardLayout>
+                    <ClientManagementPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -105,7 +116,9 @@ export function App() {
               path="/dashboard/users"
               element={
                 <ProtectedRoute>
-                  <UserManagementPage />
+                  <DashboardLayout>
+                    <UserManagementPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -113,7 +126,9 @@ export function App() {
               path="/dashboard/users/:userId"
               element={
                 <ProtectedRoute>
-                  <UserManagementPage />
+                  <DashboardLayout>
+                    <UserManagementPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />

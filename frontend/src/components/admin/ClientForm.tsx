@@ -20,6 +20,7 @@ import {
 import { clientService } from "../../services/clientService";
 import type {
   Client,
+  ClientType,
   CreateClientResponse,
   CreateClientRequest,
   UpdateClientRequest,
@@ -33,6 +34,7 @@ interface ClientFormProps {
 
 interface FormData {
   clientName: string;
+  clientType: ClientType;
   redirectUris: string[];
   isActive: boolean;
 }
@@ -77,6 +79,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
 
   const [formData, setFormData] = useState<FormData>({
     clientName: "",
+    clientType: "confidential",
     redirectUris: [""],
     isActive: true,
   });
@@ -89,6 +92,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
     if (client) {
       setFormData({
         clientName: client.client_name,
+        clientType: client.client_type,
         redirectUris:
           client.redirect_uris.length > 0 ? client.redirect_uris : [""],
         isActive: client.is_active,
@@ -164,6 +168,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
         // Create new client
         const createData: CreateClientRequest = {
           client_name: formData.clientName,
+          client_type: formData.clientType,
           redirect_uris: redirectUris,
         };
 
@@ -280,6 +285,29 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
             )}
             <p className="text-xs text-gray-500">
               A descriptive name for your client application
+            </p>
+          </div>
+
+          {/* Client Type */}
+          <div className="space-y-2">
+            <Label htmlFor="clientType">Client Type</Label>
+            <select
+              id="clientType"
+              value={formData.clientType}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  clientType: e.target.value as ClientType,
+                }))
+              }
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="confidential">Confidential</option>
+              <option value="public">Public</option>
+            </select>
+            <p className="text-xs text-gray-500">
+              Confidential clients can securely store credentials. Public clients
+              cannot.
             </p>
           </div>
 

@@ -3,7 +3,7 @@
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
@@ -22,7 +22,7 @@
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
@@ -31,31 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Clean Architecture Compliance**:
-- [ ] Domain layer has no imports from infrastructure or frameworks
-- [ ] All repository/service interfaces defined in Domain layer
-- [ ] Concrete implementations only in Infrastructure layer
-- [ ] Dependency arrows verified to point inward (toward Domain)
-
-**SOLID Principles Compliance**:
-- [ ] Each module has single, well-defined responsibility (SRP)
-- [ ] Domain depends only on abstractions/interfaces (DIP)
-- [ ] No direct database/external API calls from business logic
-- [ ] Interface segregation verified for all contracts
-
-**Testing Requirements**:
-- [ ] Unit test plan documented for all business logic (target: ≥85% coverage)
-- [ ] Integration test plan for all handlers/controllers
-- [ ] Test isolation strategy defined (mocking approach)
-- [ ] Test-first workflow feasible for this feature
-
-**Code Conventions**:
-- [ ] Backend: Follows Effective Go, lowercase packages, exported function docs
-- [ ] Frontend: TypeScript strict mode, PascalCase components, functional components only
-- [ ] Clear separation between backend (domain/usecase/infrastructure) and frontend (components/services)
-
-**Violations Requiring Justification** (fill Complexity Tracking section if any):
-- [ ] No constitution violations OR all violations documented with justification
+[Gates determined based on constitution file]
 
 ## Project Structure
 
@@ -94,32 +70,18 @@ tests/
 
 # [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/
-├── domain/              # Clean Architecture: Entities, business logic, interfaces
-│   ├── entities/
-│   ├── repositories/    # Interface definitions only
-│   └── services/        # Interface definitions only
-├── usecase/             # Application business rules
-├── infrastructure/      # Concrete implementations (DB, external APIs)
-│   ├── persistence/     # Repository implementations
-│   └── external/        # External service clients
-├── interfaces/          # Handlers, controllers (outer layer)
-│   └── http/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
 └── tests/
-    ├── unit/
-    │   ├── domain/
-    │   └── usecase/
-    ├── integration/
-    └── contract/
 
 frontend/
 ├── src/
-│   ├── components/      # PascalCase React components
-│   ├── services/        # API client abstractions
-│   ├── types/           # TypeScript type definitions
-│   └── hooks/           # Custom React hooks
+│   ├── components/
+│   ├── pages/
+│   └── services/
 └── tests/
-    ├── unit/
-    └── integration/
 
 # [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
 api/

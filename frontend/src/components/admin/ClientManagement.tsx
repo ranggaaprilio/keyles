@@ -42,7 +42,7 @@ type ViewMode = "list" | "create" | "edit";
 interface CredentialsModal {
   show: boolean;
   clientId: string;
-  clientSecret: string;
+  clientSecret: string | null;
   isRotation: boolean;
 }
 
@@ -295,21 +295,23 @@ export function ClientManagement(_props: ClientManagementProps) {
               </label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 px-3 py-2 bg-gray-100 rounded-md text-sm font-mono break-all">
-                  {credentials.clientSecret}
+                  {credentials.clientSecret ?? "N/A (Public client)"}
                 </code>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    handleCopy(credentials.clientSecret, "clientSecret")
-                  }
-                >
-                  {copiedField === "clientSecret" ? (
-                    <Check className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
+                {credentials.clientSecret && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      handleCopy(credentials.clientSecret!, "clientSecret")
+                    }
+                  >
+                    {copiedField === "clientSecret" ? (
+                      <Check className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"runtime/debug"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,13 +25,13 @@ func ErrorHandler() gin.HandlerFunc {
 
 		// Get the last error
 		err := c.Errors.Last()
-		
+
 		// Check if it's an OAuth error
 		if oauthErr, ok := err.Err.(*fosite.RFC6749Error); ok {
 			handleOAuthError(c, oauthErr)
 			return
 		}
-		
+
 		// Sanitize error message
 		sanitized := sanitizeError(err.Err)
 
@@ -83,9 +85,10 @@ func RecoveryHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Log the full error internally (would integrate with logging system)
-				// But only return sanitized error to client
-				
+				// Log the full error and stack trace internally
+				log.Printf("[PANIC RECOVERED] %s %s - Error: %v", c.Request.Method, c.Request.URL.Path, err)
+				log.Printf("[PANIC STACK] %s", debug.Stack())
+
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"success": false,
 					"error": gin.H{
@@ -93,11 +96,11 @@ func RecoveryHandler() gin.HandlerFunc {
 						"message": "An unexpected error occurred. Please try again later.",
 					},
 				})
-				
+
 				c.Abort()
 			}
 		}()
-		
+
 		c.Next()
 	}
 }

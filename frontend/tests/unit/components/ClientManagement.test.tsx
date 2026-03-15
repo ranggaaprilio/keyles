@@ -33,11 +33,22 @@ const mockClipboard = {
 };
 Object.assign(navigator, { clipboard: mockClipboard });
 
+// Helper to create a properly typed list response
+const createListResponse = (clients: Client[]) => ({
+  clients,
+  total: clients.length,
+  page: 1,
+  page_size: 10,
+  total_pages: 1,
+});
+
 describe("ClientManagement", () => {
   const mockClients: Client[] = [
     {
       client_id: "client-123",
       client_name: "Test App",
+      description: "A test application",
+      client_type: "confidential",
       redirect_uris: ["https://example.com/callback"],
       is_active: true,
       created_at: "2024-01-01T00:00:00Z",
@@ -46,6 +57,8 @@ describe("ClientManagement", () => {
     {
       client_id: "client-456",
       client_name: "Another App",
+      description: "Another application",
+      client_type: "public",
       redirect_uris: [
         "https://app.example.com/oauth",
         "https://app.example.com/callback",
@@ -73,10 +86,9 @@ describe("ClientManagement", () => {
     });
 
     it("should render client list after loading", async () => {
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse(mockClients)
+      );
 
       render(<ClientManagement />);
 
@@ -87,10 +99,9 @@ describe("ClientManagement", () => {
     });
 
     it("should display client status correctly", async () => {
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse(mockClients)
+      );
 
       render(<ClientManagement />);
 
@@ -101,10 +112,9 @@ describe("ClientManagement", () => {
     });
 
     it("should display empty state when no clients exist", async () => {
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [],
-        total: 0,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse([])
+      );
 
       render(<ClientManagement />);
 
@@ -131,10 +141,7 @@ describe("ClientManagement", () => {
     });
 
     it("should truncate long client IDs", async () => {
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
 
       render(<ClientManagement />);
 
@@ -149,6 +156,8 @@ describe("ClientManagement", () => {
       const clientWithManyUris: Client = {
         client_id: baseClient.client_id,
         client_name: baseClient.client_name,
+        description: baseClient.description,
+        client_type: baseClient.client_type,
         is_active: baseClient.is_active,
         created_at: baseClient.created_at,
         updated_at: baseClient.updated_at,
@@ -160,10 +169,9 @@ describe("ClientManagement", () => {
         ],
       };
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [clientWithManyUris],
-        total: 1,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse([clientWithManyUris])
+      );
 
       render(<ClientManagement />);
 
@@ -176,10 +184,7 @@ describe("ClientManagement", () => {
   describe("Create Client", () => {
     it("should show create form when clicking New Client button", async () => {
       const user = userEvent.setup();
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
 
       render(<ClientManagement />);
 
@@ -199,15 +204,14 @@ describe("ClientManagement", () => {
         client_id: "new-client-id",
         client_secret: "secret-12345",
         client_name: "New App",
+        description: "A new application",
+        client_type: "confidential",
         redirect_uris: ["https://newapp.com/callback"],
         is_active: true,
         created_at: "2024-01-03T00:00:00Z",
       };
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [],
-        total: 0,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse([]));
       vi.mocked(clientService.clientService.create).mockResolvedValue(
         createdClient
       );
@@ -228,12 +232,11 @@ describe("ClientManagement", () => {
       );
 
       // Update mock for refetch
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse([
           { ...createdClient, client_secret: undefined } as unknown as Client,
-        ],
-        total: 1,
-      });
+        ])
+      );
 
       await user.click(screen.getByRole("button", { name: /create client/i }));
 
@@ -247,10 +250,7 @@ describe("ClientManagement", () => {
 
     it("should return to list view when canceling create", async () => {
       const user = userEvent.setup();
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
 
       render(<ClientManagement />);
 
@@ -272,10 +272,7 @@ describe("ClientManagement", () => {
   describe("Delete Client", () => {
     it("should delete client when clicking delete button", async () => {
       const user = userEvent.setup();
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
       vi.mocked(clientService.clientService.delete).mockResolvedValue(
         undefined
       );
@@ -292,10 +289,9 @@ describe("ClientManagement", () => {
       const deleteButton = within(firstDataRow).getByTitle(/delete client/i);
 
       // Update mock for after deletion
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [mockClients[1]!],
-        total: 1,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse([mockClients[1]!])
+      );
 
       await user.click(deleteButton);
 
@@ -308,10 +304,7 @@ describe("ClientManagement", () => {
 
     it("should display error when delete fails", async () => {
       const user = userEvent.setup();
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
       vi.mocked(clientService.clientService.delete).mockRejectedValue(
         new Error("Cannot delete client")
       );
@@ -343,10 +336,7 @@ describe("ClientManagement", () => {
         rotated_at: "2024-01-03T00:00:00Z",
       };
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
       vi.mocked(clientService.clientService.rotateSecret).mockResolvedValue(
         rotateResponse
       );
@@ -374,10 +364,7 @@ describe("ClientManagement", () => {
 
     it("should display error when rotate fails", async () => {
       const user = userEvent.setup();
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
       vi.mocked(clientService.clientService.rotateSecret).mockRejectedValue(
         new Error("Cannot rotate secret")
       );
@@ -403,10 +390,7 @@ describe("ClientManagement", () => {
   describe("Edit Client", () => {
     it("should show edit form when clicking edit button", async () => {
       const user = userEvent.setup();
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: mockClients,
-        total: mockClients.length,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse(mockClients));
 
       render(<ClientManagement />);
 
@@ -432,15 +416,14 @@ describe("ClientManagement", () => {
         client_id: "copy-test-id",
         client_secret: "copy-test-secret",
         client_name: "Copy Test",
+        description: null,
+        client_type: "confidential",
         redirect_uris: ["https://test.com/callback"],
         is_active: true,
         created_at: "2024-01-03T00:00:00Z",
       };
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [],
-        total: 0,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse([]));
       vi.mocked(clientService.clientService.create).mockResolvedValue(
         createdClient
       );
@@ -459,12 +442,11 @@ describe("ClientManagement", () => {
         "https://test.com/callback"
       );
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse([
           { ...createdClient, client_secret: undefined } as unknown as Client,
-        ],
-        total: 1,
-      });
+        ])
+      );
 
       await user.click(screen.getByRole("button", { name: /create client/i }));
 
@@ -484,15 +466,14 @@ describe("ClientManagement", () => {
         client_id: "modal-test-id",
         client_secret: "modal-test-secret",
         client_name: "Modal Test",
+        description: null,
+        client_type: "confidential",
         redirect_uris: ["https://test.com/callback"],
         is_active: true,
         created_at: "2024-01-03T00:00:00Z",
       };
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [],
-        total: 0,
-      });
+      vi.mocked(clientService.clientService.list).mockResolvedValue(createListResponse([]));
       vi.mocked(clientService.clientService.create).mockResolvedValue(
         createdClient
       );
@@ -511,12 +492,11 @@ describe("ClientManagement", () => {
         "https://test.com/callback"
       );
 
-      vi.mocked(clientService.clientService.list).mockResolvedValue({
-        clients: [
+      vi.mocked(clientService.clientService.list).mockResolvedValue(
+        createListResponse([
           { ...createdClient, client_secret: undefined } as unknown as Client,
-        ],
-        total: 1,
-      });
+        ])
+      );
 
       await user.click(screen.getByRole("button", { name: /create client/i }));
 
@@ -542,10 +522,9 @@ describe("ClientForm Validation", () => {
 
   it("should validate client name is required", async () => {
     const user = userEvent.setup();
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [],
-      total: 0,
-    });
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([])
+    );
 
     render(<ClientManagement />);
 
@@ -565,10 +544,9 @@ describe("ClientForm Validation", () => {
 
   it("should validate client name minimum length", async () => {
     const user = userEvent.setup();
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [],
-      total: 0,
-    });
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([])
+    );
 
     render(<ClientManagement />);
 
@@ -595,10 +573,9 @@ describe("ClientForm Validation", () => {
 
   it("should validate redirect URI requires HTTPS", async () => {
     const user = userEvent.setup();
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [],
-      total: 0,
-    });
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([])
+    );
 
     render(<ClientManagement />);
 
@@ -629,15 +606,16 @@ describe("ClientForm Validation", () => {
       client_id: "local-client",
       client_secret: "local-secret",
       client_name: "Local App",
+      description: null,
+      client_type: "confidential",
       redirect_uris: ["http://localhost:3000/callback"],
       is_active: true,
       created_at: "2024-01-03T00:00:00Z",
     };
 
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [],
-      total: 0,
-    });
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([])
+    );
     vi.mocked(clientService.clientService.create).mockResolvedValue(
       createdClient
     );
@@ -656,12 +634,11 @@ describe("ClientForm Validation", () => {
       "http://localhost:3000/callback"
     );
 
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([
         { ...createdClient, client_secret: undefined } as unknown as Client,
-      ],
-      total: 1,
-    });
+      ])
+    );
 
     await user.click(screen.getByRole("button", { name: /create client/i }));
 
@@ -673,10 +650,9 @@ describe("ClientForm Validation", () => {
 
   it("should validate redirect URI cannot contain fragments", async () => {
     const user = userEvent.setup();
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [],
-      total: 0,
-    });
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([])
+    );
 
     render(<ClientManagement />);
 
@@ -703,10 +679,9 @@ describe("ClientForm Validation", () => {
 
   it("should require at least one redirect URI", async () => {
     const user = userEvent.setup();
-    vi.mocked(clientService.clientService.list).mockResolvedValue({
-      clients: [],
-      total: 0,
-    });
+    vi.mocked(clientService.clientService.list).mockResolvedValue(
+      createListResponse([])
+    );
 
     render(<ClientManagement />);
 
