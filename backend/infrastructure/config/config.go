@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds all application configuration
@@ -23,7 +25,7 @@ type Config struct {
 	RedisDB       int
 
 	// Brevo (Email)
-	BrevoAPIKey     string
+	BrevoAPIKey      string
 	BrevoSenderEmail string
 	BrevoSenderName  string
 
@@ -42,8 +44,8 @@ type Config struct {
 	CORSAllowedHeaders string
 
 	// Rate Limiting
-	RateLimitOTPRequestsPerHour   int
-	RateLimitOTPAttemptsPerOTP    int
+	RateLimitOTPRequestsPerHour    int
+	RateLimitOTPAttemptsPerOTP     int
 	RateLimitLoginAttemptsPer15Min int
 
 	// OAuth
@@ -62,10 +64,55 @@ type Config struct {
 
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
+	dbPort, err := getEnvAsInt("DB_PORT", 5432)
+	if err != nil {
+		return nil, err
+	}
+	redisPort, err := getEnvAsInt("REDIS_PORT", 6379)
+	if err != nil {
+		return nil, err
+	}
+	redisDB, err := getEnvAsInt("REDIS_DB", 0)
+	if err != nil {
+		return nil, err
+	}
+	jwtExpirationHours, err := getEnvAsInt("JWT_EXPIRATION_HOURS", 24)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitOTPRequestsPerHour, err := getEnvAsInt("RATE_LIMIT_OTP_REQUESTS_PER_HOUR", 3)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitOTPAttemptsPerOTP, err := getEnvAsInt("RATE_LIMIT_OTP_ATTEMPTS_PER_OTP", 5)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitLoginAttemptsPer15Min, err := getEnvAsInt("RATE_LIMIT_LOGIN_ATTEMPTS_PER_15MIN", 5)
+	if err != nil {
+		return nil, err
+	}
+	oauthAccessTokenTTL, err := getEnvAsInt("OAUTH_ACCESS_TOKEN_TTL", 900)
+	if err != nil {
+		return nil, err
+	}
+	oauthRefreshTokenTTL, err := getEnvAsInt("OAUTH_REFRESH_TOKEN_TTL", 604800)
+	if err != nil {
+		return nil, err
+	}
+	otpExpirationMinutes, err := getEnvAsInt("OTP_EXPIRATION_MINUTES", 10)
+	if err != nil {
+		return nil, err
+	}
+	otpLength, err := getEnvAsInt("OTP_LENGTH", 6)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		// Database
 		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnvAsInt("DB_PORT", 5432),
+		DBPort:     dbPort,
 		DBName:     getEnv("DB_NAME", "keyles"),
 		DBUser:     getEnv("DB_USER", "keyles"),
 		DBPassword: getEnv("DB_PASSWORD", ""),
@@ -73,9 +120,9 @@ func Load() (*Config, error) {
 
 		// Redis
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
-		RedisPort:     getEnvAsInt("REDIS_PORT", 6379),
+		RedisPort:     redisPort,
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-		RedisDB:       getEnvAsInt("REDIS_DB", 0),
+		RedisDB:       redisDB,
 
 		// Brevo
 		BrevoAPIKey:      getEnv("BREVO_API_KEY", ""),
@@ -84,7 +131,7 @@ func Load() (*Config, error) {
 
 		// JWT
 		JWTSecret:          getEnv("JWT_SECRET", "dev_jwt_secret_change_in_production"),
-		JWTExpirationHours: getEnvAsInt("JWT_EXPIRATION_HOURS", 24),
+		JWTExpirationHours: jwtExpirationHours,
 
 		// Server
 		ServerPort: getEnv("SERVER_PORT", "8080"),
@@ -97,18 +144,18 @@ func Load() (*Config, error) {
 		CORSAllowedHeaders: getEnv("CORS_ALLOWED_HEADERS", "Origin,Content-Type,Accept,Authorization"),
 
 		// Rate Limiting
-		RateLimitOTPRequestsPerHour:   getEnvAsInt("RATE_LIMIT_OTP_REQUESTS_PER_HOUR", 3),
-		RateLimitOTPAttemptsPerOTP:    getEnvAsInt("RATE_LIMIT_OTP_ATTEMPTS_PER_OTP", 5),
-		RateLimitLoginAttemptsPer15Min: getEnvAsInt("RATE_LIMIT_LOGIN_ATTEMPTS_PER_15MIN", 5),
+		RateLimitOTPRequestsPerHour:    rateLimitOTPRequestsPerHour,
+		RateLimitOTPAttemptsPerOTP:     rateLimitOTPAttemptsPerOTP,
+		RateLimitLoginAttemptsPer15Min: rateLimitLoginAttemptsPer15Min,
 
 		// OAuth
 		OAuthIssuer:          getEnv("OAUTH_ISSUER", "https://sso.keyles.com"),
-		OAuthAccessTokenTTL:  getEnvAsInt("OAUTH_ACCESS_TOKEN_TTL", 900),   // 15 minutes
-		OAuthRefreshTokenTTL: getEnvAsInt("OAUTH_REFRESH_TOKEN_TTL", 604800), // 7 days
+		OAuthAccessTokenTTL:  oauthAccessTokenTTL,  // 15 minutes
+		OAuthRefreshTokenTTL: oauthRefreshTokenTTL, // 7 days
 
 		// OTP
-		OTPExpirationMinutes: getEnvAsInt("OTP_EXPIRATION_MINUTES", 10),
-		OTPLength:            getEnvAsInt("OTP_LENGTH", 6),
+		OTPExpirationMinutes: otpExpirationMinutes,
+		OTPLength:            otpLength,
 
 		// Application
 		AppEnv:   getEnv("APP_ENV", "development"),
@@ -120,12 +167,23 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("DB_PASSWORD is required")
 	}
 
-	if cfg.BrevoAPIKey == "" && cfg.AppEnv == "production" {
-		return nil, fmt.Errorf("BREVO_API_KEY is required in production")
-	}
-
-	if cfg.JWTSecret == "dev_jwt_secret_change_in_production" && cfg.AppEnv == "production" {
-		return nil, fmt.Errorf("JWT_SECRET must be changed in production")
+	if cfg.AppEnv == "production" {
+		if cfg.DBPassword == "" {
+			return nil, fmt.Errorf("DB_PASSWORD is required in production")
+		}
+		if cfg.BrevoAPIKey == "" {
+			return nil, fmt.Errorf("BREVO_API_KEY is required in production")
+		}
+		if cfg.JWTSecret == "dev_jwt_secret_change_in_production" {
+			return nil, fmt.Errorf("JWT_SECRET must be changed in production")
+		}
+		if len(cfg.JWTSecret) < 32 {
+			return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters in production")
+		}
+		issuer, err := url.Parse(cfg.OAuthIssuer)
+		if err != nil || issuer.Scheme != "https" || issuer.Host == "" {
+			return nil, fmt.Errorf("OAUTH_ISSUER must be an HTTPS URL in production")
+		}
 	}
 
 	return cfg, nil
@@ -154,16 +212,16 @@ func getEnv(key, defaultValue string) string {
 	return value
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
+func getEnvAsInt(key string, defaultValue int) (int, error) {
 	valueStr := os.Getenv(key)
-	if valueStr == "" {
-		return defaultValue
+	if strings.TrimSpace(valueStr) == "" {
+		return defaultValue, nil
 	}
 
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		return defaultValue
+		return 0, fmt.Errorf("%s must be a valid integer: %w", key, err)
 	}
 
-	return value
+	return value, nil
 }

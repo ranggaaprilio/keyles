@@ -1,4 +1,4 @@
-.PHONY: build run test test-coverage migrate-up migrate-down seed clean docker-up docker-down keygen help
+.PHONY: build run test test-coverage migrate-up migrate-down seed clean docker-up docker-down dev-infra dev-db dev test-docker keygen help
 
 # Variables
 BINARY_NAME=server
@@ -7,6 +7,7 @@ KEYGEN_PATH=./cmd/keygen
 SEED_PATH=./cmd/seed
 DATABASE_URL?=postgres://keyles:keyles_dev_password@localhost:5432/keyles?sslmode=disable
 MIGRATIONS_PATH=./migrations
+DOCKER_COMPOSE ?= docker compose -f ../docker-compose.yml
 
 # Default target
 help:
@@ -22,6 +23,10 @@ help:
 	@echo "  clean          - Remove build artifacts"
 	@echo "  docker-up      - Start Docker services"
 	@echo "  docker-down    - Stop Docker services"
+	@echo "  dev-infra      - Start local Docker dependencies"
+	@echo "  dev-db         - Run migrations and seed data"
+	@echo "  dev            - Prepare local dependencies and run server"
+	@echo "  test-docker    - Run integration tests with Docker dependencies"
 
 # Build the application
 build:
@@ -81,22 +86,27 @@ clean:
 # Start Docker services
 docker-up:
 	@echo "Starting Docker services..."
-	@docker-compose up -d
+	@$(DOCKER_COMPOSE) up -d || { echo "Docker Compose failed. If your setup uses the legacy binary, retry with: make DOCKER_COMPOSE='docker-compose -f ../docker-compose.yml' docker-up"; exit 1; }
 	@echo "✓ Docker services started"
 
 # Stop Docker services
 docker-down:
 	@echo "Stopping Docker services..."
-	@docker-compose down
+	@$(DOCKER_COMPOSE) down || { echo "Docker Compose failed. If your setup uses the legacy binary, retry with: make DOCKER_COMPOSE='docker-compose -f ../docker-compose.yml' docker-down"; exit 1; }
 	@echo "✓ Docker services stopped"
 
 # Development workflow shortcuts
-dev: docker-up migrate-up seed
+dev-infra: docker-up
+	@echo "✓ Development infrastructure ready"
+
+dev-db: migrate-up seed
+	@echo "✓ Development database ready"
+
+dev: dev-infra dev-db
 	@echo "✓ Development environment ready"
 	@$(MAKE) run
 
 # Run tests in Docker
 test-docker: docker-up
 	@echo "Running tests in Docker environment..."
-	@go test -v ./tests/integration/...
-	@$(MAKE) docker-down
+	@trap '$(MAKE) docker-down' EXIT; go test -v ./tests/integration/...

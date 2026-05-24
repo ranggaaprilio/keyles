@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"time"
@@ -110,7 +111,7 @@ func (p *FositeOAuthProvider) ExchangeCodeForTokens(ctx context.Context, req *se
 	}
 
 	// Validate PKCE verifier
-	if !validatePKCE(authCode.CodeChallenge, req.CodeVerifier) {
+	if !validatePKCE(authCode.CodeChallenge, authCode.CodeChallengeMethod, req.CodeVerifier) {
 		return nil, fmt.Errorf("invalid code_verifier")
 	}
 
@@ -121,14 +122,14 @@ func (p *FositeOAuthProvider) ExchangeCodeForTokens(ctx context.Context, req *se
 
 	// Generate access token
 	accessToken, err := p.tokenService.SignAccessToken(ctx, &services.TokenClaims{
-		Subject:  authCode.UserID,
-		ClientID: authCode.ClientID,
-		TenantID: authCode.TenantID,
-		Scope:    authCode.Scope,
-		Issuer:   p.issuer,
-		IssuedAt: time.Now(),
+		Subject:   authCode.UserID,
+		ClientID:  authCode.ClientID,
+		TenantID:  authCode.TenantID,
+		Scope:     authCode.Scope,
+		Issuer:    p.issuer,
+		IssuedAt:  time.Now(),
 		ExpiresAt: time.Now().Add(p.accessTokenTTL),
-		Audience: []string{authCode.ClientID},
+		Audience:  []string{authCode.ClientID},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
@@ -184,6 +185,9 @@ func (p *FositeOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTok
 
 	// Update last used timestamp
 	refreshToken.MarkUsed()
+	if err := p.refreshRepo.UpdateLastUsed(ctx, refreshTokenValue); err != nil {
+		return nil, fmt.Errorf("failed to update refresh token last used: %w", err)
+	}
 
 	// Generate new access token
 	accessToken, err := p.tokenService.SignAccessToken(ctx, &services.TokenClaims{
@@ -252,12 +256,16 @@ func generateToken() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return base64.URLEncoding.EncodeToString(b), nil
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // validatePKCE validates the PKCE code verifier against the challenge
-func validatePKCE(challenge, verifier string) bool {
-	// TODO: Implement proper S256 PKCE validation
-	// This is a placeholder implementation
-	return true
+func validatePKCE(challenge, method, verifier string) bool {
+	if challenge == "" || verifier == "" || method != "S256" {
+		return false
+	}
+
+	sum := sha256.Sum256([]byte(verifier))
+	expectedChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
+	return expectedChallenge == challenge
 }
