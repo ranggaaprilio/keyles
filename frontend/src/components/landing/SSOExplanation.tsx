@@ -1,49 +1,59 @@
 import { ScrollReveal } from "./ScrollReveal";
 import { Lock, ShieldCheck, LayoutGrid } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const steps = [
   {
-    title: "One Login",
-    description: "Users sign in once with a single set of credentials.",
+    title: "One identity",
+    description:
+      "Users authenticate once, then move across approved applications without password repetition.",
     icon: Lock,
   },
   {
-    title: "Secure Verification",
+    title: "Policy enforced",
     description:
-      "We verify identity with multi-factor authentication and security policies.",
+      "Tenant settings, OAuth clients, and session controls stay visible to administrators.",
     icon: ShieldCheck,
   },
   {
-    title: "Access Everything",
+    title: "Access mapped",
     description:
-      "Instant access to all authorized applications without re-entering passwords.",
+      "Roles and client grants keep each application tied to the right user boundary.",
     icon: LayoutGrid,
   },
 ];
 
 export const SSOExplanation = () => {
   return (
-    <section id="how-it-works" className="py-20 bg-background">
-      <div className="container mx-auto px-4">
+    <section id="how-it-works" className="border-b border-[#3c3c3c] bg-black py-24">
+      <div className="mx-auto max-w-[1440px] px-5 md:px-8">
         <ScrollReveal width="100%">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <div className="mb-12 max-w-3xl">
+            <p className="mb-3 text-sm font-bold uppercase tracking-[1.5px] text-[#bbbbbb]">
+              Platform sequence
+            </p>
+            <h2 className="text-4xl font-bold uppercase leading-tight text-white md:text-6xl">
+              Authentication without drift.
+            </h2>
+          </div>
         </ScrollReveal>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid gap-6 md:grid-cols-3">
           {steps.map((step, index) => (
             <ScrollReveal key={index} width="100%" delay={index * 0.2}>
-              <Card className="h-full text-center hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4 w-16 h-16 flex items-center justify-center">
-                    <step.icon className="w-8 h-8 text-primary" />
-                  </div>
-                  <CardTitle>{step.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{step.description}</p>
-                </CardContent>
-              </Card>
+              <article className="h-full border border-[#3c3c3c] bg-[#0d0d0d] p-6">
+                <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#1a1a1a] text-white">
+                  <step.icon className="h-5 w-5" />
+                </div>
+                <p className="mb-3 text-xs font-bold uppercase tracking-[1.5px] text-[#7e7e7e]">
+                  0{index + 1}
+                </p>
+                <h3 className="mb-4 text-2xl font-bold uppercase leading-tight text-white">
+                  {step.title}
+                </h3>
+                <p className="text-base font-light leading-7 text-[#bbbbbb]">
+                  {step.description}
+                </p>
+              </article>
             </ScrollReveal>
           ))}
         </div>
