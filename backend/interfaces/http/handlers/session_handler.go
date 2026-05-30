@@ -5,17 +5,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
+	"github.com/ranggaaprilio/keyles/usecase/user"
 )
 
 // SessionHandler handles admin session management endpoints
 type SessionHandler struct {
-	revokeTokenUC *auth.RevokeToken
+	revokeTokenUC  *auth.RevokeToken
+	listSessionsUC *user.ListSessions
+	revokeSessionUC *user.RevokeSession
 }
 
 // NewSessionHandler creates a new session management handler
-func NewSessionHandler(revokeTokenUC *auth.RevokeToken) *SessionHandler {
+func NewSessionHandler(
+	revokeTokenUC *auth.RevokeToken,
+	listSessionsUC *user.ListSessions,
+	revokeSessionUC *user.RevokeSession,
+) *SessionHandler {
 	return &SessionHandler{
-		revokeTokenUC: revokeTokenUC,
+		revokeTokenUC:   revokeTokenUC,
+		listSessionsUC:  listSessionsUC,
+		revokeSessionUC: revokeSessionUC,
 	}
 }
 
@@ -57,8 +66,75 @@ func (h *SessionHandler) RevokeUserSessions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "User sessions revoked successfully",
-		"user_id": req.UserID,
+		"message":   "User sessions revoked successfully",
+		"user_id":   req.UserID,
 		"client_id": req.ClientID,
+	})
+}
+
+// ListUserSessions handles GET /api/v1/admin/users/:id/sessions
+func (h *SessionHandler) ListUserSessions(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User ID is required",
+		})
+		return
+	}
+
+	tenantID, exists := c.Get("tenant_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Tenant not found in token",
+		})
+		return
+	}
+
+	sessions, err := h.listSessionsUC.Execute(c.Request.Context(), userID, tenantID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user_id":  userID,
+		"sessions": sessions,
+	})
+}
+
+// RevokeUserSession handles DELETE /api/v1/admin/users/:id/sessions/:sessionId
+func (h *SessionHandler) RevokeUserSession(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "User ID is required",
+		})
+		return
+	}
+
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Session ID is required",
+		})
+		return
+	}
+
+	adminUserID, _ := c.Get("user_id")
+	adminID, _ := adminUserID.(string)
+
+	if err := h.revokeSessionUC.Execute(c.Request.Context(), userID, sessionID, adminID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Session revoked successfully",
+		"user_id":    userID,
+		"session_id": sessionID,
 	})
 }

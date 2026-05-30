@@ -32,4 +32,10 @@ type RefreshTokenRepository interface {
 
 	// RevokeByClientID revokes all refresh tokens issued to a specific client
 	RevokeByClientID(ctx context.Context, clientID string) error
+
+	// RevokeByUserID revokes all refresh tokens for a specific user
+	RevokeByUserID(ctx context.Context, userID string) error
+
+	// ListByUser retrieves all refresh tokens for a specific user
+	ListByUser(ctx context.Context, userID string) ([]*entities.RefreshToken, error)
 }

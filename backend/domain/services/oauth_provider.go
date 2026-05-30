@@ -95,7 +95,8 @@ type TokenClaims struct {
 	FamilyName    string `json:"family_name,omitempty"`
 
 	// Custom claims
-	TenantID string `json:"tenant_id,omitempty"`
-	ClientID string `json:"client_id,omitempty"`
-	Scope    string `json:"scope,omitempty"`
+	TenantID string   `json:"tenant_id,omitempty"`
+	ClientID string   `json:"client_id,omitempty"`
+	Scope    string   `json:"scope,omitempty"`
+	Roles    []string `json:"roles,omitempty"`
 }

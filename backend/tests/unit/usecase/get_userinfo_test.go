@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/tests/mocks"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -65,8 +66,9 @@ func TestGetUserInfo_Success(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	mockUserRepo := new(MockUserRepositoryForUserInfo)
+	mockRoleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewGetUserInfo(mockUserRepo)
+	useCase := auth.NewGetUserInfo(mockUserRepo, mockRoleRepo)
 
 	// Test user
 	userID := uuid.New()
@@ -80,9 +82,10 @@ func TestGetUserInfo_Success(t *testing.T) {
 
 	// Mock expectations
 	mockUserRepo.On("FindByID", ctx, userID).Return(user, nil)
+	mockRoleRepo.On("GetActiveRoles", ctx, userID.String(), "client-123").Return([]string{"user"}, nil)
 
 	// Execute
-	userInfo, err := useCase.Execute(ctx, userID.String())
+	userInfo, err := useCase.Execute(ctx, userID.String(), "client-123")
 
 	// Assert
 	require.NoError(t, err)
@@ -92,14 +95,16 @@ func TestGetUserInfo_Success(t *testing.T) {
 	assert.Equal(t, tenantID.String(), userInfo.TenantID)
 	assert.True(t, userInfo.EmailVerified)
 	mockUserRepo.AssertExpectations(t)
+	mockRoleRepo.AssertExpectations(t)
 }
 
 func TestGetUserInfo_UserNotFound(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	mockUserRepo := new(MockUserRepositoryForUserInfo)
+	mockRoleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewGetUserInfo(mockUserRepo)
+	useCase := auth.NewGetUserInfo(mockUserRepo, mockRoleRepo)
 
 	userID := uuid.New()
 
@@ -107,7 +112,7 @@ func TestGetUserInfo_UserNotFound(t *testing.T) {
 	mockUserRepo.On("FindByID", ctx, userID).Return(nil, assert.AnError)
 
 	// Execute
-	userInfo, err := useCase.Execute(ctx, userID.String())
+	userInfo, err := useCase.Execute(ctx, userID.String(), "client-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -119,11 +124,12 @@ func TestGetUserInfo_EmptyUserID(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	mockUserRepo := new(MockUserRepositoryForUserInfo)
+	mockRoleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewGetUserInfo(mockUserRepo)
+	useCase := auth.NewGetUserInfo(mockUserRepo, mockRoleRepo)
 
 	// Execute with empty user ID
-	userInfo, err := useCase.Execute(ctx, "")
+	userInfo, err := useCase.Execute(ctx, "", "client-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -135,11 +141,12 @@ func TestGetUserInfo_InvalidUUID(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	mockUserRepo := new(MockUserRepositoryForUserInfo)
+	mockRoleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewGetUserInfo(mockUserRepo)
+	useCase := auth.NewGetUserInfo(mockUserRepo, mockRoleRepo)
 
 	// Execute with invalid UUID
-	userInfo, err := useCase.Execute(ctx, "invalid-uuid")
+	userInfo, err := useCase.Execute(ctx, "invalid-uuid", "client-123")
 
 	// Assert
 	assert.Error(t, err)
@@ -151,8 +158,9 @@ func TestGetUserInfo_ClaimsMapping(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	mockUserRepo := new(MockUserRepositoryForUserInfo)
+	mockRoleRepo := new(mocks.MockRoleRepository)
 
-	useCase := auth.NewGetUserInfo(mockUserRepo)
+	useCase := auth.NewGetUserInfo(mockUserRepo, mockRoleRepo)
 
 	// Test user with all fields
 	userID := uuid.New()
@@ -166,9 +174,10 @@ func TestGetUserInfo_ClaimsMapping(t *testing.T) {
 
 	// Mock expectations
 	mockUserRepo.On("FindByID", ctx, userID).Return(user, nil)
+	mockRoleRepo.On("GetActiveRoles", ctx, userID.String(), "client-123").Return([]string{"admin", "user"}, nil)
 
 	// Execute
-	userInfo, err := useCase.Execute(ctx, userID.String())
+	userInfo, err := useCase.Execute(ctx, userID.String(), "client-123")
 
 	// Assert
 	require.NoError(t, err)
@@ -177,4 +186,5 @@ func TestGetUserInfo_ClaimsMapping(t *testing.T) {
 	assert.True(t, userInfo.EmailVerified)
 	assert.Equal(t, tenantID.String(), userInfo.TenantID)
 	mockUserRepo.AssertExpectations(t)
+	mockRoleRepo.AssertExpectations(t)
 }

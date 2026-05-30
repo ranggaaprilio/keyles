@@ -118,6 +118,26 @@ func (m *MockIntegrationRoleRepository) ListRolesByClient(ctx context.Context, c
 func (m *MockIntegrationRoleRepository) ListRolesByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error) {
 	return nil, nil
 }
+func (m *MockIntegrationRoleRepository) Assign(ctx context.Context, assignment *entities.UserRoleAssignment) error {
+	key := assignment.UserID + ":" + assignment.ClientID
+	m.roles[key] = append(m.roles[key], assignment)
+	return nil
+}
+func (m *MockIntegrationRoleRepository) Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error {
+	return nil
+}
+func (m *MockIntegrationRoleRepository) ListByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error) {
+	return nil, nil
+}
+func (m *MockIntegrationRoleRepository) ListByClient(ctx context.Context, clientID string, page, pageSize int) ([]*entities.UserRoleAssignment, int, error) {
+	return nil, 0, nil
+}
+func (m *MockIntegrationRoleRepository) RevokeAllForUser(ctx context.Context, userID, revokedByUserID string) error {
+	return nil
+}
+func (m *MockIntegrationRoleRepository) GetActiveRoles(ctx context.Context, userID, clientID string) ([]string, error) {
+	return nil, nil
+}
 
 var _ repositories.RoleRepository = (*MockIntegrationRoleRepository)(nil)
 

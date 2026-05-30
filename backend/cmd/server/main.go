@@ -26,6 +26,7 @@ import (
 	"github.com/ranggaaprilio/keyles/usecase/client"
 	"github.com/ranggaaprilio/keyles/usecase/role"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
+	"github.com/ranggaaprilio/keyles/usecase/user"
 )
 
 func main() {
@@ -66,10 +67,14 @@ func main() {
 	authCodeRepo := redisRepo.NewRedisAuthCodeRepository(redisClient)
 	refreshTokenRepo := postgresRepo.NewPostgresRefreshTokenRepository(db)
 	signingKeyRepo := postgresRepo.NewPostgresSigningKeyRepositoryGorm(db)
+	userEventRepo := postgresRepo.NewPostgresUserEventRepository(db)
+	endUserRepo := postgresRepo.NewPostgresEndUserRepository(db)
+	invitationRepo := postgresRepo.NewPostgresInvitationRepository(db)
 
-	// Initialize Redis caches
+	// Initialize Redis caches and services
 	clientCountCache := redisRepo.NewClientCountCache(redisClient)
 	revokedClientCache := redisRepo.NewRevokedClientCache(redisClient)
+	userBlacklist := redisRepo.NewUserBlacklistCache(redisClient)
 
 	// Initialize services
 	emailService := infraServices.NewBrevoEmailService(cfg.BrevoAPIKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
@@ -100,14 +105,30 @@ func main() {
 	rotateSecretUseCase := client.NewRotateSecretUseCase(clientRepo, passwordService, auditRepo)
 
 	// Initialize role management use cases
-	assignRoleUseCase := role.NewAssignRole(roleRepo, userRepo, clientRepo)
-	revokeRoleUseCase := role.NewRevokeRole(roleRepo, refreshTokenRepo)
+	assignRoleUseCase := role.NewAssignRole(roleRepo, userRepo, clientRepo, userEventRepo)
+	revokeRoleUseCase := role.NewRevokeRole(roleRepo, refreshTokenRepo, userEventRepo)
 	listUserRolesUseCase := role.NewListUserRoles(roleRepo)
 
 	// Initialize OAuth use cases
 	authorizeClientUseCase := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo)
-	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, tokenService, cfg.OAuthIssuer)
-	getUserInfoUseCase := auth.NewGetUserInfo(userRepo)
+	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, cfg.OAuthIssuer)
+	getUserInfoUseCase := auth.NewGetUserInfo(userRepo, roleRepo)
+	revokeTokenUseCase := auth.NewRevokeToken(refreshTokenRepo)
+
+	// Initialize user management use cases
+	invitationBaseURL := fmt.Sprintf("http://%s:%s/invitations", cfg.ServerHost, cfg.ServerPort)
+	inviteUserUseCase := user.NewInviteUser(endUserRepo, invitationRepo, userEventRepo, emailService, tenantRepo, invitationBaseURL)
+	getUserUseCase := user.NewGetUser(endUserRepo, roleRepo)
+	listUsersUseCase := user.NewListUsers(endUserRepo)
+	updateUserUseCase := user.NewUpdateUser(endUserRepo)
+	enableUserUseCase := user.NewEnableUser(endUserRepo, userEventRepo)
+	disableUserUseCase := user.NewDisableUser(endUserRepo, roleRepo, refreshTokenRepo, userBlacklist, userEventRepo)
+	deleteUserUseCase := user.NewDeleteUser(endUserRepo, roleRepo, refreshTokenRepo, userBlacklist, userEventRepo)
+	acceptInvitationUseCase := user.NewAcceptInvitation(endUserRepo, invitationRepo)
+	resendInvitationUseCase := user.NewResendInvitation(endUserRepo, invitationRepo, userEventRepo, emailService, tenantRepo, invitationBaseURL)
+	listUserActivityUseCase := user.NewListUserActivity(userEventRepo)
+	listSessionsUseCase := user.NewListSessions(refreshTokenRepo)
+	revokeSessionUseCase := user.NewRevokeSession(refreshTokenRepo, userEventRepo)
 
 	// Initialize handlers
 	registrationHandler := handlers.NewRegistrationHandler(registerTenantUseCase)
@@ -129,6 +150,20 @@ func main() {
 	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
 	roleHandler := handlers.NewRoleHandler(assignRoleUseCase, revokeRoleUseCase, listUserRolesUseCase)
 	userinfoHandler := handlers.NewUserinfoHandler(getUserInfoUseCase)
+	userHandler := handlers.NewUserHandler(
+		inviteUserUseCase,
+		getUserUseCase,
+		listUsersUseCase,
+		updateUserUseCase,
+		enableUserUseCase,
+		disableUserUseCase,
+		deleteUserUseCase,
+		resendInvitationUseCase,
+		listSessionsUseCase,
+	)
+	invitationHandler := handlers.NewInvitationHandler(acceptInvitationUseCase)
+	activityHandler := handlers.NewActivityHandler(listUserActivityUseCase)
+	sessionHandler := handlers.NewSessionHandler(revokeTokenUseCase, listSessionsUseCase, revokeSessionUseCase)
 
 	// Initialize middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient)
@@ -148,7 +183,12 @@ func main() {
 		discoveryHandler,
 		roleHandler,
 		userinfoHandler,
+		userHandler,
+		invitationHandler,
+		activityHandler,
+		sessionHandler,
 		jwtService,
+		userBlacklist,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,
 		cfg.CORSAllowedHeaders,

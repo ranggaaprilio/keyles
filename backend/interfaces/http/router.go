@@ -2,6 +2,7 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
+	domainServices "github.com/ranggaaprilio/keyles/domain/services"
 	"github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
@@ -23,7 +24,12 @@ type Router struct {
 	discoveryHandler     *handlers.DiscoveryHandler
 	roleHandler          *handlers.RoleHandler
 	userinfoHandler      *handlers.UserinfoHandler
+	userHandler          *handlers.UserHandler
+	invitationHandler    *handlers.InvitationHandler
+	activityHandler      *handlers.ActivityHandler
+	sessionHandler       *handlers.SessionHandler
 	jwtService           *services.JWTService
+	blacklist            domainServices.UserBlacklist
 }
 
 // NewRouter creates a new HTTP router
@@ -41,7 +47,12 @@ func NewRouter(
 	discoveryHandler *handlers.DiscoveryHandler,
 	roleHandler *handlers.RoleHandler,
 	userinfoHandler *handlers.UserinfoHandler,
+	userHandler *handlers.UserHandler,
+	invitationHandler *handlers.InvitationHandler,
+	activityHandler *handlers.ActivityHandler,
+	sessionHandler *handlers.SessionHandler,
 	jwtService *services.JWTService,
+	blacklist domainServices.UserBlacklist,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
 	engine := gin.New()
@@ -67,9 +78,15 @@ func NewRouter(
 		discoveryHandler:    discoveryHandler,
 		roleHandler:         roleHandler,
 		userinfoHandler:     userinfoHandler,
+		userHandler:         userHandler,
+		invitationHandler:   invitationHandler,
+		activityHandler:     activityHandler,
+		sessionHandler:      sessionHandler,
 		jwtService:          jwtService,
+		blacklist:           blacklist,
 	}
 }
+
 // Setup configures all routes
 func (r *Router) Setup() {
 	// Root health check
@@ -104,7 +121,7 @@ func (r *Router) Setup() {
 		{
 			registration.POST("/register", r.registrationHandler.Register)
 			registration.GET("/check-availability", r.availabilityHandler.CheckAvailability)
-			
+
 			// OTP verification routes (Phase 4)
 			registration.POST("/verify-otp", r.verificationHandler.VerifyOTP)
 			registration.POST("/resend-otp", r.resendOTPHandler.ResendOTP)
@@ -113,6 +130,9 @@ func (r *Router) Setup() {
 		// Auth routes (public) - Phase 5
 		v1.POST("/login", r.authHandler.Login)
 
+		// Public invitation route (no auth required)
+		v1.POST("/invitations/:token/accept", r.invitationHandler.AcceptInvitation)
+
 		// Protected routes (require JWT) - Phase 5
 		protected := v1.Group("/")
 		protected.Use(middleware.AuthMiddleware(r.jwtService))
@@ -120,9 +140,10 @@ func (r *Router) Setup() {
 			protected.GET("/dashboard", r.dashboardHandler.GetDashboard)
 		}
 
-		// Admin routes (require JWT) - Client Management
+		// Admin routes (require JWT + blacklist check)
 		admin := v1.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(r.jwtService))
+		admin.Use(middleware.BlacklistCheckMiddleware(r.blacklist))
 		{
 			// Client management routes
 			clients := admin.Group("/clients")
@@ -142,6 +163,24 @@ func (r *Router) Setup() {
 				roles.POST("/revoke", r.roleHandler.RevokeRole)
 				roles.GET("/users/:userId", r.roleHandler.ListUserRoles)
 				roles.GET("/clients/:clientId", r.roleHandler.ListClientRoles)
+			}
+
+			// User management routes
+			users := admin.Group("/users")
+			{
+				users.GET("", r.userHandler.ListUsers)
+				users.POST("/invite", r.userHandler.InviteUser)
+				users.GET("/:id", r.userHandler.GetUser)
+				users.PATCH("/:id", r.userHandler.UpdateUser)
+				users.PATCH("/:id/status", r.userHandler.UpdateUserStatus)
+				users.DELETE("/:id", r.userHandler.DeleteUser)
+				users.POST("/:id/resend-invitation", r.userHandler.ResendInvitation)
+				users.GET("/:id/roles", r.roleHandler.ListUserRoles)
+				users.POST("/:id/roles", r.roleHandler.AssignRole)
+				users.DELETE("/:id/roles/:assignmentId", r.roleHandler.RevokeRole)
+				users.GET("/:id/sessions", r.sessionHandler.ListUserSessions)
+				users.DELETE("/:id/sessions/:sessionId", r.sessionHandler.RevokeUserSession)
+				users.GET("/:id/activity", r.activityHandler.ListUserActivity)
 			}
 		}
 	}

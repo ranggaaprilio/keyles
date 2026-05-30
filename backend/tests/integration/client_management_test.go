@@ -181,6 +181,12 @@ func (m *MockIntegrationRefreshTokenRepository) RevokeByClientID(ctx context.Con
 	m.revokedClientIDs = append(m.revokedClientIDs, clientID)
 	return nil
 }
+func (m *MockIntegrationRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockIntegrationRefreshTokenRepository) ListByUser(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	return nil, nil
+}
 
 var _ repositories.RefreshTokenRepository = (*MockIntegrationRefreshTokenRepository)(nil)
 

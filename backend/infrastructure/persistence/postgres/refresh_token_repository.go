@@ -182,3 +182,61 @@ func (r *refreshTokenRepository) RevokeByClientID(ctx context.Context, clientID 
 
 	return nil
 }
+
+// RevokeByUserID revokes all refresh tokens for a specific user
+func (r *refreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	query := `
+		UPDATE refresh_tokens
+		SET is_revoked = true, revoked_at = $1, revoked_reason = $2
+		WHERE user_id = $3 AND is_revoked = false
+	`
+
+	_, err := r.pool.Exec(ctx, query, time.Now(), "user revoked", userID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke refresh tokens for user: %w", err)
+	}
+
+	return nil
+}
+
+// ListByUser retrieves all refresh tokens for a specific user
+func (r *refreshTokenRepository) ListByUser(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	query := `
+		SELECT id, token, user_id, client_id, tenant_id, scope, expires_at, created_at,
+		       last_used_at, is_revoked, revoked_at, revoked_reason
+		FROM refresh_tokens
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.pool.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list refresh tokens: %w", err)
+	}
+	defer rows.Close()
+
+	var tokens []*entities.RefreshToken
+	for rows.Next() {
+		var rt entities.RefreshToken
+		err := rows.Scan(
+			&rt.ID,
+			&rt.Token,
+			&rt.UserID,
+			&rt.ClientID,
+			&rt.TenantID,
+			&rt.Scope,
+			&rt.ExpiresAt,
+			&rt.CreatedAt,
+			&rt.LastUsedAt,
+			&rt.RevokedFlag,
+			&rt.RevokedAt,
+			&rt.RevokedReason,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan refresh token: %w", err)
+		}
+		tokens = append(tokens, &rt)
+	}
+
+	return tokens, nil
+}

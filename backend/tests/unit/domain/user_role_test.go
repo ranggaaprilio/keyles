@@ -9,7 +9,6 @@ import (
 	"github.com/ranggaaprilio/keyles/domain/entities"
 )
 
-// TestUserRoleAssignment_Validate tests the validation of user role assignments
 func TestUserRoleAssignment_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -18,7 +17,7 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 		errMsg  string
 	}{
 		{
-			name: "Valid role assignment",
+			name: "Valid role assignment with standard role",
 			role: &entities.UserRoleAssignment{
 				ID:        1,
 				UserID:    "user-123",
@@ -46,13 +45,13 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Valid viewer role",
+			name: "Valid custom role name (free-form)",
 			role: &entities.UserRoleAssignment{
 				ID:        3,
 				UserID:    "user-789",
 				ClientID:  "client-123",
 				TenantID:  "tenant-123",
-				Role:      "viewer",
+				Role:      "superuser",
 				IsActive:  true,
 				GrantedAt: time.Now(),
 				GrantedBy: "admin-123",
@@ -116,18 +115,18 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 			errMsg:  "role cannot be empty",
 		},
 		{
-			name: "Invalid role value",
+			name: "Role name exceeds max length",
 			role: &entities.UserRoleAssignment{
 				ID:        8,
 				UserID:    "user-123",
 				ClientID:  "client-123",
 				TenantID:  "tenant-123",
-				Role:      "superuser",
+				Role:      string(make([]byte, 101)),
 				IsActive:  true,
 				GrantedAt: time.Now(),
 			},
 			wantErr: true,
-			errMsg:  "invalid role",
+			errMsg:  "role must be at most 100 characters",
 		},
 	}
 
@@ -144,30 +143,6 @@ func TestUserRoleAssignment_Validate(t *testing.T) {
 	}
 }
 
-// TestUserRoleAssignment_IsValidRole tests role validation
-func TestUserRoleAssignment_IsValidRole(t *testing.T) {
-	tests := []struct {
-		name     string
-		role     string
-		expected bool
-	}{
-		{"admin is valid", "admin", true},
-		{"user is valid", "user", true},
-		{"viewer is valid", "viewer", true},
-		{"superuser is invalid", "superuser", false},
-		{"empty is invalid", "", false},
-		{"random is invalid", "random", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assignment := &entities.UserRoleAssignment{Role: tt.role}
-			assert.Equal(t, tt.expected, assignment.IsValidRole())
-		})
-	}
-}
-
-// TestUserRoleAssignment_IsEnabled tests active status checking
 func TestUserRoleAssignment_IsEnabled(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -51,6 +51,7 @@ type IssueToken struct {
 	authCodeRepo     repositories.AuthCodeRepository
 	clientRepo       repositories.ClientRepository
 	refreshTokenRepo repositories.RefreshTokenRepository
+	roleRepo         repositories.RoleRepository
 	tokenService     services.TokenService
 	issuer           string
 }
@@ -60,6 +61,7 @@ func NewIssueToken(
 	authCodeRepo repositories.AuthCodeRepository,
 	clientRepo repositories.ClientRepository,
 	refreshTokenRepo repositories.RefreshTokenRepository,
+	roleRepo repositories.RoleRepository,
 	tokenService services.TokenService,
 	issuer string,
 ) *IssueToken {
@@ -67,6 +69,7 @@ func NewIssueToken(
 		authCodeRepo:     authCodeRepo,
 		clientRepo:       clientRepo,
 		refreshTokenRepo: refreshTokenRepo,
+		roleRepo:         roleRepo,
 		tokenService:     tokenService,
 		issuer:           issuer,
 	}
@@ -155,6 +158,17 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 	accessTokenExp := now.Add(AccessTokenTTL)
 	refreshTokenExp := now.Add(RefreshTokenTTL)
 
+	roles, err := uc.roleRepo.GetActiveRoles(ctx, authCode.UserID, authCode.ClientID)
+	if err != nil {
+		return nil, &OAuthError{
+			Code:        ErrServerError,
+			Description: "failed to retrieve user roles",
+		}
+	}
+	if roles == nil {
+		roles = []string{}
+	}
+
 	// Create ID token claims (FR-030, FR-031)
 	idTokenClaims := &services.TokenClaims{
 		Issuer:    uc.issuer,
@@ -166,6 +180,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		TenantID:  authCode.TenantID,
 		ClientID:  authCode.ClientID,
 		Scope:     authCode.Scope,
+		Roles:     roles,
 	}
 
 	// Sign ID token (FR-036)
@@ -188,6 +203,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		TenantID:  authCode.TenantID,
 		ClientID:  authCode.ClientID,
 		Scope:     authCode.Scope,
+		Roles:     roles,
 	}
 
 	// Sign access token (FR-036)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -13,10 +14,15 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/ranggaaprilio/keyles/infrastructure/config"
+	postgresRepo "github.com/ranggaaprilio/keyles/infrastructure/persistence/postgres"
 )
 
 // cleanup performs periodic cleanup of expired data
 func main() {
+	expireInvitations := flag.Bool("expire-invitations", false, "Expire stale pending invitations")
+	purgeUserEvents := flag.Bool("purge-user-events", false, "Purge user events older than 90 days")
+	flag.Parse()
+
 	// Load .env file
 	_ = godotenv.Load()
 
@@ -73,6 +79,28 @@ func main() {
 	scanKeys(ctx, redisClient, "authcode:*")
 	scanKeys(ctx, redisClient, "session:*")
 	scanKeys(ctx, redisClient, "otp:*")
+
+	// 4. Expire stale pending invitations (run hourly via cron)
+	if *expireInvitations {
+		invRepo := postgresRepo.NewPostgresInvitationRepository(db)
+		expired, err := invRepo.ExpireStalePending(ctx)
+		if err != nil {
+			log.Printf("Error expiring stale invitations: %v", err)
+		} else {
+			log.Printf("Expired %d stale pending invitations", expired)
+		}
+	}
+
+	// 5. Purge user events older than 90 days (run daily at 02:00 UTC via cron)
+	if *purgeUserEvents {
+		eventRepo := postgresRepo.NewPostgresUserEventRepository(db)
+		deleted, err := eventRepo.DeleteOlderThan(ctx, time.Now().Add(-90*24*time.Hour))
+		if err != nil {
+			log.Printf("Error purging user events: %v", err)
+		} else {
+			log.Printf("Purged %d user events older than 90 days", deleted)
+		}
+	}
 
 	log.Println("Cleanup job completed successfully")
 }

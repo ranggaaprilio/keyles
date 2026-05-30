@@ -157,6 +157,12 @@ func (m *MockRefreshTokenRepository) UpdateLastUsed(ctx context.Context, tokenHa
 func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clientID string) error {
 	return nil
 }
+func (m *MockRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	return nil
+}
+func (m *MockRefreshTokenRepository) ListByUser(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	return nil, nil
+}
 
 var _ repositories.RefreshTokenRepository = (*MockRefreshTokenRepository)(nil)
 

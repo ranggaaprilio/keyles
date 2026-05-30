@@ -39,9 +39,11 @@ func TestAssignRole_Success(t *testing.T) {
 	mockUserRepo.On("FindByID", ctx, userID).Return(validUser, nil)
 	mockClientRepo.On("GetByID", ctx, "client-123").Return(validClient, nil)
 	mockRoleRepo.On("HasRole", ctx, userID.String(), "client-123", "user").Return(false, nil)
-	mockRoleRepo.On("AssignRole", ctx, mock.AnythingOfType("*entities.UserRoleAssignment")).Return(nil)
+	mockRoleRepo.On("Assign", ctx, mock.AnythingOfType("*entities.UserRoleAssignment")).Return(nil)
+	mockEventRepo := new(mocks.MockUserEventRepository)
+	mockEventRepo.On("Record", ctx, mock.AnythingOfType("*entities.UserEvent")).Return(nil)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
@@ -70,8 +72,9 @@ func TestAssignRole_UserNotFound(t *testing.T) {
 	userID := uuid.New()
 
 	mockUserRepo.On("FindByID", ctx, userID).Return(nil, errors.New("user not found"))
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
@@ -105,8 +108,9 @@ func TestAssignRole_ClientNotFound(t *testing.T) {
 
 	mockUserRepo.On("FindByID", ctx, userID).Return(validUser, nil)
 	mockClientRepo.On("GetByID", ctx, "client-123").Return(nil, errors.New("client not found"))
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
@@ -148,8 +152,9 @@ func TestAssignRole_DuplicatePrevention(t *testing.T) {
 	mockClientRepo.On("GetByID", ctx, "client-123").Return(validClient, nil)
 	// User already has the role
 	mockRoleRepo.On("HasRole", ctx, userID.String(), "client-123", "user").Return(true, nil)
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
@@ -165,8 +170,8 @@ func TestAssignRole_DuplicatePrevention(t *testing.T) {
 	assert.Contains(t, err.Error(), "already has role")
 }
 
-// TestAssignRole_InvalidRole tests error for invalid role
-func TestAssignRole_InvalidRole(t *testing.T) {
+// TestAssignRole_RoleNameTooLong tests error for role name exceeding max length
+func TestAssignRole_RoleNameTooLong(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRoleRepo := new(mocks.MockRoleRepository)
@@ -174,21 +179,25 @@ func TestAssignRole_InvalidRole(t *testing.T) {
 	mockClientRepo := new(mocks.MockClientRepository)
 
 	userID := uuid.New()
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
+
+	// Create a role name that exceeds 100 characters
+	longRoleName := string(make([]byte, 101))
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
 		UserID:    userID.String(),
 		ClientID:  "client-123",
 		TenantID:  "tenant-123",
-		Role:      "superuser", // Invalid role
+		Role:      longRoleName,
 		GrantedBy: "admin-123",
 	})
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid role")
+	assert.Contains(t, err.Error(), "role must be at most 100 characters")
 }
 
 // TestAssignRole_MissingFields tests validation for missing required fields
@@ -199,8 +208,9 @@ func TestAssignRole_MissingFields(t *testing.T) {
 	mockClientRepo := new(mocks.MockClientRepository)
 
 	userID := uuid.New()
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	tests := []struct {
 		name string
@@ -268,8 +278,9 @@ func TestAssignRole_TenantMismatch(t *testing.T) {
 
 	mockUserRepo.On("FindByID", ctx, userID).Return(validUser, nil)
 	mockClientRepo.On("GetByID", ctx, "client-123").Return(validClient, nil)
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
@@ -310,9 +321,10 @@ func TestAssignRole_DatabaseError(t *testing.T) {
 	mockUserRepo.On("FindByID", ctx, userID).Return(validUser, nil)
 	mockClientRepo.On("GetByID", ctx, "client-123").Return(validClient, nil)
 	mockRoleRepo.On("HasRole", ctx, userID.String(), "client-123", "user").Return(false, nil)
-	mockRoleRepo.On("AssignRole", ctx, mock.AnythingOfType("*entities.UserRoleAssignment")).Return(errors.New("database error"))
+	mockRoleRepo.On("Assign", ctx, mock.AnythingOfType("*entities.UserRoleAssignment")).Return(errors.New("database error"))
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{
@@ -334,8 +346,9 @@ func TestAssignRole_InvalidUserIDFormat(t *testing.T) {
 	mockRoleRepo := new(mocks.MockRoleRepository)
 	mockUserRepo := new(mocks.MockUserRepository)
 	mockClientRepo := new(mocks.MockClientRepository)
+	mockEventRepo := new(mocks.MockUserEventRepository)
 
-	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo)
+	uc := role.NewAssignRole(mockRoleRepo, mockUserRepo, mockClientRepo, mockEventRepo)
 
 	// Act
 	err := uc.Execute(ctx, role.AssignRoleRequest{

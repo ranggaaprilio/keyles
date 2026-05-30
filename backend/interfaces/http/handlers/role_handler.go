@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ranggaaprilio/keyles/usecase/role"
@@ -29,25 +30,36 @@ func NewRoleHandler(
 
 // AssignRoleRequest represents the request body for assigning a role
 type AssignRoleRequest struct {
-	UserID   string `json:"user_id" binding:"required"`
+	UserID   string `json:"user_id"`
 	ClientID string `json:"client_id" binding:"required"`
 	Role     string `json:"role" binding:"required"`
 }
 
 // RevokeRoleRequest represents the request body for revoking a role
 type RevokeRoleRequest struct {
-	UserID   string `json:"user_id" binding:"required"`
-	ClientID string `json:"client_id" binding:"required"`
-	Role     string `json:"role" binding:"required"`
+	AssignmentID int64 `json:"assignment_id"`
 }
 
-// AssignRole handles POST /api/admin/roles/assign (FR-006a)
+// AssignRole handles POST /api/admin/roles/assign (FR-006a) and POST /api/v1/admin/users/:id/roles
 func (h *RoleHandler) AssignRole(c *gin.Context) {
 	var req AssignRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "invalid_request",
-			"message": "user_id, client_id, and role are required",
+			"message": "client_id and role are required",
+		})
+		return
+	}
+
+	// Support both legacy body param and new path param
+	userID := c.Param("id")
+	if userID == "" {
+		userID = req.UserID
+	}
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid_request",
+			"message": "user_id is required",
 		})
 		return
 	}
@@ -66,7 +78,7 @@ func (h *RoleHandler) AssignRole(c *gin.Context) {
 	grantedBy, _ := adminID.(string)
 
 	err := h.assignRoleUC.Execute(c.Request.Context(), role.AssignRoleRequest{
-		UserID:    req.UserID,
+		UserID:    userID,
 		ClientID:  req.ClientID,
 		TenantID:  tenantID.(string),
 		Role:      req.Role,
@@ -93,24 +105,43 @@ func (h *RoleHandler) AssignRole(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":   "Role assigned successfully",
-		"user_id":   req.UserID,
+		"user_id":   userID,
 		"client_id": req.ClientID,
 		"role":      req.Role,
 	})
 }
 
-// RevokeRole handles POST /api/admin/roles/revoke (FR-006b)
+// RevokeRole handles POST /api/admin/roles/revoke (FR-006b) and DELETE /api/v1/admin/users/:id/roles/:assignmentId
 func (h *RoleHandler) RevokeRole(c *gin.Context) {
 	var req RevokeRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		// For DELETE with path param, body may be empty; ignore binding error
+	}
+
+	// Support both legacy body param and new path param
+	assignmentID := req.AssignmentID
+	if assignmentID == 0 {
+		assignmentIDStr := c.Param("assignmentId")
+		if assignmentIDStr != "" {
+			var err error
+			assignmentID, err = strconv.ParseInt(assignmentIDStr, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "invalid_request",
+					"message": "assignmentId must be a valid integer",
+				})
+				return
+			}
+		}
+	}
+	if assignmentID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "invalid_request",
-			"message": "user_id, client_id, and role are required",
+			"message": "assignment_id is required",
 		})
 		return
 	}
 
-	// Get admin context from JWT middleware
 	_, exists := c.Get("tenant_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -120,11 +151,10 @@ func (h *RoleHandler) RevokeRole(c *gin.Context) {
 		return
 	}
 
-	err := h.revokeRoleUC.Execute(c.Request.Context(), role.RevokeRoleRequest{
-		UserID:   req.UserID,
-		ClientID: req.ClientID,
-		Role:     req.Role,
-	})
+	adminID, _ := c.Get("user_id")
+	revokedBy, _ := adminID.(string)
+
+	err := h.revokeRoleUC.Execute(c.Request.Context(), assignmentID, revokedBy)
 
 	if err != nil {
 		statusCode := http.StatusInternalServerError
@@ -140,16 +170,18 @@ func (h *RoleHandler) RevokeRole(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Role revoked successfully",
-		"user_id":   req.UserID,
-		"client_id": req.ClientID,
-		"role":      req.Role,
+		"message":       "Role revoked successfully",
+		"assignment_id": assignmentID,
 	})
 }
 
-// ListUserRoles handles GET /api/admin/roles/users/:userId
+// ListUserRoles handles GET /api/admin/roles/users/:userId and GET /api/v1/admin/users/:id/roles
 func (h *RoleHandler) ListUserRoles(c *gin.Context) {
+	// Support both legacy userId param and new id param
 	userID := c.Param("userId")
+	if userID == "" {
+		userID = c.Param("id")
+	}
 	if userID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "invalid_request",
@@ -184,10 +216,12 @@ func (h *RoleHandler) ListUserRoles(c *gin.Context) {
 		return
 	}
 
-	// Convert to response format
+	// Convert to flat response format
 	rolesResponse := make([]gin.H, len(resp.Roles))
+	// Group by clientID
+	rolesByClient := make(map[string][]gin.H)
 	for i, r := range resp.Roles {
-		rolesResponse[i] = gin.H{
+		roleItem := gin.H{
 			"id":         r.ID,
 			"user_id":    r.UserID,
 			"client_id":  r.ClientID,
@@ -197,11 +231,16 @@ func (h *RoleHandler) ListUserRoles(c *gin.Context) {
 			"granted_at": r.GrantedAt,
 			"granted_by": r.GrantedBy,
 		}
+		rolesResponse[i] = roleItem
+		if r.IsActive {
+			rolesByClient[r.ClientID] = append(rolesByClient[r.ClientID], roleItem)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user_id": userID,
-		"roles":   rolesResponse,
+		"user_id":         userID,
+		"roles":           rolesResponse,
+		"roles_by_client": rolesByClient,
 	})
 }
 

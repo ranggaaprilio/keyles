@@ -61,3 +61,18 @@ func (m *MockRefreshTokenRepository) RevokeByClientID(ctx context.Context, clien
 	args := m.Called(ctx, clientID)
 	return args.Error(0)
 }
+
+// RevokeByUserID revokes all refresh tokens for a specific user
+func (m *MockRefreshTokenRepository) RevokeByUserID(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+// ListByUser retrieves all refresh tokens for a specific user
+func (m *MockRefreshTokenRepository) ListByUser(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*entities.RefreshToken), args.Error(1)
+}

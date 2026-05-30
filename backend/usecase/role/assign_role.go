@@ -24,6 +24,7 @@ type AssignRole struct {
 	roleRepo   repositories.RoleRepository
 	userRepo   repositories.UserRepository
 	clientRepo repositories.ClientRepository
+	eventRepo  repositories.UserEventRepository
 }
 
 // NewAssignRole creates a new AssignRole use case
@@ -31,11 +32,13 @@ func NewAssignRole(
 	roleRepo repositories.RoleRepository,
 	userRepo repositories.UserRepository,
 	clientRepo repositories.ClientRepository,
+	eventRepo repositories.UserEventRepository,
 ) *AssignRole {
 	return &AssignRole{
 		roleRepo:   roleRepo,
 		userRepo:   userRepo,
 		clientRepo: clientRepo,
+		eventRepo:  eventRepo,
 	}
 }
 
@@ -55,12 +58,9 @@ func (uc *AssignRole) Execute(ctx context.Context, req AssignRoleRequest) error 
 		return errors.New("role is required")
 	}
 
-	// Create a temporary assignment to validate the role
-	tempAssignment := &entities.UserRoleAssignment{
-		Role: req.Role,
-	}
-	if !tempAssignment.IsValidRole() {
-		return errors.New("invalid role: must be one of admin, user, viewer")
+	// Validate role name length (free-form, 1–100 chars per FR-015)
+	if len(req.Role) > entities.MaxRoleNameLength {
+		return errors.New("role must be at most 100 characters")
 	}
 
 	// Parse user ID as UUID
@@ -112,8 +112,19 @@ func (uc *AssignRole) Execute(ctx context.Context, req AssignRoleRequest) error 
 	}
 
 	// Save to database
-	if err := uc.roleRepo.AssignRole(ctx, assignment); err != nil {
+	if err := uc.roleRepo.Assign(ctx, assignment); err != nil {
 		return errors.New("failed to assign role: " + err.Error())
+	}
+
+	event := &entities.UserEvent{
+		TenantID:   req.TenantID,
+		UserID:     req.UserID,
+		EventType:  entities.EventTypeRoleAssigned,
+		Details:    map[string]any{"role": req.Role, "client_id": req.ClientID, "granted_by": req.GrantedBy},
+		OccurredAt: time.Now(),
+	}
+	if err := uc.eventRepo.Record(ctx, event); err != nil {
+		return errors.New("failed to record role assigned event: " + err.Error())
 	}
 
 	return nil

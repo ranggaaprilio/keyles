@@ -28,5 +28,23 @@ type RoleRepository interface {
 
 	// ListRolesByUser retrieves all role assignments for a user across all clients
 	ListRolesByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error)
+
+	// Assign assigns a role to a user
+	Assign(ctx context.Context, assignment *entities.UserRoleAssignment) error
+
+	// Revoke removes a specific role assignment
+	Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error
+
+	// ListByUser retrieves all role assignments for a user
+	ListByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error)
+
+	// ListByClient retrieves paginated role assignments for a client
+	ListByClient(ctx context.Context, clientID string, page, pageSize int) ([]*entities.UserRoleAssignment, int, error)
+
+	// RevokeAllForUser revokes all role assignments for a user
+	RevokeAllForUser(ctx context.Context, userID, revokedByUserID string) error
+
+	// GetActiveRoles retrieves active role names for a user in a client
+	GetActiveRoles(ctx context.Context, userID, clientID string) ([]string, error)
 }
 
