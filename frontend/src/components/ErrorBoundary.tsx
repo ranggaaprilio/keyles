@@ -1,6 +1,5 @@
 /**
- * Error Boundary Component
- * Catches JavaScript errors anywhere in the child component tree
+ * Error Boundary — Dell 1996 retro style
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
@@ -28,16 +27,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error to console in development
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    this.setState({
-      error,
-      errorInfo,
-    });
-
-    // TODO: Send error to monitoring service (e.g., Sentry)
-    // logErrorToService(error, errorInfo);
+    this.setState({ error, errorInfo });
   }
 
   handleReset = () => {
@@ -46,62 +37,63 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default error UI
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-              <AlertTriangle className="w-6 h-6 text-red-600" />
-            </div>
-            
-            <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              Oops! Something went wrong
-            </h1>
-            
-            <p className="text-gray-600 text-center mb-6">
-              We're sorry, but something unexpected happened. Please try refreshing the page.
-            </p>
-
-            {process.env['NODE_ENV'] === 'development' && this.state.error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm font-semibold text-red-800 mb-2">
-                  Error: {this.state.error.message}
-                </p>
-                {this.state.errorInfo && (
-                  <pre className="text-xs text-red-700 overflow-auto max-h-40">
-                    {this.state.errorInfo.componentStack}
-                  </pre>
-                )}
+        <div className="min-h-screen bg-white flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            {/* Section eyebrow — salmon */}
+            <div className="bg-[#d77a7a] px-4 py-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-black" />
+                <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[24px] font-black uppercase leading-[1.0] text-black">
+                  SOMETHING WENT WRONG
+                </h1>
               </div>
-            )}
-
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={this.handleReset}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Try Again
-              </button>
-              
-              <button
-                onClick={() => window.location.href = '/'}
-                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                Go Home
-              </button>
             </div>
 
-            <p className="text-sm text-gray-500 text-center mt-6">
-              If this problem persists, please{' '}
-              <a href="mailto:support@keyles.com" className="text-blue-600 hover:underline">
-                contact support
-              </a>
-            </p>
+            <div className="border-x border-b border-black bg-white p-4">
+              <p className="font-['Times_New_Roman',Times,serif] text-sm text-black mb-4">
+                Something unexpected happened. Please try refreshing the page.
+              </p>
+
+              {process.env['NODE_ENV'] === 'development' && this.state.error && (
+                <div className="mb-4 p-3 border border-red-700 bg-red-50">
+                  <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-red-800 mb-1">
+                    Error: {this.state.error.message}
+                  </p>
+                  {this.state.errorInfo && (
+                    <pre className="font-['Times_New_Roman',Times,serif] text-[11px] text-red-700 overflow-auto max-h-32">
+                      {this.state.errorInfo.componentStack}
+                    </pre>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={this.handleReset}
+                  className="px-4 py-2 border border-black bg-black text-white font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] hover:bg-gray-800 transition-colors"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={() => window.location.href = '/'}
+                  className="px-4 py-2 border border-black bg-white text-black font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] hover:bg-gray-100 transition-colors"
+                >
+                  Go Home
+                </button>
+              </div>
+
+              <p className="mt-4 font-['Times_New_Roman',Times,serif] text-[11px] text-gray-500">
+                If this problem persists, please{' '}
+                <a href="mailto:support@keyles.com" className="text-[#0000ee] underline">
+                  contact support
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       );

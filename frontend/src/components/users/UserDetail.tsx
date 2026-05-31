@@ -45,7 +45,7 @@ export function UserDetail({ userId }: UserDetailProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-32 w-full" />
@@ -57,9 +57,9 @@ export function UserDetail({ userId }: UserDetailProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
             User not found
           </h2>
           <Button
@@ -97,7 +97,7 @@ export function UserDetail({ userId }: UserDetailProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back */}
         <Button
@@ -111,9 +111,9 @@ export function UserDetail({ userId }: UserDetailProps) {
         </Button>
 
         {/* Profile header */}
-        <div className="bg-white rounded-lg border shadow-sm p-6 mb-6">
+        <div className="bg-white border border-black shadow-[2px_2px_0_#000] p-6 mb-6">
           <div className="flex items-start gap-4">
-            <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-semibold">
+            <div className="h-14 w-14 border border-black bg-gray-200 text-black flex items-center justify-center text-lg font-bold font-[Helvetica,Arial,system-ui,sans-serif]">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -141,15 +141,15 @@ export function UserDetail({ userId }: UserDetailProps) {
                   </Button>
                 </div>
               ) : (
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
                   {user.display_name || user.email.split("@")[0]}
                 </h2>
               )}
-              <p className="text-sm text-gray-500 mt-1">{user.email}</p>
+              <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 mt-1">{user.email}</p>
               <div className="flex items-center gap-3 mt-2">
                 <UserStatusBadge status={user.status} />
                 {user.last_login_at && (
-                  <span className="text-xs text-gray-400">
+                  <span className="font-['Times_New_Roman',Times,serif] text-xs text-gray-500">
                     Last login: {new Date(user.last_login_at).toLocaleString()}
                   </span>
                 )}
@@ -158,7 +158,7 @@ export function UserDetail({ userId }: UserDetailProps) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 mt-4 border-t pt-4">
+          <div className="flex flex-wrap gap-2 mt-4 border-t border-black pt-4">
             {!editing && (
               <Button variant="outline" size="sm" onClick={startEditing}>
                 <Pencil className="h-4 w-4 mr-1" />

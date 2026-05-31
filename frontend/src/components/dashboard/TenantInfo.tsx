@@ -1,5 +1,5 @@
 /**
- * Tenant Info Component
+ * Tenant Info Component — Dell 1996 retro style
  */
 
 import { Building2, Mail, Calendar, CheckCircle, User } from 'lucide-react';
@@ -34,18 +34,16 @@ export function TenantInfo({ tenant, user }: TenantInfoProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-8">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
+    <div className="bg-white">
+      {/* Header — black banner */}
+      <div className="bg-black px-4 py-4">
+        <div className="flex items-center gap-3">
+          <Building2 className="w-5 h-5 text-white" />
           <div>
-            <h2 className="text-2xl font-bold text-white mb-1">
+            <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase tracking-[1px] text-white">
               {tenant.organization_name}
             </h2>
-            <p className="text-blue-100 text-sm">
+            <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-400">
               Organization ID: {tenant.id.slice(0, 8)}...
             </p>
           </div>
@@ -53,27 +51,27 @@ export function TenantInfo({ tenant, user }: TenantInfoProps) {
       </div>
 
       {/* Content */}
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4">
         {/* Tenant Details */}
         <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-4">
+          <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-3">
             Organization Details
           </h3>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Created</p>
-                <p className="text-sm text-gray-600">{formatDate(tenant.created_at)}</p>
+                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Created</p>
+                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{formatDate(tenant.created_at)}</p>
               </div>
             </div>
 
             {tenant.verified_at && (
-              <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+              <div className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-green-700 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-700">Verified</p>
-                  <p className="text-sm text-gray-600">{formatDate(tenant.verified_at)}</p>
+                  <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Verified</p>
+                  <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{formatDate(tenant.verified_at)}</p>
                 </div>
               </div>
             )}
@@ -81,33 +79,33 @@ export function TenantInfo({ tenant, user }: TenantInfoProps) {
         </div>
 
         {/* Admin User Details */}
-        <div className="pt-6 border-t border-gray-200">
-          <h3 className="text-sm font-medium text-gray-500 mb-4">
+        <div className="pt-3 border-t border-black">
+          <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-3">
             Administrator Information
           </h3>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <User className="w-5 h-5 text-gray-400 mt-0.5" />
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <User className="w-4 h-4 text-gray-500 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Full Name</p>
-                <p className="text-sm text-gray-600">{user.full_name}</p>
+                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Full Name</p>
+                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{user.full_name}</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
+            <div className="flex items-start gap-2">
+              <Mail className="w-4 h-4 text-gray-500 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-gray-700">Email</p>
-                <p className="text-sm text-gray-600">{user.email}</p>
+                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Email</p>
+                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{user.email}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Info Banner */}
-        <div className="pt-6 border-t border-gray-200">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
+        {/* Info Banner — Dell red CTA */}
+        <div className="pt-3 border-t border-black">
+          <div className="bg-[#e91d2a] p-3">
+            <p className="font-['Times_New_Roman',Times,serif] text-sm text-[#fffff0]">
               <strong>Welcome to Keyles SSO!</strong> Your organization is successfully
               registered and verified. You can now manage users, configure authentication
               settings, and integrate with your applications.

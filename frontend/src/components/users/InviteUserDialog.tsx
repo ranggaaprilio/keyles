@@ -88,7 +88,7 @@ export function InviteUserDialog({
               {...register("email")}
             />
             {errors.email && (
-              <p className="text-sm text-red-600">{errors.email.message}</p>
+              <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-600">{errors.email.message}</p>
             )}
           </div>
           <div className="space-y-2">
@@ -99,12 +99,12 @@ export function InviteUserDialog({
               {...register("display_name")}
             />
             {errors.display_name && (
-              <p className="text-sm text-red-600">
+              <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-600">
                 {errors.display_name.message}
               </p>
             )}
           </div>
-          {apiError && <p className="text-sm text-red-600">{apiError}</p>}
+          {apiError && <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-600">{apiError}</p>}
           <DialogFooter>
             <Button
               type="button"

@@ -146,12 +146,12 @@ export function EditClientForm({
   };
 
   if (isLoading) {
-    return <Skeleton className="h-96 w-full rounded-lg" />;
+    return <Skeleton className="h-96 w-full" />;
   }
 
   if (!client) {
     return (
-      <div className="text-center py-8 text-destructive">Client not found.</div>
+      <div className="text-center py-8 text-red-700 font-['Times_New_Roman',Times,serif]">Client not found.</div>
     );
   }
 
@@ -171,7 +171,7 @@ export function EditClientForm({
           {/* Client Type (read-only) */}
           <div className="space-y-2">
             <Label>Client Type</Label>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
               <Badge
                 variant={
                   client.client_type === "confidential"
@@ -190,7 +190,7 @@ export function EditClientForm({
             <Label htmlFor="client_name">Application Name *</Label>
             <Input id="client_name" {...register("client_name")} />
             {errors.client_name && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif]">
                 {errors.client_name.message}
               </p>
             )}
@@ -201,7 +201,7 @@ export function EditClientForm({
             <Label htmlFor="description">Description</Label>
             <Textarea id="description" rows={3} {...register("description")} />
             {errors.description && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif]">
                 {errors.description.message}
               </p>
             )}
@@ -220,7 +220,7 @@ export function EditClientForm({
                     onBlur={() => uri && validateURI(uri, index)}
                   />
                   {uriErrors[index] && (
-                    <p className="text-sm text-destructive mt-1">
+                    <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif] mt-1">
                       {uriErrors[index]}
                     </p>
                   )}

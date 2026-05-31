@@ -7,57 +7,98 @@ export const Hero = () => {
   const isLoggedIn = isAuthenticated();
 
   return (
-    <section className="relative min-h-[92vh] overflow-hidden bg-black pt-16">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=2400&q=85')",
-        }}
-        aria-hidden="true"
-      />
-      <div className="absolute inset-0 bg-black/55" aria-hidden="true" />
-      <div
-        className="absolute bottom-0 left-0 right-0 h-36 bg-gradient-to-t from-black to-transparent"
-        aria-hidden="true"
-      />
-
-      <div className="relative mx-auto flex min-h-[calc(92vh-4rem)] max-w-[1440px] items-end px-5 pb-16 pt-24 md:px-8 md:pb-20">
-        <div className="max-w-4xl">
+    <section className="bg-white">
+      <div className="mx-auto max-w-[760px]">
+        {/* Section eyebrow — olive tint */}
+        <div className="bg-[#8e8a25] px-4 py-6">
           <ScrollReveal width="100%">
-            <div className="mb-8 grid h-1 w-56 grid-cols-3">
-              <span className="bg-[#0066b1]" />
-              <span className="bg-[#1c69d4]" />
-              <span className="bg-[#e22718]" />
-            </div>
-            <p className="mb-4 text-sm font-bold uppercase tracking-[1.5px] text-white">
-              Identity engineered for speed
-            </p>
-            <h1 className="text-5xl font-bold uppercase leading-none text-white md:text-7xl lg:text-[80px]">
-              Single sign-on with full control.
+            <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[36px] font-black uppercase leading-[1.0] text-black">
+              SINGLE SIGN-ON<br />
+              PLATFORM
             </h1>
           </ScrollReveal>
+        </div>
 
-          <ScrollReveal width="100%" delay={0.2}>
-            <p className="mt-6 max-w-2xl text-lg font-light leading-8 text-[#e6e6e6] md:text-xl">
-              Keyles gives every tenant a precise OAuth and OpenID Connect
-              command center for users, clients, sessions, and access policy.
+        {/* Ribbon card body — CTA red panel */}
+        <div className="border-x border-b border-black bg-[#e91d2a] p-4">
+          <ScrollReveal width="100%" delay={0.1}>
+            <p className="font-['Times_New_Roman',Times,serif] text-sm leading-[1.4] text-[#fffff0]">
+              At Keyles, we&apos;ll help you configure SSO, manage clients,
+              enforce session policies, and map roles — all from one
+              operating surface built for speed and control.
             </p>
           </ScrollReveal>
+        </div>
 
+        {/* Product ribbon cards */}
+        <div className="mt-0">
+          {/* One Identity — sage */}
+          <ScrollReveal width="100%" delay={0.2}>
+            <div className="border-x border-b border-black">
+              <div className="border-b border-black bg-white px-3 py-1.5">
+                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
+                  ONE IDENTITY
+                </h3>
+              </div>
+              <div className="bg-[#b3bd95] px-4 py-3">
+                <p className="font-['Times_New_Roman',Times,serif] text-sm leading-[1.4] text-black">
+                  Users authenticate once, then move across approved
+                  applications without password repetition. SSO keeps the
+                  surface clean and the identity chain tight.
+                </p>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Policy Enforced — salmon */}
+          <ScrollReveal width="100%" delay={0.3}>
+            <div className="border-x border-b border-black">
+              <div className="border-b border-black bg-white px-3 py-1.5">
+                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
+                  POLICY ENFORCED
+                </h3>
+              </div>
+              <div className="bg-[#d77a7a] px-4 py-3">
+                <p className="font-['Times_New_Roman',Times,serif] text-sm leading-[1.4] text-black">
+                  Tenant settings, OAuth clients, and session controls stay
+                  visible to administrators. Every policy change is tracked,
+                  every boundary is enforced.
+                </p>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Access Mapped — sky */}
           <ScrollReveal width="100%" delay={0.4}>
-            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <Button size="lg" asChild>
-                <Link to={isLoggedIn ? "/dashboard" : "/register"}>
-                  {isLoggedIn ? "Go to dashboard" : "Start now"}
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link to="/#how-it-works">View platform</Link>
-              </Button>
+            <div className="border-x border-b border-black">
+              <div className="border-b border-black bg-white px-3 py-1.5">
+                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
+                  ACCESS MAPPED
+                </h3>
+              </div>
+              <div className="bg-[#9ab6c8] px-4 py-3">
+                <p className="font-['Times_New_Roman',Times,serif] text-sm leading-[1.4] text-black">
+                  Roles and client grants keep each application tied to the
+                  right user boundary. One surface, complete visibility.
+                </p>
+              </div>
             </div>
           </ScrollReveal>
         </div>
+
+        {/* CTAs */}
+        <ScrollReveal width="100%" delay={0.5}>
+          <div className="flex gap-2 border-x border-b border-black bg-white p-4">
+            <Button asChild>
+              <Link to={isLoggedIn ? "/dashboard" : "/register"}>
+                {isLoggedIn ? "Go to Dashboard" : "Start Now"}
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/#how-it-works">View Platform</Link>
+            </Button>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );

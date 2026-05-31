@@ -1,6 +1,5 @@
 /**
- * Registration form component for tenant onboarding
- * Implements TDD approach with real-time validation and availability checking
+ * Registration form — Dell 1996 retro style
  */
 
 import { useState } from "react";
@@ -12,13 +11,6 @@ import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
 
 import { registrationSchema, RegistrationFormData } from "./RegistrationSchema";
 import { useTenantRegistration } from "../../hooks/useTenantRegistration";
@@ -36,71 +28,44 @@ export function RegistrationForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     watch,
     setError,
   } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
-    mode: "onChange",
   });
 
   const mutation = useTenantRegistration({
     onSuccess: (data) => {
-      // Navigate to verification page with tenant info
       navigate("/verify-otp", {
         state: {
           tenantId: data.tenant_id,
           organizationName: data.organization_name,
-          message: data.message,
         },
       });
     },
-    onError: (error: ApiException) => {
-      // Map API errors to form errors
-      if (error.status === 409) {
-        if (error.message.includes("organization name")) {
-          setError("organization_name", {
-            type: "manual",
-            message: error.message,
-          });
-        } else if (error.message.includes("email")) {
-          setError("email", {
-            type: "manual",
-            message: error.message,
-          });
-        }
-      } else {
-        setError("root", {
-          type: "manual",
-          message: error.message || "Registration failed. Please try again.",
-        });
-      }
+    onError: (err: ApiException) => {
+      setError("root", { message: err.message });
     },
   });
 
-  // Watch fields for real-time availability checking
   const orgName = watch("organization_name");
   const email = watch("email");
 
-  // Debounced availability check
   const checkFieldAvailability = async () => {
-    if (!orgName || !email || orgName.length < 3 || !email.includes("@")) {
-      return;
-    }
-
+    if (!orgName && !email) return;
     setCheckingAvailability(true);
     try {
       const result = await checkAvailability({
-        organization_name: orgName,
-        email: email,
+        organization_name: orgName ?? "",
+        email: email ?? "",
       });
       setAvailabilityStatus({
         orgName: result.organization_name_available,
         email: result.email_available,
       });
-    } catch (error) {
-      // Silently fail availability check - user can still submit
-      console.error("Availability check failed:", error);
+    } catch {
+      // Silently fail — availability check is non-critical
     } finally {
       setCheckingAvailability(false);
     }
@@ -111,175 +76,180 @@ export function RegistrationForm() {
   };
 
   const getAvailabilityIcon = (available?: boolean) => {
-    if (available === undefined) return null;
-    if (available) {
-      return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-    }
-    return <XCircle className="h-5 w-5 text-red-600" />;
+    if (available === true) return <CheckCircle2 className="h-4 w-4 text-green-700" />;
+    if (available === false) return <XCircle className="h-4 w-4 text-red-700" />;
+    return null;
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Create Your Organization
-          </CardTitle>
-          <CardDescription className="text-center">
-            Register your organization to get started with Keyles SSO
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Organization Name */}
-            <div className="space-y-2">
-              <Label htmlFor="organization_name">Organization Name</Label>
-              <div className="relative">
-                <Input
-                  id="organization_name"
-                  placeholder="Acme Corporation"
-                  {...register("organization_name")}
-                  onBlur={checkFieldAvailability}
-                  className={errors.organization_name ? "border-red-500" : ""}
-                />
-                {checkingAvailability && (
-                  <div className="absolute right-3 top-2.5">
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                  </div>
-                )}
-                {!checkingAvailability &&
-                  availabilityStatus.orgName !== undefined && (
-                    <div className="absolute right-3 top-2.5">
-                      {getAvailabilityIcon(availabilityStatus.orgName)}
+    <div className="flex min-h-screen items-center justify-center bg-white p-4">
+      <div className="w-full max-w-md">
+        {/* Section eyebrow — salmon */}
+        <div className="bg-[#d77a7a] px-4 py-4 mb-0">
+          <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[28px] font-black uppercase leading-[1.0] text-black">
+            CREATE YOUR<br />ORGANIZATION
+          </h1>
+        </div>
+
+        {/* Form card — ribbon card style */}
+        <div className="border-x border-b border-black">
+          <div className="border-b border-black bg-white px-3 py-1.5">
+            <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
+              REGISTER FOR KEYLES SSO
+            </h3>
+          </div>
+          <div className="bg-[#d77a7a] px-4 py-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Organization Name */}
+              <div>
+                <Label htmlFor="organization_name">Organization Name</Label>
+                <div className="relative mt-1">
+                  <Input
+                    id="organization_name"
+                    placeholder="Acme Corporation"
+                    {...register("organization_name")}
+                    onBlur={checkFieldAvailability}
+                    className={errors.organization_name ? "border-red-700" : ""}
+                  />
+                  {checkingAvailability && (
+                    <div className="absolute right-2 top-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                     </div>
                   )}
-              </div>
-              {errors.organization_name && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.organization_name.message}
-                </p>
-              )}
-              {availabilityStatus.orgName === false && (
-                <p className="text-sm text-red-600">
-                  This organization name is already taken
-                </p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div className="space-y-2">
-              <Label htmlFor="email">Admin Email</Label>
-              <div className="relative">
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="admin@acme.com"
-                  {...register("email")}
-                  onBlur={checkFieldAvailability}
-                  className={errors.email ? "border-red-500" : ""}
-                />
-                {checkingAvailability && (
-                  <div className="absolute right-3 top-2.5">
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                  </div>
+                  {!checkingAvailability &&
+                    availabilityStatus.orgName !== undefined && (
+                      <div className="absolute right-2 top-2">
+                        {getAvailabilityIcon(availabilityStatus.orgName)}
+                      </div>
+                    )}
+                </div>
+                {errors.organization_name && (
+                  <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.organization_name.message}
+                  </p>
                 )}
-                {!checkingAvailability &&
-                  availabilityStatus.email !== undefined && (
-                    <div className="absolute right-3 top-2.5">
-                      {getAvailabilityIcon(availabilityStatus.email)}
+                {availabilityStatus.orgName === false && (
+                  <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800">
+                    This organization name is already taken
+                  </p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <Label htmlFor="email">Admin Email</Label>
+                <div className="relative mt-1">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="admin@acme.com"
+                    {...register("email")}
+                    onBlur={checkFieldAvailability}
+                    className={errors.email ? "border-red-700" : ""}
+                  />
+                  {checkingAvailability && (
+                    <div className="absolute right-2 top-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                     </div>
                   )}
+                  {!checkingAvailability &&
+                    availabilityStatus.email !== undefined && (
+                      <div className="absolute right-2 top-2">
+                        {getAvailabilityIcon(availabilityStatus.email)}
+                      </div>
+                    )}
+                </div>
+                {errors.email && (
+                  <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.email.message}
+                  </p>
+                )}
+                {availabilityStatus.email === false && (
+                  <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800">
+                    This email is already registered
+                  </p>
+                )}
               </div>
-              {errors.email && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.email.message}
-                </p>
-              )}
-              {availabilityStatus.email === false && (
-                <p className="text-sm text-red-600">
-                  This email is already registered
-                </p>
-              )}
-            </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                {...register("password")}
-                className={errors.password ? "border-red-500" : ""}
-              />
-              {errors.password && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.password.message}
+              {/* Password */}
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  {...register("password")}
+                  className={errors.password ? "border-red-700" : ""}
+                />
+                {errors.password && (
+                  <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.password.message}
+                  </p>
+                )}
+                <p className="mt-1 font-['Times_New_Roman',Times,serif] text-[11px] text-gray-700">
+                  Must be 8+ characters with uppercase, lowercase, number, and
+                  special character
                 </p>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <Label htmlFor="full_name">Full Name</Label>
+                <Input
+                  id="full_name"
+                  placeholder="John Doe"
+                  {...register("full_name")}
+                  className={errors.full_name ? "border-red-700" : ""}
+                />
+                {errors.full_name && (
+                  <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.full_name.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Global Error */}
+              {errors.root && (
+                <div className="border border-red-700 bg-red-100 p-2">
+                  <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.root.message}
+                  </p>
+                </div>
               )}
-              <p className="text-xs text-gray-500">
-                Must be 8+ characters with uppercase, lowercase, number, and
-                special character
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    CREATING ORGANIZATION...
+                  </>
+                ) : (
+                  "CREATE ORGANIZATION"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-4 pt-3 border-t border-black text-center">
+              <p className="font-['Times_New_Roman',Times,serif] text-sm text-black">
+                Already have an account?{" "}
+                <a href="/login" className="text-[#0000ee] underline">
+                  Sign in
+                </a>
               </p>
             </div>
-
-            {/* Full Name */}
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
-              <Input
-                id="full_name"
-                placeholder="John Doe"
-                {...register("full_name")}
-                className={errors.full_name ? "border-red-500" : ""}
-              />
-              {errors.full_name && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.full_name.message}
-                </p>
-              )}
-            </div>
-
-            {/* Global Error */}
-            {errors.root && (
-              <div className="rounded-md bg-red-50 p-3">
-                <p className="text-sm text-red-800 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.root.message}
-                </p>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitting || mutation.isPending}
-            >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Organization...
-                </>
-              ) : (
-                "Create Organization"
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-4 text-center text-sm">
-            <p className="text-gray-600">
-              Already have an account?{" "}
-              <a href="/login" className="text-blue-600 hover:underline">
-                Sign in
-              </a>
-            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -24,30 +24,30 @@ interface TenantDashboardProps {
 
 export function TenantDashboard({ tenant, user, onLogout }: TenantDashboardProps) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+    <div className="min-h-screen bg-gray-100 font-['Times_New_Roman',Times,serif]">
+      {/* Header - Black bar */}
+      <header className="bg-black border-b border-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                <LayoutDashboard className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 border border-white bg-white flex items-center justify-center">
+                <LayoutDashboard className="w-6 h-6 text-black" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-white text-lg">
                   {tenant.organization_name}
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-400">
                   Keyles Multi-Tenant SSO
                 </p>
               </div>
             </div>
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1.5px]"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium">Logout</span>
+              <span>Logout</span>
             </button>
           </div>
         </div>
@@ -57,11 +57,11 @@ export function TenantDashboard({ tenant, user, onLogout }: TenantDashboardProps
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-2xl text-black mb-2">
             Welcome back, {user.full_name}!
           </h2>
-          <p className="text-gray-600">
-            Here's an overview of your organization
+          <p className="text-sm text-gray-600">
+            Here&apos;s an overview of your organization
           </p>
         </div>
 
@@ -74,54 +74,66 @@ export function TenantDashboard({ tenant, user, onLogout }: TenantDashboardProps
 
           {/* Quick Stats */}
           <div className="space-y-6">
-            {/* Status Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">
-                Account Status
-              </h3>
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${
-                  tenant.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'
-                }`} />
-                <span className="text-lg font-semibold text-gray-900 capitalize">
-                  {tenant.status}
+            {/* Status Card - Ribbon style */}
+            <div className="bg-white border border-black shadow-[2px_2px_0_#000]">
+              <div className="bg-white border-b border-black px-4 py-2">
+                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-500">
+                  Account Status
+                </h3>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 border border-black ${
+                    tenant.status === 'active' ? 'bg-green-700' : 'bg-yellow-600'
+                  }`} />
+                  <span className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-lg capitalize">
+                    {tenant.status}
+                  </span>
+                </div>
+                {tenant.status === 'active' && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Your account is fully activated
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* User Role Card - Ribbon style */}
+            <div className="bg-white border border-black shadow-[2px_2px_0_#000]">
+              <div className="bg-white border-b border-black px-4 py-2">
+                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-500">
+                  Your Role
+                </h3>
+              </div>
+              <div className="p-6 bg-[#8c9ae0]/15">
+                <span className="inline-flex items-center px-3 py-1 border border-black bg-[#8c9ae0] text-white text-sm font-bold font-[Helvetica,Arial,system-ui,sans-serif]">
+                  {user.role.toUpperCase()}
                 </span>
-              </div>
-              {tenant.status === 'active' && (
                 <p className="mt-2 text-xs text-gray-500">
-                  Your account is fully activated
+                  Administrator access
                 </p>
-              )}
-            </div>
-
-            {/* User Role Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">
-                Your Role
-              </h3>
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
-                {user.role.toUpperCase()}
               </div>
-              <p className="mt-2 text-xs text-gray-500">
-                Administrator access
-              </p>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-500 mb-4">
-                Quick Actions
-              </h3>
-              <div className="space-y-2">
-                <button className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  Manage Users
-                </button>
-                <button className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  Settings
-                </button>
-                <button className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  API Keys
-                </button>
+            {/* Quick Actions - Ribbon style */}
+            <div className="bg-white border border-black shadow-[2px_2px_0_#000]">
+              <div className="bg-white border-b border-black px-4 py-2">
+                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-500">
+                  Quick Actions
+                </h3>
+              </div>
+              <div className="p-4">
+                <div className="space-y-1">
+                  <button className="w-full px-4 py-2 text-sm text-left text-black hover:bg-gray-100 border border-transparent hover:border-black transition-colors font-['Times_New_Roman',Times,serif]">
+                    Manage Users
+                  </button>
+                  <button className="w-full px-4 py-2 text-sm text-left text-black hover:bg-gray-100 border border-transparent hover:border-black transition-colors font-['Times_New_Roman',Times,serif]">
+                    Settings
+                  </button>
+                  <button className="w-full px-4 py-2 text-sm text-left text-black hover:bg-gray-100 border border-transparent hover:border-black transition-colors font-['Times_New_Roman',Times,serif]">
+                    API Keys
+                  </button>
+                </div>
               </div>
             </div>
           </div>

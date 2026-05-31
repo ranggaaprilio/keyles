@@ -72,7 +72,7 @@ export function ClientManagement(_props: ClientManagementProps) {
       setError(null);
       const response = await clientService.list();
       setClients(response.clients || []);
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load clients");
     } finally {
       setLoading(false);
@@ -115,7 +115,7 @@ export function ClientManagement(_props: ClientManagementProps) {
       setDeletingClientId(clientId);
       await clientService.delete(clientId);
       fetchClients();
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete client");
     } finally {
       setDeletingClientId(null);
@@ -133,7 +133,7 @@ export function ClientManagement(_props: ClientManagementProps) {
         clientSecret: response.client_secret,
         isRotation: true,
       });
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to rotate secret");
     } finally {
       setRotatingClientId(null);
@@ -184,7 +184,7 @@ export function ClientManagement(_props: ClientManagementProps) {
       }
       setSelectedClientIds(new Set());
       fetchClients();
-    } catch (err) {
+    } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Failed to activate clients"
       );
@@ -204,7 +204,7 @@ export function ClientManagement(_props: ClientManagementProps) {
       }
       setSelectedClientIds(new Set());
       fetchClients();
-    } catch (err) {
+    } catch (err: unknown) {
       setError(
         err instanceof Error ? err.message : "Failed to deactivate clients"
       );
@@ -232,34 +232,34 @@ export function ClientManagement(_props: ClientManagementProps) {
     if (!credentials.show) return null;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+        <div className="bg-white border-8 border-black p-6 shadow-[4px_4px_0_#000] max-w-md w-full mx-4">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                <Key className="w-5 h-5 text-green-600" />
+              <div className="w-10 h-10 border border-black bg-green-100 flex items-center justify-center">
+                <Key className="w-5 h-5 text-green-700" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-lg text-gray-900">
                   {credentials.isRotation ? "Secret Rotated" : "Client Created"}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-500">
                   Save these credentials securely
                 </p>
               </div>
             </div>
             <button
               onClick={closeCredentialsModal}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-black"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+          <div className="bg-amber-50 border border-amber-700 p-3 mb-4">
             <div className="flex gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-800">
+              <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <p className="font-['Times_New_Roman',Times,serif] text-sm text-amber-900">
                 <strong>Important:</strong> The client secret will only be shown
                 once. Copy it now and store it securely.
               </p>
@@ -268,11 +268,11 @@ export function ClientManagement(_props: ClientManagementProps) {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] mb-1">
                 Client ID
               </label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-gray-100 rounded-md text-sm font-mono break-all">
+                <code className="flex-1 px-3 py-2 bg-gray-100 border border-black font-mono text-sm break-all">
                   {credentials.clientId}
                 </code>
                 <Button
@@ -281,7 +281,7 @@ export function ClientManagement(_props: ClientManagementProps) {
                   onClick={() => handleCopy(credentials.clientId, "clientId")}
                 >
                   {copiedField === "clientId" ? (
-                    <Check className="w-4 h-4 text-green-600" />
+                    <Check className="w-4 h-4 text-green-700" />
                   ) : (
                     <Copy className="w-4 h-4" />
                   )}
@@ -290,11 +290,11 @@ export function ClientManagement(_props: ClientManagementProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] mb-1">
                 Client Secret
               </label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-gray-100 rounded-md text-sm font-mono break-all">
+                <code className="flex-1 px-3 py-2 bg-gray-100 border border-black font-mono text-sm break-all">
                   {credentials.clientSecret ?? "N/A (Public client)"}
                 </code>
                 {credentials.clientSecret && (
@@ -306,7 +306,7 @@ export function ClientManagement(_props: ClientManagementProps) {
                     }
                   >
                     {copiedField === "clientSecret" ? (
-                      <Check className="w-4 h-4 text-green-600" />
+                      <Check className="w-4 h-4 text-green-700" />
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
@@ -318,7 +318,7 @@ export function ClientManagement(_props: ClientManagementProps) {
 
           <div className="mt-6">
             <Button onClick={closeCredentialsModal} className="w-full">
-              I've Saved the Credentials
+              I&apos;ve Saved the Credentials
             </Button>
           </div>
         </div>
@@ -329,7 +329,7 @@ export function ClientManagement(_props: ClientManagementProps) {
   // Render loading state
   if (loading && viewMode === "list") {
     return (
-      <Card>
+      <Card className="shadow-[2px_2px_0_#000]">
         <CardHeader>
           <CardTitle>OAuth Clients</CardTitle>
           <CardDescription>Loading clients...</CardDescription>
@@ -362,22 +362,25 @@ export function ClientManagement(_props: ClientManagementProps) {
   // Render list view
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div>
-            <CardTitle>OAuth Clients</CardTitle>
-            <CardDescription>
-              Manage client applications for OAuth authentication
-            </CardDescription>
+      <Card className="shadow-[2px_2px_0_#000]">
+        {/* Eyebrow */}
+        <div className="bg-[#8e8a25] px-4 py-2 border-b border-black">
+          <div className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-white">OAuth Clients</CardTitle>
+              <CardDescription className="text-white/80">
+                Manage client applications for OAuth authentication
+              </CardDescription>
+            </div>
+            <Button onClick={() => setViewMode("create")}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Client
+            </Button>
           </div>
-          <Button onClick={() => setViewMode("create")}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Client
-          </Button>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <CardContent className="font-['Times_New_Roman',Times,serif]">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-3 bg-red-50 border border-red-700">
               <div className="flex items-center gap-2 text-red-800">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-sm">{error}</span>
@@ -387,13 +390,13 @@ export function ClientManagement(_props: ClientManagementProps) {
 
           {clients.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto mb-4 border border-black bg-gray-100 flex items-center justify-center">
                 <Key className="w-6 h-6 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">
+              <h3 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-lg text-gray-900 mb-1">
                 No clients yet
               </h3>
-              <p className="text-gray-500 mb-4">
+              <p className="text-gray-500 mb-4 text-sm">
                 Create your first OAuth client to get started
               </p>
               <Button onClick={() => setViewMode("create")}>
@@ -404,9 +407,9 @@ export function ClientManagement(_props: ClientManagementProps) {
           ) : (
             <>
               {selectedClientIds.size > 0 && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-blue-900">
+                    <span className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-blue-900">
                       {selectedClientIds.size} client(s) selected
                     </span>
                     <div className="flex gap-2">
@@ -442,9 +445,9 @@ export function ClientManagement(_props: ClientManagementProps) {
                 </div>
               )}
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border border-black">
                   <thead>
-                    <tr className="border-b border-gray-200">
+                    <tr className="bg-gray-100 border-b border-black">
                       <th className="px-4 py-3 text-left">
                         <input
                           type="checkbox"
@@ -453,29 +456,29 @@ export function ClientManagement(_props: ClientManagementProps) {
                             clients.length > 0
                           }
                           onChange={handleSelectAll}
-                          className="rounded"
+                          className="border border-black"
                         />
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                      <th className="px-4 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px]">
                         Name
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                      <th className="px-4 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px]">
                         Client ID
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                      <th className="px-4 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px]">
                         Redirect URIs
                       </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                      <th className="px-4 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px]">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                      <th className="px-4 py-3 text-right font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px]">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {clients.map((client) => (
-                      <tr key={client.client_id} className="hover:bg-gray-50">
+                      <tr key={client.client_id} className="border-b border-black hover:bg-gray-100">
                         <td className="px-4 py-3">
                           <input
                             type="checkbox"
@@ -483,16 +486,16 @@ export function ClientManagement(_props: ClientManagementProps) {
                             onChange={() =>
                               handleSelectClient(client.client_id)
                             }
-                            className="rounded"
+                            className="border border-black"
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <span className="font-medium text-gray-900">
+                          <span className="font-semibold text-gray-900 text-sm">
                             {client.client_name}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          <code className="text-sm text-gray-600 bg-gray-100 px-2 py-1 border border-black font-mono">
                             {client.client_id.substring(0, 12)}...
                           </code>
                         </td>
@@ -517,10 +520,10 @@ export function ClientManagement(_props: ClientManagementProps) {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            className={`inline-flex items-center px-2 py-1 text-xs font-bold border border-black ${
                               client.is_active
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-600"
+                                ? "bg-green-700 text-white"
+                                : "bg-gray-400 text-white"
                             }`}
                           >
                             {client.is_active ? "Active" : "Inactive"}

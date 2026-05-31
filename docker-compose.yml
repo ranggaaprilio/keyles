@@ -47,6 +47,7 @@ services:
       # Any previously committed Brevo key must be rotated in Brevo.
       - BREVO_API_KEY=${BREVO_API_KEY:-}
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      - SKIP_EMAIL_VERIFICATION=${SKIP_EMAIL_VERIFICATION:-false}
       - GIN_MODE=release
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
       - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS

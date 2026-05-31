@@ -1,8 +1,5 @@
 /**
- * Accept Invitation Page (public, no auth)
- *
- * Validates an invitation token from the URL, then shows a password-creation form.
- * If the token is expired or already used, shows an error state.
+ * Accept Invitation Page — Dell 1996 retro style
  */
 
 import { useParams, useNavigate } from "react-router-dom";
@@ -22,22 +19,15 @@ export function AcceptInvitationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-pulse text-gray-500">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-pulse font-['Times_New_Roman',Times,serif] text-sm text-gray-600">
           Validating invitation...
         </div>
       </div>
     );
   }
 
-  // 410 Gone or any error → show expired/invalid state
   if (error) {
-    const status = axios.isAxiosError(error)
-      ? error.response?.status
-      : undefined;
-    if (status === 410 || status === 404) {
-      return <InvitationExpired />;
-    }
     return <InvitationExpired />;
   }
 
@@ -53,29 +43,38 @@ export function AcceptInvitationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-sm border p-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Accept Invitation
+        {/* Section eyebrow — peach */}
+        <div className="bg-[#e6915d] px-4 py-4 mb-0">
+          <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[28px] font-black uppercase leading-[1.0] text-black">
+            ACCEPT INVITATION
           </h1>
-          <p className="text-gray-600 mb-6">
-            Set a password to activate your account.
-          </p>
-          <AcceptInvitationForm
-            email={data.email}
-            displayName={data.display_name}
-            onSubmit={handleAccept}
-            isSubmitting={acceptMutation.isPending}
-            error={
-              acceptMutation.error && axios.isAxiosError(acceptMutation.error)
-                ? (acceptMutation.error.response?.data?.error ??
-                  "Something went wrong.")
-                : acceptMutation.error
-                  ? "Something went wrong."
-                  : undefined
-            }
-          />
+        </div>
+
+        {/* Form card */}
+        <div className="border-x border-b border-black">
+          <div className="border-b border-black bg-white px-3 py-1.5">
+            <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
+              SET YOUR PASSWORD
+            </h3>
+          </div>
+          <div className="bg-[#e6915d] px-4 py-4">
+            <AcceptInvitationForm
+              email={data.email}
+              displayName={data.display_name}
+              onSubmit={handleAccept}
+              isSubmitting={acceptMutation.isPending}
+              error={
+                acceptMutation.error && axios.isAxiosError(acceptMutation.error)
+                  ? (acceptMutation.error.response?.data?.error ??
+                    "Something went wrong.")
+                  : acceptMutation.error
+                    ? "Something went wrong."
+                    : undefined
+              }
+            />
+          </div>
         </div>
       </div>
     </div>

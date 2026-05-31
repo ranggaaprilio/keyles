@@ -27,14 +27,16 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
 
   return (
     <Card
-      className="cursor-pointer transition-colors hover:bg-accent/50"
+      className="cursor-pointer transition-colors hover:bg-gray-100"
       onClick={() => onClick(client.client_id)}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold truncate">{client.client_name}</h3>
+              <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] truncate">
+                {client.client_name}
+              </h3>
               <Badge
                 variant={
                   client.client_type === "confidential"
@@ -46,7 +48,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
               </Badge>
             </div>
 
-            <div className="flex items-center gap-1 text-sm text-muted-foreground font-mono">
+            <div className="flex items-center gap-1 text-sm text-gray-600 font-mono">
               <span className="truncate">{truncatedId}</span>
               <Button
                 variant="ghost"
@@ -55,7 +57,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
                 onClick={copyClientId}
               >
                 {copied ? (
-                  <Check className="h-3 w-3 text-green-600" />
+                  <Check className="h-3 w-3 text-green-700" />
                 ) : (
                   <Copy className="h-3 w-3" />
                 )}
@@ -63,7 +65,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
             </div>
 
             {client.description && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+              <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif] mt-1 line-clamp-1">
                 {client.description}
               </p>
             )}
@@ -73,7 +75,7 @@ export function ClientCard({ client, onClick }: ClientCardProps) {
             <Badge variant={client.is_active ? "default" : "destructive"}>
               {client.is_active ? "Active" : "Inactive"}
             </Badge>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-gray-600 font-['Times_New_Roman',Times,serif]">
               {new Date(client.created_at).toLocaleDateString()}
             </span>
           </div>

@@ -47,7 +47,7 @@ export function RotateSecretDialog({
               Are you sure you want to rotate the secret for{" "}
               <strong>{clientName}</strong>?
             </p>
-            <p className="text-destructive font-medium">
+            <p className="text-red-700 font-medium font-['Times_New_Roman',Times,serif]">
               The current secret will stop working immediately. Any applications
               using the old secret will need to be updated.
             </p>
@@ -60,7 +60,7 @@ export function RotateSecretDialog({
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={mutation.isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-red-700 text-white hover:bg-red-800 border border-red-700"
           >
             {mutation.isPending && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -48,7 +48,7 @@ export function EnableDisableDialog({
             {isDisabling ? "Disable Account" : "Enable Account"}
           </DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-gray-600">
+        <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
           {isDisabling
             ? `This will immediately terminate all active sessions for ${email}.`
             : `This will restore ${email}'s ability to authenticate.`}

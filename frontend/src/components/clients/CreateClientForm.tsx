@@ -151,7 +151,7 @@ export function CreateClientForm({
               {...register("client_name")}
             />
             {errors.client_name && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif]">
                 {errors.client_name.message}
               </p>
             )}
@@ -167,7 +167,7 @@ export function CreateClientForm({
               {...register("description")}
             />
             {errors.description && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif]">
                 {errors.description.message}
               </p>
             )}
@@ -183,7 +183,7 @@ export function CreateClientForm({
               }
               className="space-y-3"
             >
-              <div className="flex items-start space-x-3 rounded-md border p-3">
+              <div className="flex items-start space-x-3 border border-black p-3">
                 <RadioGroupItem
                   value="confidential"
                   id="confidential"
@@ -196,13 +196,13 @@ export function CreateClientForm({
                   >
                     Confidential
                   </Label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
                     Server-side applications that can securely store a client
                     secret. A secret will be generated for authentication.
                   </p>
                 </div>
               </div>
-              <div className="flex items-start space-x-3 rounded-md border p-3">
+              <div className="flex items-start space-x-3 border border-black p-3">
                 <RadioGroupItem value="public" id="public" className="mt-1" />
                 <div>
                   <Label
@@ -211,7 +211,7 @@ export function CreateClientForm({
                   >
                     Public
                   </Label>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
                     SPAs, mobile, or desktop apps that cannot securely store
                     secrets. Uses PKCE for authorization. No client secret
                     generated.
@@ -224,7 +224,7 @@ export function CreateClientForm({
           {/* Redirect URIs */}
           <div className="space-y-3">
             <Label>Redirect URIs *</Label>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
               HTTPS required for production. HTTP allowed for localhost only.
             </p>
             {redirectURIs.map((uri, index) => (
@@ -237,7 +237,7 @@ export function CreateClientForm({
                     onBlur={() => uri && validateURI(uri, index)}
                   />
                   {uriErrors[index] && (
-                    <p className="text-sm text-destructive mt-1">
+                    <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif] mt-1">
                       {uriErrors[index]}
                     </p>
                   )}
@@ -263,7 +263,7 @@ export function CreateClientForm({
               <Plus className="h-4 w-4 mr-1" /> Add Redirect URI
             </Button>
             {errors.redirect_uris && (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-red-700 font-['Times_New_Roman',Times,serif]">
                 {errors.redirect_uris.message}
               </p>
             )}

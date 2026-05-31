@@ -49,7 +49,7 @@ export function DeleteUserDialog({
           <DialogTitle className="text-red-600">Delete User</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
             This will permanently delete <strong>{email}</strong> and all their
             role assignments. This action cannot be undone.
           </p>

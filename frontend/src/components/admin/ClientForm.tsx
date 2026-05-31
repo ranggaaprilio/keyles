@@ -175,7 +175,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
         const response = await clientService.create(createData);
         onSuccess(response);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setErrors({
         general: err instanceof Error ? err.message : "Failed to save client",
       });
@@ -240,7 +240,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
   };
 
   return (
-    <Card>
+    <Card className="shadow-[2px_2px_0_#000]">
       <CardHeader>
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onCancel}>
@@ -258,10 +258,10 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="font-['Times_New_Roman',Times,serif]">
         <form onSubmit={handleSubmit} className="space-y-6">
           {errors.general && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 bg-red-50 border border-red-700">
               <div className="flex items-center gap-2 text-red-800">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-sm">{errors.general}</span>
@@ -278,10 +278,10 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
               placeholder="My Application"
               value={formData.clientName}
               onChange={handleClientNameChange}
-              className={errors.clientName ? "border-red-500" : ""}
+              className={errors.clientName ? "border-red-700" : ""}
             />
             {errors.clientName && (
-              <p className="text-sm text-red-600">{errors.clientName}</p>
+              <p className="text-sm text-red-700">{errors.clientName}</p>
             )}
             <p className="text-xs text-gray-500">
               A descriptive name for your client application
@@ -300,7 +300,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                   clientType: e.target.value as ClientType,
                 }))
               }
-              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full border border-black bg-white px-2 py-1 font-['Times_New_Roman',Times,serif] text-sm focus:outline-none focus:ring-2 focus:ring-dell-red focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="confidential">Confidential</option>
               <option value="public">Public</option>
@@ -338,11 +338,11 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                         handleRedirectUriChange(index, e.target.value)
                       }
                       className={
-                        errors.redirectUris?.[index] ? "border-red-500" : ""
+                        errors.redirectUris?.[index] ? "border-red-700" : ""
                       }
                     />
                     {errors.redirectUris?.[index] && (
-                      <p className="text-sm text-red-600 mt-1">
+                      <p className="text-sm text-red-700 mt-1">
                         {errors.redirectUris[index]}
                       </p>
                     )}
@@ -376,7 +376,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                 id="isActive"
                 checked={formData.isActive}
                 onChange={handleIsActiveChange}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 border border-black"
               />
               <Label htmlFor="isActive" className="cursor-pointer">
                 Client is active
@@ -385,7 +385,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
           )}
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>

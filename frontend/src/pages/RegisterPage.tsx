@@ -1,6 +1,5 @@
 /**
- * Registration page component
- * Wraps RegistrationForm with proper layout and metadata
+ * Registration page component — Dell 1996 retro style
  */
 
 import { useEffect } from 'react';
@@ -8,7 +7,6 @@ import { RegistrationForm } from '../components/registration/RegistrationForm';
 
 export function RegisterPage() {
   useEffect(() => {
-    // Set page title
     document.title = 'Register - Keyles SSO';
   }, []);
 

@@ -27,16 +27,16 @@ type RegisterTenantResult struct {
 
 // RegisterTenantUseCase handles tenant registration
 type RegisterTenantUseCase struct {
-	tenantRepo repositories.TenantRepository
-	userRepo   repositories.UserRepository
-	otpRepo    repositories.OTPRepository
-	auditRepo  repositories.AuditRepository
-	emailSvc   services.EmailService
-	otpSvc     services.OTPService
-	pwdSvc     services.PasswordService
+	tenantRepo             repositories.TenantRepository
+	userRepo               repositories.UserRepository
+	otpRepo                repositories.OTPRepository
+	auditRepo              repositories.AuditRepository
+	emailSvc               services.EmailService
+	otpSvc                 services.OTPService
+	pwdSvc                 services.PasswordService
+	skipEmailVerification  bool
 }
 
-// NewRegisterTenantUseCase creates a new RegisterTenantUseCase
 func NewRegisterTenantUseCase(
 	tenantRepo repositories.TenantRepository,
 	userRepo repositories.UserRepository,
@@ -45,15 +45,17 @@ func NewRegisterTenantUseCase(
 	emailSvc services.EmailService,
 	otpSvc services.OTPService,
 	pwdSvc services.PasswordService,
+	skipEmailVerification bool,
 ) *RegisterTenantUseCase {
 	return &RegisterTenantUseCase{
-		tenantRepo: tenantRepo,
-		userRepo:   userRepo,
-		otpRepo:    otpRepo,
-		auditRepo:  auditRepo,
-		emailSvc:   emailSvc,
-		otpSvc:     otpSvc,
-		pwdSvc:     pwdSvc,
+		tenantRepo:            tenantRepo,
+		userRepo:              userRepo,
+		otpRepo:               otpRepo,
+		auditRepo:             auditRepo,
+		emailSvc:              emailSvc,
+		otpSvc:                otpSvc,
+		pwdSvc:                pwdSvc,
+		skipEmailVerification: skipEmailVerification,
 	}
 }
 
@@ -126,49 +128,46 @@ func (uc *RegisterTenantUseCase) Execute(
 	if err := uc.userRepo.Create(ctx, adminUser); err != nil {
 		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}
-
-	// Step 8: Generate OTP
-	otpCode, err := uc.otpSvc.Generate()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate OTP: %w", err)
+	// Step 8: Handle email verification or auto-activation
+	if uc.skipEmailVerification {
+		// Skip email verification: auto-activate the tenant
+		if err := tenant.Activate(); err != nil {
+			return nil, fmt.Errorf("failed to activate tenant: %w", err)
+		}
+		// Update tenant in database
+		if err := uc.tenantRepo.Update(ctx, tenant); err != nil {
+			return nil, fmt.Errorf("failed to update tenant: %w", err)
+		}
+	} else {
+		// Generate OTP
+		otpCode, err := uc.otpSvc.Generate()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate OTP: %w", err)
+		}
+		// Create OTP verification entity and store it
+		otpVerification := entities.NewOTPVerification(tenant.ID.String(), otpCode, "email_verification", "")
+		if err := uc.otpRepo.Create(ctx, otpVerification); err != nil {
+			return nil, fmt.Errorf("failed to store OTP: %w", err)
+		}
+		// Send OTP email (non-fatal — user can resend via /resend-otp)
+		if err := uc.emailSvc.SendOTPEmail(ctx, adminEmail, adminFullName, otpCode, organizationName); err != nil {
+			fmt.Printf("[WARN] Failed to send OTP email to %s: %v\n", adminEmail, err)
+		}
 	}
-
-	// Step 9: Create OTP verification entity
-	otpVerification := entities.NewOTPVerification(tenant.ID.String(), otpCode, "email_verification", "")
-
-	// Step 10: Store OTP
-	if err := uc.otpRepo.Create(ctx, otpVerification); err != nil {
-		return nil, fmt.Errorf("failed to store OTP: %w", err)
-	}
-
-	// Step 11: Send OTP email (non-fatal — user can resend via /resend-otp)
-	emailSent := true
-	if err := uc.emailSvc.SendOTPEmail(ctx, adminEmail, adminFullName, otpCode, organizationName); err != nil {
-		// Log the error but allow registration to succeed.
-		// The OTP is already stored; user can request a resend.
-		fmt.Printf("[WARN] Failed to send OTP email to %s: %v\n", adminEmail, err)
-		emailSent = false
-	}
-
-	// Step 12: Create audit log
+	// Step 9: Create audit log
 	auditLog := entities.NewAuditLog(entities.EventRegistrationSuccess, "", "").
 		WithTenant(tenant.ID).
 		WithUser(adminUser.ID).
 		WithData("organization_name", organizationName).
 		WithData("admin_email", adminEmail)
-
 	if err := uc.auditRepo.Create(ctx, auditLog); err != nil {
-		// Log error but don't fail the registration
-		// In production, use proper logging framework
 		_ = err
 	}
-
-	// Step 13: Return result
+	// Step 10: Return result
 	message := "Registration successful. Please check your email for verification code."
-	if !emailSent {
-		message = "Registration successful. We could not send the verification email — please use 'Resend OTP' to receive your code."
+	if uc.skipEmailVerification {
+		message = "Registration successful. Your account has been auto-activated."
 	}
-
 	return &RegisterTenantResult{
 		TenantID:         tenant.ID,
 		AdminUserID:      adminUser.ID,

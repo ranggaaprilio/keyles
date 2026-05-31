@@ -1,11 +1,5 @@
 /**
- * Dashboard Layout Component
- *
- * Provides a persistent sidebar navigation and header for all dashboard pages.
- * Wraps page content with consistent layout including:
- * - Collapsible sidebar with navigation links
- * - Top header with org name and user info
- * - Responsive mobile menu
+ * Dashboard Layout Component — Dell 1996 retro style
  */
 
 import { ReactNode, useState } from "react";
@@ -38,19 +32,19 @@ const navItems: NavItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
-    icon: <LayoutDashboard className="w-5 h-5" />,
+    icon: <LayoutDashboard className="w-4 h-4" />,
     matchPaths: ["/dashboard"],
   },
   {
     label: "Client Applications",
     href: "/dashboard/clients",
-    icon: <AppWindow className="w-5 h-5" />,
+    icon: <AppWindow className="w-4 h-4" />,
     matchPaths: ["/dashboard/clients"],
   },
   {
     label: "Users",
     href: "/dashboard/users",
-    icon: <Users className="w-5 h-5" />,
+    icon: <Users className="w-4 h-4" />,
     matchPaths: ["/dashboard/users"],
   },
 ];
@@ -69,103 +63,112 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const user = dashboardQuery.data?.user;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-200">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <KeyRound className="w-5 h-5 text-white" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-base font-bold text-gray-900 truncate">Keyles</h1>
-            <p className="text-xs text-gray-500 truncate">
-              {tenant?.organization_name ?? "SSO Platform"}
-            </p>
-          </div>
-          <button
+    <div className="min-h-screen bg-white">
+      {/* Page frame — black border around everything */}
+      <div className="border-[8px] border-black min-h-screen flex max-sm:border-[2px] md:border-[4px] lg:border-[8px]">
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={() => setSidebarOpen(false)}
-            className="ml-auto lg:hidden p-1 rounded hover:bg-gray-100"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
+          />
+        )}
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = isNavActive(item, location.pathname);
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  active
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                )}
-              >
-                <span
-                  className={cn(active ? "text-blue-600" : "text-gray-400")}
-                >
-                  {item.icon}
-                </span>
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-gray-200 px-3 py-4">
-          {user && (
-            <div className="px-3 mb-3">
-              <p className="text-sm font-medium text-gray-900 truncate">{user.full_name}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-            </div>
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-56 bg-white border-r-2 border-black flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
-          <button
-            onClick={logout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors"
-          >
-            <LogOut className="w-5 h-5 text-gray-400" />
-            Logout
-          </button>
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100"
-            aria-label="Open sidebar"
-          >
-            <Menu className="w-5 h-5 text-gray-600" />
-          </button>
-
-          <PageTitle pathname={location.pathname} />
-
-          <div className="ml-auto hidden sm:flex items-center gap-3">
-            {tenant && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-                {tenant.organization_name}
-              </span>
-            )}
+        >
+          {/* Sidebar header — black banner */}
+          <div className="flex items-center gap-2 px-4 py-3 bg-black">
+            <KeyRound className="w-4 h-4 text-white" />
+            <div className="min-w-0">
+              <h1 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-white truncate">
+                Keyles
+              </h1>
+              <p className="font-['Times_New_Roman',Times,serif] text-[10px] text-gray-400 truncate">
+                {tenant?.organization_name ?? "SSO Platform"}
+              </p>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="ml-auto lg:hidden text-gray-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </header>
 
-        <main className="flex-1 overflow-y-auto">{children}</main>
+          {/* Nav items */}
+          <nav className="flex-1 py-2 overflow-y-auto">
+            {navItems.map((item) => {
+              const active = isNavActive(item, location.pathname);
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] border-b border-black transition-colors",
+                    active
+                      ? "bg-black text-white"
+                      : "text-black hover:bg-gray-100"
+                  )}
+                >
+                  <span className={cn(active ? "text-white" : "text-gray-500")}>
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Sidebar footer */}
+          <div className="border-t-2 border-black px-4 py-3">
+            {user && (
+              <div className="mb-2">
+                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase text-black truncate">
+                  {user.full_name}
+                </p>
+                <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-500 truncate">
+                  {user.email}
+                </p>
+              </div>
+            )}
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 w-full font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black hover:bg-red-50 hover:text-red-700 py-1.5 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header — white with black underline */}
+          <header className="sticky top-0 z-30 bg-white border-b-2 border-black px-4 sm:px-6 py-2 flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-1 -ml-1 text-black"
+              aria-label="Open sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <PageTitle pathname={location.pathname} />
+
+            <div className="ml-auto hidden sm:flex items-center gap-2">
+              {tenant && (
+                <span className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] bg-gray-100 border border-black px-2 py-0.5">
+                  {tenant.organization_name}
+                </span>
+              )}
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto bg-white">{children}</main>
+        </div>
       </div>
     </div>
   );
@@ -200,12 +203,14 @@ function PageTitle({ pathname }: { pathname: string }) {
       {backHref && (
         <Link
           to={backHref}
-          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+          className="p-1 text-black hover:text-gray-600"
         >
           <ChevronLeft className="w-5 h-5" />
         </Link>
       )}
-      <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase tracking-[1.5px] text-black">
+        {title}
+      </h2>
     </div>
   );
 }

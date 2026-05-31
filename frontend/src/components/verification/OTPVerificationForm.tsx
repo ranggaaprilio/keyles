@@ -1,6 +1,5 @@
 /**
- * OTP Verification Form Component
- * 6-digit OTP input with auto-focus and validation
+ * OTP Verification Form — Dell 1996 retro style
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -35,80 +34,60 @@ export function OTPVerificationForm({
   });
 
   const { verifyMutation, isVerifying } = useOTPVerification({
-    onVerifySuccess: () => {
-      onSuccess();
-    },
-    onVerifyError: (error) => {
-      onError(error.message);
-    },
+    onVerifySuccess: onSuccess,
+    onVerifyError: (err) => onError(err.message),
   });
 
   useEffect(() => {
-    // Focus first input on mount
     inputRefs.current[0]?.focus();
   }, []);
 
   const handleDigitChange = (index: number, value: string) => {
-    // Only allow single digit
-    const digit = value.slice(-1);
-    if (digit && !/^\d$/.test(digit)) return;
+    if (!/^\d*$/.test(value)) return;
 
     const newDigits = [...otpDigits];
-    newDigits[index] = digit;
+    newDigits[index] = value.slice(-1);
     setOtpDigits(newDigits);
 
-    // Update form value
-    const otpValue = newDigits.join('');
-    setValue('otp', otpValue);
-
-    // Auto-focus next input
-    if (digit && index < 5) {
+    // Auto-focus next
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
+
+    setValue('otp', newDigits.join(''));
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      if (!otpDigits[index] && index > 0) {
-        // Move to previous input if current is empty
-        inputRefs.current[index - 1]?.focus();
-      } else {
-        // Clear current input
-        const newDigits = [...otpDigits];
-        newDigits[index] = '';
-        setOtpDigits(newDigits);
-        setValue('otp', newDigits.join(''));
-      }
-    } else if (e.key === 'ArrowLeft' && index > 0) {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim();
-    
-    if (/^\d{6}$/.test(pastedData)) {
-      const digits = pastedData.split('');
-      setOtpDigits(digits);
-      setValue('otp', pastedData);
-      inputRefs.current[5]?.focus();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    const newDigits = [...otpDigits];
+    for (let i = 0; i < pasted.length; i++) {
+      newDigits[i] = pasted[i] ?? '';
     }
+    setOtpDigits(newDigits);
+    setValue('otp', newDigits.join(''));
+
+    const focusIndex = Math.min(pasted.length, 5);
+    inputRefs.current[focusIndex]?.focus();
   };
 
-  const onSubmit = (data: OTPFormData) => {
-    verifyMutation.mutate({
-      tenant_id: tenantId,
-      otp_code: data.otp,
-    });
+  const onSubmit = () => {
+    const otp = otpDigits.join('');
+    verifyMutation.mutate({ tenant_id: tenantId, otp_code: otp });
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="block font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-2">
           Enter Verification Code
         </label>
         <div className="flex gap-2 justify-center">
@@ -124,32 +103,32 @@ export function OTPVerificationForm({
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={isVerifying}
-              className={`w-12 h-14 text-center text-2xl font-bold border-2 rounded-lg
-                ${errors.otp ? 'border-red-500' : 'border-gray-300'}
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                disabled:bg-gray-100 disabled:cursor-not-allowed
-                transition-colors`}
+              className={`w-10 h-12 text-center text-xl font-bold border font-['Arial_Black','Helvetica',system-ui,sans-serif]
+                ${errors.otp ? 'border-red-700' : 'border-black'}
+                focus:outline-none focus:ring-2 focus:ring-dell-red focus:ring-offset-0
+                disabled:bg-gray-100 disabled:cursor-not-allowed`}
               aria-label={`Digit ${index + 1}`}
             />
           ))}
         </div>
         {errors.otp && (
-          <p className="text-sm text-red-600 text-center">{errors.otp.message}</p>
+          <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800 text-center">
+            {errors.otp.message}
+          </p>
         )}
       </div>
 
       <button
         type="submit"
         disabled={isVerifying || otpDigits.some((d) => !d)}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium
+        className={`w-full flex items-center justify-center gap-2 px-4 py-2 border border-black font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1.5px]
           ${isVerifying || otpDigits.some((d) => !d)
             ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }
-          transition-colors`}
+            : 'bg-black text-white hover:bg-gray-800'
+          } transition-colors`}
       >
-        {isVerifying && <Loader2 className="w-5 h-5 animate-spin" />}
-        {isVerifying ? 'Verifying...' : 'Verify Email'}
+        {isVerifying && <Loader2 className="w-4 h-4 animate-spin" />}
+        {isVerifying ? 'VERIFYING...' : 'VERIFY EMAIL'}
       </button>
     </form>
   );

@@ -54,9 +54,9 @@ type Config struct {
 	OAuthRefreshTokenTTL int
 
 	// OTP
-	OTPExpirationMinutes int
-	OTPLength            int
-
+	OTPExpirationMinutes      int
+	OTPLength                  int
+	SkipEmailVerification      bool
 	// Application
 	AppEnv   string
 	LogLevel string
@@ -108,6 +108,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	skipEmailVerification, err := getEnvAsBool("SKIP_EMAIL_VERIFICATION", false)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		// Database
@@ -152,10 +156,10 @@ func Load() (*Config, error) {
 		OAuthIssuer:          getEnv("OAUTH_ISSUER", "https://sso.keyles.com"),
 		OAuthAccessTokenTTL:  oauthAccessTokenTTL,  // 15 minutes
 		OAuthRefreshTokenTTL: oauthRefreshTokenTTL, // 7 days
-
 		// OTP
-		OTPExpirationMinutes: otpExpirationMinutes,
-		OTPLength:            otpLength,
+		OTPExpirationMinutes:      otpExpirationMinutes,
+		OTPLength:                  otpLength,
+		SkipEmailVerification:      skipEmailVerification,
 
 		// Application
 		AppEnv:   getEnv("APP_ENV", "development"),
@@ -179,6 +183,9 @@ func Load() (*Config, error) {
 		}
 		if len(cfg.JWTSecret) < 32 {
 			return nil, fmt.Errorf("JWT_SECRET must be at least 32 characters in production")
+		}
+		if cfg.SkipEmailVerification {
+			return nil, fmt.Errorf("SKIP_EMAIL_VERIFICATION cannot be enabled in production")
 		}
 		issuer, err := url.Parse(cfg.OAuthIssuer)
 		if err != nil || issuer.Scheme != "https" || issuer.Host == "" {
@@ -224,4 +231,16 @@ func getEnvAsInt(key string, defaultValue int) (int, error) {
 	}
 
 	return value, nil
+}
+
+func getEnvAsBool(key string, defaultValue bool) (bool, error) {
+	valueStr := strings.TrimSpace(os.Getenv(key))
+	if valueStr == "" {
+		return defaultValue, nil
+	}
+	parsed, err := strconv.ParseBool(valueStr)
+	if err != nil {
+		return false, fmt.Errorf("%s must be a valid boolean (true/false): %w", key, err)
+	}
+	return parsed, nil
 }

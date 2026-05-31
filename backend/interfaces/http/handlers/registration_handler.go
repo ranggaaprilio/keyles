@@ -103,6 +103,6 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 		TenantID:         result.TenantID.String(),
 		OrganizationName: result.OrganizationName,
 		Status:           string(result.Status),
-		Message:          "Registration successful. Please check your email for verification code.",
+		Message:          result.Message,
 	})
 }

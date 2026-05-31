@@ -95,6 +95,7 @@ func TestRegistrationHandler(t *testing.T) {
 		emailService,
 		otpService,
 		passwordService,
+		false, // skipEmailVerification
 	)
 
 	// Create handler

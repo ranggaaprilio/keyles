@@ -55,9 +55,9 @@ export function UserRoles({ userId }: UserRolesProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+        <div className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black border border-black px-2 py-1 inline-block">
           Role Assignments
-        </h3>
+        </div>
         <Button size="sm" onClick={() => setAssignOpen(true)}>
           <Plus className="h-4 w-4 mr-1" />
           Assign Role
@@ -65,7 +65,7 @@ export function UserRoles({ userId }: UserRolesProps) {
       </div>
 
       {activeRoles.length === 0 ? (
-        <p className="text-sm text-gray-500 py-4">
+        <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 py-4">
           No roles assigned. Assign a role to grant access to a client
           application.
         </p>
@@ -73,18 +73,18 @@ export function UserRoles({ userId }: UserRolesProps) {
         <div className="space-y-6">
           {Object.entries(grouped).map(([clientName, assignments]) => (
             <div key={clientName}>
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              <h4 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-2">
                 {clientName}
               </h4>
-              <div className="bg-white rounded border divide-y">
+              <div className="bg-white border border-black divide-y divide-black">
                 {assignments.map((a) => (
                   <div
                     key={a.id}
                     className="flex items-center justify-between px-4 py-3"
                   >
                     <div>
-                      <span className="text-sm font-medium">{a.role}</span>
-                      <span className="text-xs text-gray-400 ml-3">
+                      <span className="font-['Times_New_Roman',Times,serif] text-sm font-medium">{a.role}</span>
+                      <span className="font-['Times_New_Roman',Times,serif] text-xs text-gray-500 ml-3">
                         Granted {new Date(a.granted_at).toLocaleDateString()}
                       </span>
                     </div>

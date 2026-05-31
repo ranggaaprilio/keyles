@@ -46,7 +46,7 @@ export function UserActivity({ userId }: UserActivityProps) {
 
   if (events.length === 0 && page === 1) {
     return (
-      <p className="text-sm text-gray-500 py-4">
+      <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 py-4">
         No activity recorded for this user.
       </p>
     );
@@ -54,46 +54,46 @@ export function UserActivity({ userId }: UserActivityProps) {
 
   return (
     <div>
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="bg-white border border-black shadow-[2px_2px_0_#000] overflow-hidden">
+        <table className="min-w-full divide-y divide-black">
+          <thead className="bg-gray-100 border-b border-black">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
                 Event
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
                 Client
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
                 IP / Location
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
                 Time
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-black">
             {events.map((e) => {
               const color =
-                eventColors[e.event_type] ?? "text-gray-600 bg-gray-50";
+                eventColors[e.event_type] ?? "text-gray-600 bg-white";
               return (
                 <tr key={e.id}>
                   <td className="px-6 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}
+                      className={`inline-flex items-center px-2 py-0.5 border border-black font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] ${color}`}
                     >
                       {eventLabel(e.event_type)}
                     </span>
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-500">
+                  <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
                     {e.client_name ?? e.client_id ?? "—"}
                   </td>
-                  <td className="px-6 py-3 text-sm text-gray-500">
+                  <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
                     {e.ip_address ?? "—"}
                     {e.country_code ? ` (${e.country_code})` : ""}
                   </td>
                   <td
-                    className="px-6 py-3 text-sm text-gray-500"
+                    className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700"
                     title={new Date(e.occurred_at).toLocaleString()}
                   >
                     {new Date(e.occurred_at).toLocaleString()}
@@ -107,7 +107,7 @@ export function UserActivity({ userId }: UserActivityProps) {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
-          <p className="text-sm text-gray-500">
+          <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
             Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">

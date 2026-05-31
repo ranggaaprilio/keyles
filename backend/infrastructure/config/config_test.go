@@ -57,6 +57,13 @@ func TestLoadProductionValidation(t *testing.T) {
 			},
 			errContains: "OAUTH_ISSUER must be an HTTPS URL in production",
 		},
+		{
+			name: "rejects SKIP_EMAIL_VERIFICATION in production",
+			mutateEnv: func(t *testing.T) {
+				t.Setenv("SKIP_EMAIL_VERIFICATION", "true")
+			},
+			errContains: "SKIP_EMAIL_VERIFICATION cannot be enabled in production",
+		},
 	}
 
 	for _, tt := range tests {
@@ -81,10 +88,22 @@ func TestLoadProductionValidConfig(t *testing.T) {
 
 func setValidProductionEnv(t *testing.T) {
 	t.Helper()
-
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("DB_PASSWORD", "prod_db_password")
 	t.Setenv("BREVO_API_KEY", "brevo_api_key")
 	t.Setenv("JWT_SECRET", strings.Repeat("a", 32))
 	t.Setenv("OAUTH_ISSUER", "https://sso.example.com")
+}
+func TestLoadSkipEmailVerificationDefault(t *testing.T) {
+	t.Setenv("DB_PASSWORD", "test_password")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.False(t, cfg.SkipEmailVerification, "SkipEmailVerification should default to false")
+}
+func TestLoadSkipEmailVerificationEnabled(t *testing.T) {
+	t.Setenv("DB_PASSWORD", "test_password")
+	t.Setenv("SKIP_EMAIL_VERIFICATION", "true")
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.True(t, cfg.SkipEmailVerification, "SkipEmailVerification should be true when env is set")
 }

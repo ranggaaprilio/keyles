@@ -91,6 +91,7 @@ func main() {
 	registerTenantUseCase := tenant.NewRegisterTenantUseCase(
 		tenantRepo, userRepo, otpRepo, auditRepo,
 		emailService, otpService, passwordService,
+		cfg.SkipEmailVerification,
 	)
 	checkAvailabilityUseCase := tenant.NewCheckAvailabilityUseCase(tenantRepo, userRepo)
 	verifyTenantUseCase := tenant.NewVerifyTenantUseCase(otpRepo, tenantRepo, auditRepo)
@@ -210,6 +211,7 @@ func main() {
 	log.Printf("  - EmailService: %T", emailService)
 	log.Printf("  - OTPService: %T", otpService)
 	log.Printf("  - PasswordService: %T", passwordService)
+	log.Printf("  - SkipEmailVerification: %v", cfg.SkipEmailVerification)
 
 	// Start HTTP server
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)

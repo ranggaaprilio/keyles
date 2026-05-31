@@ -51,45 +51,45 @@ export function UserSessions({ userId }: UserSessionsProps) {
 
   if (list.length === 0) {
     return (
-      <p className="text-sm text-gray-500 py-4">
+      <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 py-4">
         No active sessions for this user.
       </p>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="bg-white border border-black shadow-[2px_2px_0_#000] overflow-hidden">
+      <table className="min-w-full divide-y divide-black">
+        <thead className="bg-gray-100 border-b border-black">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
               Client
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
               Created
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
               Last Activity
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
               Expires
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" />
+            <th className="px-6 py-3 text-right font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black" />
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-black">
           {list.map((s) => (
             <tr key={s.id}>
-              <td className="px-6 py-3 text-sm">
+              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm">
                 {s.client_name ?? s.client_id}
               </td>
-              <td className="px-6 py-3 text-sm text-gray-500">
+              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
                 {formatRelative(s.created_at)}
               </td>
-              <td className="px-6 py-3 text-sm text-gray-500">
+              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
                 {formatRelative(s.last_used_at)}
               </td>
-              <td className="px-6 py-3 text-sm text-gray-500">
+              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
                 {new Date(s.expires_at).toLocaleDateString()}
               </td>
               <td className="px-6 py-3 text-right">

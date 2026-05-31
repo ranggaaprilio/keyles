@@ -158,6 +158,7 @@ func TestRegisterTenant(t *testing.T) {
 				emailSvc,
 				otpSvc,
 				pwdSvc,
+				false, // skipEmailVerification
 			)
 
 			// Execute
@@ -186,4 +187,48 @@ func TestRegisterTenant(t *testing.T) {
 			pwdSvc.AssertExpectations(t)
 		})
 	}
+}
+// TestRegisterTenant_SkipEmailVerification tests that when skipEmailVerification is true,
+// the tenant is auto-activated without OTP or email
+func TestRegisterTenant_SkipEmailVerification(t *testing.T) {
+	tenantRepo := new(mocks.MockTenantRepository)
+	userRepo := new(mocks.MockUserRepository)
+	otpRepo := new(mocks.MockOTPRepository)
+	auditRepo := new(mocks.MockAuditRepository)
+	emailSvc := new(mocks.MockEmailService)
+	otpSvc := new(mocks.MockOTPService)
+	pwdSvc := new(mocks.MockPasswordService)
+	tenantRepo.On("OrganizationNameExists", mock.Anything, "SkipCorp").Return(false, nil)
+	userRepo.On("EmailExists", mock.Anything, "admin@skip.com").Return(false, nil)
+	pwdSvc.On("Hash", "Password123!").Return("hashed_password", nil)
+	tenantRepo.On("Create", mock.Anything, mock.AnythingOfType("*entities.Tenant")).Return(nil)
+	userRepo.On("Create", mock.Anything, mock.AnythingOfType("*entities.AdminUser")).Return(nil)
+	// Tenant.Update is called to persist auto-activation
+	tenantRepo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Tenant")).Return(nil)
+	auditRepo.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
+	// OTP and email should NOT be called
+	useCase := tenant.NewRegisterTenantUseCase(
+		tenantRepo,
+		userRepo,
+		otpRepo,
+		auditRepo,
+		emailSvc,
+		otpSvc,
+		pwdSvc,
+		true, // skipEmailVerification
+	)
+	ctx := context.Background()
+	result, err := useCase.Execute(ctx, "SkipCorp", "admin@skip.com", "Password123!", "Admin User")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, entities.TenantStatusActive, result.Status,
+		"tenant should be active when email verification is skipped")
+	assert.Contains(t, result.Message, "auto-activated")
+	// Verify OTP and email were never called
+	otpRepo.AssertNotCalled(t, "Create")
+	emailSvc.AssertNotCalled(t, "SendOTPEmail")
+	otpSvc.AssertNotCalled(t, "Generate")
+	tenantRepo.AssertExpectations(t)
+	userRepo.AssertExpectations(t)
+	auditRepo.AssertExpectations(t)
 }

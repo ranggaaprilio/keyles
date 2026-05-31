@@ -38,12 +38,12 @@ export function IntegrationDocs({ client }: IntegrationDocsProps) {
           {/* Authorization Code Flow (confidential) */}
           {isConfidential && (
             <TabsContent value="auth-code" className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
                 Standard Authorization Code flow for server-side applications.
               </p>
 
               <div>
-                <p className="text-sm font-medium mb-2">
+                <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] mb-2">
                   1. Redirect user to authorize
                 </p>
                 <CodeBlock language="cURL">
@@ -59,7 +59,7 @@ export function IntegrationDocs({ client }: IntegrationDocsProps) {
               </div>
 
               <div>
-                <p className="text-sm font-medium mb-2">
+                <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] mb-2">
                   2. Exchange code for tokens
                 </p>
                 <Tabs defaultValue="curl" className="w-full">
@@ -124,13 +124,13 @@ resp, err := http.PostForm("/oauth2/token", data)`}
           {/* PKCE Flow (public) */}
           {!isConfidential && (
             <TabsContent value="pkce" className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
                 PKCE (Proof Key for Code Exchange) flow for public clients
                 (SPAs, mobile apps).
               </p>
 
               <div>
-                <p className="text-sm font-medium mb-2">
+                <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] mb-2">
                   1. Generate PKCE parameters
                 </p>
                 <CodeBlock language="javascript">
@@ -142,7 +142,7 @@ const codeChallenge = base64url(sha256(codeVerifier));`}
               </div>
 
               <div>
-                <p className="text-sm font-medium mb-2">
+                <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] mb-2">
                   2. Redirect user to authorize with PKCE
                 </p>
                 <CodeBlock language="cURL">
@@ -158,7 +158,7 @@ const codeChallenge = base64url(sha256(codeVerifier));`}
               </div>
 
               <div>
-                <p className="text-sm font-medium mb-2">
+                <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] mb-2">
                   3. Exchange code with code_verifier
                 </p>
                 <Tabs defaultValue="curl" className="w-full">
@@ -219,7 +219,7 @@ resp, err := http.PostForm("/oauth2/token", data)`}
 
           {/* Token Exchange */}
           <TabsContent value="token" className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
               Successful token exchange returns access and refresh tokens.
             </p>
             <CodeBlock language="json">
@@ -236,7 +236,7 @@ resp, err := http.PostForm("/oauth2/token", data)`}
 
           {/* Token Refresh */}
           <TabsContent value="refresh" className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
               Use the refresh token to obtain new access tokens without
               re-authentication.
             </p>
@@ -250,8 +250,8 @@ resp, err := http.PostForm("/oauth2/token", data)`}
           </TabsContent>
         </Tabs>
 
-        <div className="mt-4 pt-4 border-t">
-          <p className="text-xs text-muted-foreground">
+        <div className="mt-4 pt-4 border-t border-black">
+          <p className="text-xs text-gray-600 font-['Times_New_Roman',Times,serif]">
             <strong>Redirect URI Requirements:</strong> All redirect URIs must
             use HTTPS in production. HTTP is only allowed for{" "}
             <code>localhost</code> and <code>127.0.0.1</code> during
@@ -273,10 +273,10 @@ function CodeBlock({
 }) {
   return (
     <div className="relative">
-      <div className="absolute top-2 right-2 text-xs text-muted-foreground">
+      <div className="absolute top-2 right-2 text-xs text-gray-600 font-[Helvetica,Arial,system-ui,sans-serif]">
         {language}
       </div>
-      <pre className="bg-muted p-3 rounded-md text-sm overflow-x-auto">
+      <pre className="bg-gray-100 border border-black p-3 text-sm overflow-x-auto font-mono">
         <code>{children}</code>
       </pre>
     </div>

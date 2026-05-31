@@ -1,5 +1,5 @@
 /**
- * AcceptInvitationForm — password creation form for invitation acceptance
+ * AcceptInvitationForm — Dell 1996 retro style
  */
 
 import { useForm } from "react-hook-form";
@@ -38,17 +38,15 @@ function strengthLevel(pw: string): {
   if (/[0-9]/.test(pw)) score++;
   if (/[^a-zA-Z0-9]/.test(pw)) score++;
 
-  if (score <= 1) return { label: "Weak", color: "bg-red-500", width: "w-1/4" };
-  if (score <= 2)
-    return { label: "Fair", color: "bg-yellow-500", width: "w-1/2" };
-  if (score <= 3)
-    return { label: "Good", color: "bg-blue-500", width: "w-3/4" };
-  return { label: "Strong", color: "bg-green-500", width: "w-full" };
+  if (score <= 1) return { label: "Weak", color: "bg-red-700", width: "w-1/4" };
+  if (score <= 2) return { label: "Fair", color: "bg-yellow-600", width: "w-1/2" };
+  if (score <= 3) return { label: "Good", color: "bg-blue-700", width: "w-3/4" };
+  return { label: "Strong", color: "bg-green-700", width: "w-full" };
 }
 
 interface AcceptInvitationFormProps {
   email: string;
-  displayName: string;
+  displayName?: string;
   onSubmit: (password: string) => Promise<void>;
   isSubmitting: boolean;
   error?: string;
@@ -80,56 +78,65 @@ export function AcceptInvitationForm({
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
       {/* Read-only email */}
-      <div className="space-y-2">
+      <div>
         <Label>Email</Label>
-        <Input value={email} disabled className="bg-gray-50" />
+        <Input value={email} disabled className="mt-1 bg-gray-100" />
       </div>
 
       {displayName && (
-        <div className="space-y-2">
+        <div>
           <Label>Name</Label>
-          <Input value={displayName} disabled className="bg-gray-50" />
+          <Input value={displayName} disabled className="mt-1 bg-gray-100" />
         </div>
       )}
 
       {/* Password */}
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="password">Password *</Label>
-        <Input id="password" type="password" {...register("password")} />
+        <Input id="password" type="password" {...register("password")} className="mt-1" />
         {password.length > 0 && (
-          <div className="space-y-1">
-            <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+          <div className="mt-1 space-y-1">
+            <div className="h-1.5 w-full bg-gray-200 overflow-hidden border border-black">
               <div
                 className={`h-full ${strength.color} ${strength.width} transition-all`}
               />
             </div>
-            <p className="text-xs text-gray-500">{strength.label}</p>
+            <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-600">
+              {strength.label}
+            </p>
           </div>
         )}
         {errors.password && (
-          <p className="text-sm text-red-600">{errors.password.message}</p>
+          <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-700">
+            {errors.password.message}
+          </p>
         )}
       </div>
 
       {/* Confirm password */}
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="confirmPassword">Confirm Password *</Label>
         <Input
           id="confirmPassword"
           type="password"
           {...register("confirmPassword")}
+          className="mt-1"
         />
         {errors.confirmPassword && (
-          <p className="text-sm text-red-600">
+          <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-700">
             {errors.confirmPassword.message}
           </p>
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Creating Account..." : "Create Account"}
+        {isSubmitting ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
       </Button>
     </form>
   );

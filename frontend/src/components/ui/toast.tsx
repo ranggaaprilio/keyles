@@ -21,40 +21,42 @@ export function Toast({ id, type, message, duration = 5000, onClose }: ToastProp
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => onClose(id), 300); // Wait for fade out animation
+      setTimeout(() => onClose(id), 300);
     }, duration);
 
     return () => clearTimeout(timer);
   }, [id, duration, onClose]);
 
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-600" />,
-    error: <XCircle className="w-5 h-5 text-red-600" />,
-    info: <Info className="w-5 h-5 text-blue-600" />,
+    success: <CheckCircle className="h-4 w-4 text-green-700" />,
+    error: <XCircle className="h-4 w-4 text-red-700" />,
+    info: <Info className="h-4 w-4 text-blue-700" />,
   };
 
-  const colors = {
-    success: 'bg-green-50 border-green-200',
-    error: 'bg-red-50 border-red-200',
-    info: 'bg-blue-50 border-blue-200',
+  const borderColors = {
+    success: 'border-l-4 border-l-green-700',
+    error: 'border-l-4 border-l-red-700',
+    info: 'border-l-4 border-l-blue-700',
   };
 
   return (
     <div
-      className={`${colors[type]} ${
-        isVisible ? 'animate-slide-in' : 'animate-slide-out'
-      } flex items-center gap-3 p-4 rounded-lg border shadow-lg max-w-md transition-all`}
+      className={`
+        flex items-center gap-3 border border-black bg-white px-4 py-3
+        shadow-[2px_2px_0_#000] transition-all duration-300
+        ${borderColors[type]}
+        ${isVisible ? 'animate-slide-in' : 'animate-slide-out'}
+      `}
     >
       {icons[type]}
-      <p className="flex-1 text-sm font-medium text-gray-900">{message}</p>
+      <p className="flex-1 font-['Times_New_Roman',Times,serif] text-sm text-black">
+        {message}
+      </p>
       <button
-        onClick={() => {
-          setIsVisible(false);
-          setTimeout(() => onClose(id), 300);
-        }}
-        className="text-gray-400 hover:text-gray-600 transition-colors"
+        onClick={() => onClose(id)}
+        className="text-gray-500 hover:text-black"
       >
-        <X className="w-4 h-4" />
+        <X className="h-4 w-4" />
       </button>
     </div>
   );
@@ -93,21 +95,21 @@ export function useToast() {
     message: string;
   }>>([]);
 
-  const showToast = (type: ToastType, message: string) => {
-    const id = Math.random().toString(36).substring(7);
+  const addToast = (type: ToastType, message: string) => {
+    const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, message }]);
   };
 
-  const closeToast = (id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
   return {
     toasts,
-    showToast,
-    closeToast,
-    success: (message: string) => showToast('success', message),
-    error: (message: string) => showToast('error', message),
-    info: (message: string) => showToast('info', message),
+    addToast,
+    removeToast,
+    success: (message: string) => addToast('success', message),
+    error: (message: string) => addToast('error', message),
+    info: (message: string) => addToast('info', message),
   };
 }

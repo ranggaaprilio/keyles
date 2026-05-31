@@ -18,6 +18,30 @@ export default {
     },
     extend: {
       colors: {
+        // Dell 1996 brand colors
+        "dell-red": "hsl(var(--dell-red))",
+        "dell-yellow": "hsl(var(--dell-yellow))",
+        "dell-purple": "hsl(var(--dell-purple))",
+
+        // Surface
+        "frame-ink": "hsl(var(--frame-ink))",
+        "canvas": "hsl(var(--canvas))",
+
+        // Text
+        ink: "hsl(var(--ink))",
+        link: "hsl(var(--link))",
+
+        // Ribbon-card tint family
+        "tint-olive": "hsl(var(--tint-olive))",
+        "tint-sage": "hsl(var(--tint-sage))",
+        "tint-salmon": "hsl(var(--tint-salmon))",
+        "tint-peach": "hsl(var(--tint-peach))",
+        "tint-lime": "hsl(var(--tint-lime))",
+        "tint-sky": "hsl(var(--tint-sky))",
+        "tint-steel": "hsl(var(--tint-steel))",
+        "tint-periwinkle": "hsl(var(--tint-periwinkle))",
+
+        // Semantic — mapped to Dell 1996 primitives
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -56,6 +80,12 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        display: ['"Arial Black"', 'Helvetica', 'system-ui', 'sans-serif'],
+        heading: ['Helvetica', 'Arial', 'system-ui', 'sans-serif'],
+        body: ['"Times New Roman"', 'Times', 'serif'],
+        ui: ['Helvetica', 'Arial', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         "accordion-down": {

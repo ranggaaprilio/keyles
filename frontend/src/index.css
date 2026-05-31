@@ -4,48 +4,76 @@
 
 @layer base {
   :root {
+    /* Brand & Accent — Dell 1996 */
+    --dell-red: 356 82% 54%;
+    --dell-yellow: 45 98% 53%;
+    --dell-purple: 272 64% 39%;
+
+    /* Surface */
+    --frame-ink: 0 0% 0%;
+    --canvas: 0 0% 100%;
+
+    /* Text */
+    --ink: 0 0% 0%;
+    --link: 240 100% 47%;
+
+    /* Ribbon-card tint family */
+    --tint-olive: 58 56% 34%;
+    --tint-sage: 74 17% 66%;
+    --tint-salmon: 0 54% 66%;
+    --tint-peach: 24 73% 63%;
+    --tint-lime: 91 31% 73%;
+    --tint-sky: 202 31% 69%;
+    --tint-steel: 197 17% 70%;
+    --tint-periwinkle: 230 53% 72%;
+
+    /* Semantic mapping for UI primitives */
     --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 16%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 356 82% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 0%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 5%;
-    --muted-foreground: 0 0% 73%;
-    --accent: 215 94% 37%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 30%;
+    --accent: 0 0% 0%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 0 0% 24%;
-    --input: 0 0% 24%;
-    --ring: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 356 82% 54%;
     --radius: 0rem;
+
+    /* On-colors */
+    --on-primary: 0 0% 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Dell 1996 has no dark mode — keep identical */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 356 82% 54%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 30%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0%;
+    --input: 0 0% 0%;
+    --ring: 356 82% 54%;
   }
 }
 
@@ -86,12 +114,108 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family:
-      Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    @apply bg-white text-black;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 14px;
+    line-height: 1.4;
   }
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 4rem;
   }
+
+  /* Dell 1996 retro link styling */
+  a {
+    color: #0000ee;
+    text-decoration: underline;
+  }
+  a:visited {
+    color: #551a8b;
+  }
+}
+
+/* Dell 1996 page frame — applied via body wrapper */
+.page-frame {
+  border: 8px solid #000;
+  min-height: 100vh;
+}
+
+@media (max-width: 768px) {
+  .page-frame {
+    border-width: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-frame {
+    border-width: 2px;
+  }
+}
+
+/* Typography utility classes */
+.typ-display {
+  font-family: "Arial Black", "Helvetica", system-ui, sans-serif;
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1.0;
+  text-transform: uppercase;
+}
+
+.typ-heading-1 {
+  font-family: "Arial Black", "Helvetica", system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.typ-heading-2 {
+  font-family: "Helvetica", "Arial", system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.typ-heading-3 {
+  font-family: "Helvetica", "Arial", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.typ-body {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.typ-body-sm {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.typ-caption {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.typ-button {
+  font-family: "Helvetica", "Arial", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.0;
+  text-transform: uppercase;
+}
+
+.typ-ui-label {
+  font-family: "Helvetica", "Arial", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.0;
+  text-transform: uppercase;
 }

@@ -30,16 +30,22 @@ const queryClient = new QueryClient({
 // 404 Page
 function NotFoundPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="text-center">
-        <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-8">Page not found</p>
-        <a
-          href="/"
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Go Home
-        </a>
+    <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="w-full max-w-md text-center">
+        <div className="bg-[#d77a7a] px-4 py-6">
+          <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[48px] font-black uppercase leading-[1.0] text-black">404</h1>
+        </div>
+        <div className="border-x border-b border-black bg-white p-4">
+          <p className="font-['Times_New_Roman',Times,serif] text-sm text-black mb-4">
+            Page not found. The requested resource does not exist.
+          </p>
+          <a
+            href="/"
+            className="inline-block px-4 py-1.5 border border-black bg-black text-white font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1.5px] hover:bg-gray-800 transition-colors"
+          >
+            Go Home
+          </a>
+        </div>
       </div>
     </div>
   );

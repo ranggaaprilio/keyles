@@ -85,38 +85,42 @@ export function ConsentScreen({
   const buttonDisabled = isLoading || isApproving || isDenying;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-8 text-white text-center">
-          <div className="flex justify-center mb-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-['Times_New_Roman',Times,serif]">
+      <div className="w-full max-w-md bg-white border border-black shadow-[2px_2px_0_#000] overflow-hidden">
+        {/* Periwinkle Eyebrow */}
+        <div className="bg-[#8c9ae0] px-6 py-4">
+          <div className="flex justify-center mb-3">
             {client.logo_uri ? (
               <img
                 src={client.logo_uri}
                 alt={`${client.client_name} logo`}
-                className="h-16 w-16 rounded-full bg-white p-1"
+                className="h-16 w-16 border-2 border-black bg-white p-1"
               />
             ) : (
-              <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center text-2xl">
+              <div className="h-16 w-16 border-2 border-black bg-white flex items-center justify-center text-2xl">
                 🔑
               </div>
             )}
           </div>
-          <h1 className="text-xl font-bold mb-2">{client.client_name}</h1>
-          <p className="text-blue-100 text-sm">wants to access your account</p>
-        </div>
-
-        {/* User info */}
-        <div className="px-6 py-4 bg-gray-50 border-b">
-          <p className="text-sm text-gray-600 text-center">
-            Signing in as{" "}
-            <span className="font-medium text-gray-900">{user}</span>
+          <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-white text-center text-lg">
+            {client.client_name}
+          </h1>
+          <p className="text-white/80 text-sm text-center font-['Times_New_Roman',Times,serif]">
+            wants to access your account
           </p>
         </div>
 
-        {/* Permissions */}
+        {/* User info */}
+        <div className="px-6 py-3 bg-gray-100 border-b border-black">
+          <p className="text-sm text-gray-600 text-center font-['Times_New_Roman',Times,serif]">
+            Signing in as{" "}
+            <span className="font-bold text-black">{user}</span>
+          </p>
+        </div>
+
+        {/* Permissions - Ribbon Cards */}
         <div className="px-6 py-6">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+          <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-700 mb-4">
             This will allow {client.client_name} to:
           </h2>
 
@@ -131,12 +135,19 @@ export function ConsentScreen({
               return (
                 <li
                   key={scope}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-gray-50"
+                  className="border border-black shadow-[2px_2px_0_#000]"
                 >
-                  <span className="text-xl flex-shrink-0">{info.icon}</span>
-                  <div>
-                    <p className="font-medium text-gray-900">{info.name}</p>
-                    <p className="text-sm text-gray-600">{info.description}</p>
+                  {/* Ribbon card title bar */}
+                  <div className="bg-white border-b border-black px-3 py-1.5">
+                    <span className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px]">
+                      {info.icon} {info.name}
+                    </span>
+                  </div>
+                  {/* Tinted body */}
+                  <div className="bg-[#8c9ae0]/15 px-3 py-2">
+                    <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                      {info.description}
+                    </p>
                   </div>
                 </li>
               );
@@ -146,14 +157,14 @@ export function ConsentScreen({
 
         {/* Policy links */}
         {(client.policy_uri || client.tos_uri) && (
-          <div className="px-6 py-3 bg-gray-50 border-t border-b text-center text-sm text-gray-500">
-            By clicking Allow, you agree to {client.client_name}'s{" "}
+          <div className="px-6 py-3 bg-gray-100 border-y border-black text-center text-sm text-gray-500 font-['Times_New_Roman',Times,serif]">
+            By clicking Allow, you agree to {client.client_name}&apos;s{" "}
             {client.tos_uri && (
               <a
                 href={client.tos_uri}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-[#0000ee] underline"
               >
                 Terms of Service
               </a>
@@ -164,7 +175,7 @@ export function ConsentScreen({
                 href={client.policy_uri}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
+                className="text-[#0000ee] underline"
               >
                 Privacy Policy
               </a>
@@ -178,7 +189,7 @@ export function ConsentScreen({
             type="button"
             onClick={handleDeny}
             disabled={buttonDisabled}
-            className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 px-4 py-3 text-[12px] font-bold uppercase tracking-[1.5px] font-[Helvetica,Arial,system-ui,sans-serif] border border-black bg-white text-black hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-dell-red disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isDenying ? (
               <span className="flex items-center justify-center gap-2">
@@ -209,7 +220,7 @@ export function ConsentScreen({
             type="button"
             onClick={handleApprove}
             disabled={buttonDisabled}
-            className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 px-4 py-3 text-[12px] font-bold uppercase tracking-[1.5px] font-[Helvetica,Arial,system-ui,sans-serif] border border-black bg-black text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-dell-red focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isApproving ? (
               <span className="flex items-center justify-center gap-2">
@@ -238,8 +249,8 @@ export function ConsentScreen({
         </div>
 
         {/* Security notice */}
-        <div className="px-6 py-3 bg-amber-50 border-t">
-          <p className="text-xs text-amber-800 text-center">
+        <div className="px-6 py-3 bg-amber-100 border-t border-black">
+          <p className="text-xs text-amber-900 text-center font-['Times_New_Roman',Times,serif]">
             ⚠️ Only grant access to applications you trust. You can revoke
             access at any time.
           </p>
@@ -247,8 +258,8 @@ export function ConsentScreen({
       </div>
 
       {/* Footer */}
-      <p className="mt-6 text-sm text-gray-500">
-        Protected by <span className="font-medium">Keyles SSO</span>
+      <p className="mt-6 text-sm text-gray-500 font-['Times_New_Roman',Times,serif]">
+        Protected by <span className="font-bold">Keyles SSO</span>
       </p>
     </div>
   );

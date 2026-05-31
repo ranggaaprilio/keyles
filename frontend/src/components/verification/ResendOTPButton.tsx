@@ -1,6 +1,5 @@
 /**
- * Resend OTP Button Component
- * With countdown timer using Zustand
+ * Resend OTP Button — Dell 1996 retro style
  */
 
 import { useEffect } from 'react';
@@ -24,7 +23,7 @@ export function ResendOTPButton({
   const { resendMutation, isResending } = useOTPVerification({
     onResendSuccess: (data) => {
       onSuccess(data.message);
-      startCountdown(60); // Start 60 second countdown
+      startCountdown(60);
     },
     onResendError: (error) => {
       onError(error.message);
@@ -32,16 +31,12 @@ export function ResendOTPButton({
   });
 
   useEffect(() => {
-    // Start initial countdown on mount (assuming OTP was just sent during registration)
     startCountdown(60);
   }, [startCountdown]);
 
   const handleResend = () => {
     if (isActive || isResending) return;
-
-    resendMutation.mutate({
-      tenant_id: tenantId,
-    });
+    resendMutation.mutate({ tenant_id: tenantId });
   };
 
   const isDisabled = isActive || isResending;
@@ -52,18 +47,18 @@ export function ResendOTPButton({
         type="button"
         onClick={handleResend}
         disabled={isDisabled}
-        className={`text-sm font-medium ${
-          isDisabled
+        className={`font-['Times_New_Roman',Times,serif] text-sm inline-flex items-center gap-2
+          ${isDisabled
             ? 'text-gray-400 cursor-not-allowed'
-            : 'text-blue-600 hover:text-blue-700 hover:underline'
-        } transition-colors inline-flex items-center gap-2`}
+            : 'text-[#0000ee] underline hover:text-[#551a8b]'
+          } transition-colors`}
       >
         {isResending && <Loader2 className="w-4 h-4 animate-spin" />}
         {isResending ? 'Sending...' : isActive ? `Resend code in ${countdown}s` : 'Resend code'}
       </button>
       {!isActive && !isResending && (
-        <p className="text-xs text-gray-500 mt-1">
-          Didn't receive the code?
+        <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-500 mt-1">
+          Didn&apos;t receive the code?
         </p>
       )}
     </div>

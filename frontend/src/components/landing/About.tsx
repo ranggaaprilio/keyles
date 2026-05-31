@@ -2,35 +2,52 @@ import { ScrollReveal } from "./ScrollReveal";
 
 export const About = () => {
   return (
-    <section id="about" className="bg-black">
-      <div
-        className="min-h-[560px] bg-cover bg-center"
-        style={{
-          backgroundImage:
-            "linear-gradient(90deg, rgba(0,0,0,.88), rgba(0,0,0,.28)), url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=2400&q=85')",
-        }}
-      >
-        <div className="mx-auto flex min-h-[560px] max-w-[1440px] items-center px-5 py-24 md:px-8">
-          <div className="max-w-2xl">
-            <ScrollReveal width="100%">
-              <p className="mb-3 text-sm font-bold uppercase tracking-[1.5px] text-[#bbbbbb]">
-                Security control
-              </p>
-              <h2 className="text-4xl font-bold uppercase leading-tight text-white md:text-6xl">
-                Built for tenants that cannot lose the line.
-              </h2>
-            </ScrollReveal>
-
-            <ScrollReveal width="100%" delay={0.2}>
-              <p className="mt-6 text-lg font-light leading-8 text-[#e6e6e6]">
-                Keyles keeps identity management direct: tenant onboarding,
-                OAuth clients, session visibility, and user roles all share one
-                operating surface. Security stays strict without burying teams in
-                avoidable ceremony.
-              </p>
-            </ScrollReveal>
+    <section id="about" className="bg-white">
+      <div className="mx-auto max-w-[760px]">
+        {/* Section eyebrow — salmon */}
+        <ScrollReveal width="100%">
+          <div className="bg-[#d77a7a] px-4 py-6">
+            <p className="mb-1 font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+              Security Control
+            </p>
+            <h2 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[36px] font-black uppercase leading-[1.0] text-black">
+              BUILT FOR TENANTS<br />
+              THAT CANNOT LOSE<br />
+              THE LINE.
+            </h2>
           </div>
-        </div>
+        </ScrollReveal>
+
+        {/* CTA red panel */}
+        <ScrollReveal width="100%" delay={0.15}>
+          <div className="border-x border-b border-black bg-[#e91d2a] p-4">
+            <p className="font-['Times_New_Roman',Times,serif] text-sm leading-[1.4] text-[#fffff0]">
+              Keyles keeps identity management direct: tenant onboarding,
+              OAuth clients, session visibility, and user roles all share one
+              operating surface. Security stays strict without burying teams in
+              avoidable ceremony.
+            </p>
+          </div>
+        </ScrollReveal>
+
+        {/* Support ribbon card — steel */}
+        <ScrollReveal width="100%" delay={0.3}>
+          <div className="border-x border-b border-black">
+            <div className="border-b border-black bg-white px-3 py-1.5">
+              <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
+                FROM KEYLES&apos; AWARD-WINNING SERVICE AND SUPPORT TEAMS
+              </h3>
+            </div>
+            <div className="bg-[#a5b8c0] px-4 py-3">
+              <p className="font-['Times_New_Roman',Times,serif] text-sm leading-[1.4] text-black">
+                Every tenant comes with built-in monitoring, session audit
+                trails, and direct configuration tools. No third-party
+                dependencies, no hidden complexity — just clear identity
+                infrastructure that works.
+              </p>
+            </div>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );
