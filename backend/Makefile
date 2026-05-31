@@ -1,4 +1,4 @@
-.PHONY: build run test test-coverage migrate-up migrate-down seed clean docker-up docker-down dev-infra dev-db dev test-docker keygen help
+.PHONY: build run test test-coverage migrate-up migrate-down seed clean docker-up docker-down dev-infra dev-db dev test-docker keygen docker-build docker-buildx help
 
 # Variables
 BINARY_NAME=server
@@ -27,6 +27,8 @@ help:
 	@echo "  dev-db         - Run migrations and seed data"
 	@echo "  dev            - Prepare local dependencies and run server"
 	@echo "  test-docker    - Run integration tests with Docker dependencies"
+	@echo "  docker-build  - Build Docker image for native architecture"
+	@echo "  docker-buildx - Build multi-arch image (amd64+arm64) and push"
 
 # Build the application
 build:
@@ -110,3 +112,19 @@ dev: dev-infra dev-db
 test-docker: docker-up
 	@echo "Running tests in Docker environment..."
 	@trap '$(MAKE) docker-down' EXIT; go test -v ./tests/integration/...
+
+
+# Build Docker image for native architecture
+docker-build:
+	@echo "Building Docker image for native architecture..."
+	@docker build -t keyles-backend:latest .
+	@echo "✓ Docker image built: keyles-backend:latest"
+
+# Build multi-architecture Docker image (requires docker buildx + push to registry)
+docker-buildx:
+	@echo "Creating/using buildx builder..."
+	@docker buildx inspect multiarch-builder >/dev/null 2>&1 || docker buildx create --name multiarch-builder --use
+	@docker buildx use multiarch-builder
+	@echo "Building multi-arch image (amd64+arm64)..."
+	@docker buildx build --platform linux/amd64,linux/arm64 -t keyles-backend:latest --push .
+	@echo "✓ Multi-arch image pushed: keyles-backend:latest"

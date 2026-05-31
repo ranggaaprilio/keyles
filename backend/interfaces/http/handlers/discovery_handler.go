@@ -10,23 +10,23 @@ import (
 // OIDCConfiguration represents the OpenID Connect Discovery metadata
 // per RFC 8414 and OpenID Connect Discovery 1.0 (FR-041)
 type OIDCConfiguration struct {
-	Issuer                           string   `json:"issuer"`
-	AuthorizationEndpoint            string   `json:"authorization_endpoint"`
-	TokenEndpoint                    string   `json:"token_endpoint"`
-	UserInfoEndpoint                 string   `json:"userinfo_endpoint"`
-	JwksURI                          string   `json:"jwks_uri"`
-	RegistrationEndpoint             string   `json:"registration_endpoint,omitempty"`
-	ScopesSupported                  []string `json:"scopes_supported"`
-	ResponseTypesSupported           []string `json:"response_types_supported"`
-	ResponseModesSupported           []string `json:"response_modes_supported,omitempty"`
-	GrantTypesSupported              []string `json:"grant_types_supported"`
-	SubjectTypesSupported            []string `json:"subject_types_supported"`
-	IDTokenSigningAlgValuesSupported []string `json:"id_token_signing_alg_values_supported"`
+	Issuer                            string   `json:"issuer"`
+	AuthorizationEndpoint             string   `json:"authorization_endpoint"`
+	TokenEndpoint                     string   `json:"token_endpoint"`
+	UserInfoEndpoint                  string   `json:"userinfo_endpoint"`
+	JwksURI                           string   `json:"jwks_uri"`
+	RegistrationEndpoint              string   `json:"registration_endpoint,omitempty"`
+	ScopesSupported                   []string `json:"scopes_supported"`
+	ResponseTypesSupported            []string `json:"response_types_supported"`
+	ResponseModesSupported            []string `json:"response_modes_supported,omitempty"`
+	GrantTypesSupported               []string `json:"grant_types_supported"`
+	SubjectTypesSupported             []string `json:"subject_types_supported"`
+	IDTokenSigningAlgValuesSupported  []string `json:"id_token_signing_alg_values_supported"`
 	TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
-	ClaimsSupported                  []string `json:"claims_supported,omitempty"`
-	CodeChallengeMethodsSupported    []string `json:"code_challenge_methods_supported"`
-	RevocationEndpoint               string   `json:"revocation_endpoint,omitempty"`
-	IntrospectionEndpoint            string   `json:"introspection_endpoint,omitempty"`
+	ClaimsSupported                   []string `json:"claims_supported,omitempty"`
+	CodeChallengeMethodsSupported     []string `json:"code_challenge_methods_supported"`
+	RevocationEndpoint                string   `json:"revocation_endpoint,omitempty"`
+	IntrospectionEndpoint             string   `json:"introspection_endpoint,omitempty"`
 }
 
 // DiscoveryHandler handles OIDC discovery endpoints
@@ -53,6 +53,7 @@ func (h *DiscoveryHandler) OpenIDConfiguration(c *gin.Context) {
 		UserInfoEndpoint:      h.issuer + "/oauth2/userinfo",
 		JwksURI:               h.issuer + "/.well-known/jwks.json",
 		RevocationEndpoint:    h.issuer + "/oauth2/revoke",
+		IntrospectionEndpoint: h.issuer + "/oauth2/introspect",
 
 		// Supported scopes
 		ScopesSupported: []string{
@@ -92,6 +93,7 @@ func (h *DiscoveryHandler) OpenIDConfiguration(c *gin.Context) {
 		TokenEndpointAuthMethodsSupported: []string{
 			"client_secret_basic",
 			"client_secret_post",
+			"none",
 		},
 
 		// PKCE - S256 only (FR-008)
@@ -116,6 +118,7 @@ func (h *DiscoveryHandler) OpenIDConfiguration(c *gin.Context) {
 			"tenant_id",
 			"client_id",
 			"scope",
+			"roles",
 		},
 	}
 

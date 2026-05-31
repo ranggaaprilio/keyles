@@ -72,6 +72,7 @@ func (s *RSATokenService) signToken(ctx context.Context, claims *services.TokenC
 		"tenant_id":      claims.TenantID,
 		"client_id":      claims.ClientID,
 		"scope":          claims.Scope,
+		"roles":          claims.Roles,
 	})
 
 	// Set the key ID in the header
@@ -91,7 +92,7 @@ func (s *RSATokenService) ValidateTokenSignature(ctx context.Context, tokenStrin
 	// Parse the token to get the key ID
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Validate signing method
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+		if token.Method != jwt.SigningMethodRS256 {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
@@ -141,6 +142,7 @@ func (s *RSATokenService) ValidateTokenSignature(ctx context.Context, tokenStrin
 		TenantID:      getString(claims, "tenant_id"),
 		ClientID:      getString(claims, "client_id"),
 		Scope:         getString(claims, "scope"),
+		Roles:         getStringArray(claims, "roles"),
 	}
 
 	return tokenClaims, nil

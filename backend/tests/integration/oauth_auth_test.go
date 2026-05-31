@@ -246,6 +246,12 @@ func setupOAuthRouter(t *testing.T) (*gin.Engine, *MockIntegrationClientReposito
 			IsActive: true,
 		},
 	}
+	endUserRepo.users["user_123"] = &entities.User{
+		ID: "user_123", TenantID: "tenant_xyz", Status: entities.UserStatusActive,
+	}
+	endUserRepo.users["user_no_role"] = &entities.User{
+		ID: "user_no_role", TenantID: "tenant_xyz", Status: entities.UserStatusActive,
+	}
 
 	authorizeClientUC := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo, endUserRepo)
 	oauthHandler := handlers.NewOAuthHandler(authorizeClientUC, nil, clientRepo)
@@ -498,4 +504,33 @@ func TestOAuthHandler_Authorize_PlainPKCENotAllowed(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid_request")
+}
+
+func TestOAuthHandler_Authorize_PreservesRedirectQuery(t *testing.T) {
+	router, clientRepo, _, _, _ := setupOAuthRouter(t)
+	clientRepo.clients["test_client_123"].AllowedRedirectURIs = append(
+		clientRepo.clients["test_client_123"].AllowedRedirectURIs,
+		"https://app.example.com/callback?existing=value",
+	)
+
+	params := url.Values{}
+	params.Set("client_id", "test_client_123")
+	params.Set("redirect_uri", "https://app.example.com/callback?existing=value")
+	params.Set("response_type", "code")
+	params.Set("scope", "openid")
+	params.Set("state", "csrf state")
+	params.Set("code_challenge", "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM")
+	params.Set("code_challenge_method", "S256")
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth2/auth?"+params.Encode(), nil)
+	req.Header.Set("X-User-ID", "user_123")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusFound, w.Code)
+	redirectURL, err := url.Parse(w.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, "value", redirectURL.Query().Get("existing"))
+	assert.Equal(t, "csrf state", redirectURL.Query().Get("state"))
+	assert.NotEmpty(t, redirectURL.Query().Get("code"))
 }

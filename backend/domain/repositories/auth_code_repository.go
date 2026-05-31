@@ -2,10 +2,13 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
 )
+
+var ErrAuthorizationCodeUnavailable = errors.New("authorization code is missing, expired, or already consumed")
 
 // AuthCodeRepository defines the interface for authorization code storage in Redis
 // Authorization codes are ephemeral with 5-minute TTL
@@ -24,4 +27,11 @@ type AuthCodeRepository interface {
 
 	// Exists checks if an authorization code exists
 	Exists(ctx context.Context, code string) (bool, error)
+}
+
+// AtomicAuthCodeRepository atomically consumes one-time authorization codes.
+// Implementations must return an error when the code is missing, expired, or
+// has already been consumed.
+type AtomicAuthCodeRepository interface {
+	Consume(ctx context.Context, code string) (*entities.AuthorizationCode, error)
 }

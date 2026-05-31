@@ -100,6 +100,31 @@ func TestRevokeToken_AlreadyRevoked(t *testing.T) {
 	mockRefreshTokenRepo.AssertNotCalled(t, "Revoke")
 }
 
+func TestRevokeToken_DifferentClientDoesNotRevoke(t *testing.T) {
+	ctx := context.Background()
+	mockRefreshTokenRepo := new(mocks.MockRefreshTokenRepository)
+
+	token := &entities.RefreshToken{
+		Token:       "hashed-token",
+		ClientID:    "owning-client",
+		RevokedFlag: false,
+		ExpiresAt:   time.Now().Add(7 * 24 * time.Hour),
+	}
+
+	mockRefreshTokenRepo.On("GetByToken", ctx, mock.AnythingOfType("string")).Return(token, nil)
+
+	uc := auth.NewRevokeToken(mockRefreshTokenRepo)
+	err := uc.Execute(ctx, auth.RevokeTokenRequest{
+		Token:         "raw-refresh-token",
+		TokenTypeHint: "refresh_token",
+		ClientID:      "different-client",
+	})
+
+	assert.NoError(t, err)
+	mockRefreshTokenRepo.AssertExpectations(t)
+	mockRefreshTokenRepo.AssertNotCalled(t, "Revoke")
+}
+
 // TestRevokeToken_MissingToken tests error handling for missing token parameter
 func TestRevokeToken_MissingToken(t *testing.T) {
 	// Arrange

@@ -15,6 +15,7 @@ type OAuthHandler struct {
 	issueTokenUC      *auth.IssueToken
 	refreshTokenUC    *auth.RefreshToken
 	revokeTokenUC     *auth.RevokeToken
+	introspectTokenUC *auth.IntrospectToken
 	clientRepo        repositories.ClientRepository
 }
 
@@ -68,12 +69,14 @@ func NewOAuthHandlerFull(
 	clientRepo repositories.ClientRepository,
 	refreshTokenUC *auth.RefreshToken,
 	revokeTokenUC *auth.RevokeToken,
+	introspectTokenUC *auth.IntrospectToken,
 ) *OAuthHandler {
 	return &OAuthHandler{
 		authorizeClientUC: authorizeClientUC,
 		issueTokenUC:      issueTokenUC,
 		refreshTokenUC:    refreshTokenUC,
 		revokeTokenUC:     revokeTokenUC,
+		introspectTokenUC: introspectTokenUC,
 		clientRepo:        clientRepo,
 	}
 }
@@ -92,11 +95,9 @@ func (h *OAuthHandler) Authorize(c *gin.Context) {
 
 	// Get user context from headers (in real implementation, this would come from session/cookie)
 	userID := c.GetHeader("X-User-ID")
-	tenantID := c.GetHeader("X-Tenant-ID")
-
 	// If user is not authenticated, we would redirect to login page
 	// For now, we require the headers to be set
-	if userID == "" || tenantID == "" {
+	if userID == "" {
 		// In a real implementation, we would redirect to login page
 		// preserving the authorization request parameters
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -116,7 +117,6 @@ func (h *OAuthHandler) Authorize(c *gin.Context) {
 		CodeChallenge:       codeChallenge,
 		CodeChallengeMethod: codeChallengeMethod,
 		UserID:              userID,
-		TenantID:            tenantID,
 	}
 
 	// Execute authorization
@@ -302,6 +302,14 @@ func (h *OAuthHandler) Revoke(c *gin.Context) {
 	// Extract form parameters
 	token := c.PostForm("token")
 	tokenTypeHint := c.PostForm("token_type_hint")
+	clientID, clientSecret := clientCredentials(c)
+
+	if h.clientRepo != nil {
+		if _, err := auth.AuthenticateOAuthClient(c.Request.Context(), h.clientRepo, clientID, clientSecret, true); err != nil {
+			h.handleOAuthError(c, err)
+			return
+		}
+	}
 
 	// Check if revoke token use case is available
 	if h.revokeTokenUC == nil {
@@ -316,6 +324,7 @@ func (h *OAuthHandler) Revoke(c *gin.Context) {
 	req := auth.RevokeTokenRequest{
 		Token:         token,
 		TokenTypeHint: tokenTypeHint,
+		ClientID:      clientID,
 	}
 
 	// Execute token revocation
@@ -327,4 +336,35 @@ func (h *OAuthHandler) Revoke(c *gin.Context) {
 
 	// Per RFC 7009, return HTTP 200 OK with empty body on success
 	c.Status(http.StatusOK)
+}
+
+// Introspect returns active OAuth token metadata to the confidential client
+// that owns the token audience.
+func (h *OAuthHandler) Introspect(c *gin.Context) {
+	if h.introspectTokenUC == nil {
+		c.JSON(http.StatusNotImplemented, gin.H{"error": auth.ErrUnsupportedGrantType})
+		return
+	}
+
+	clientID, clientSecret := clientCredentials(c)
+	response, err := h.introspectTokenUC.Execute(c.Request.Context(), c.PostForm("token"), clientID, clientSecret)
+	if err != nil {
+		h.handleOAuthError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func clientCredentials(c *gin.Context) (string, string) {
+	clientID := c.PostForm("client_id")
+	clientSecret := c.PostForm("client_secret")
+	if basicClientID, basicClientSecret, ok := c.Request.BasicAuth(); ok {
+		if clientID == "" {
+			clientID = basicClientID
+		}
+		if clientSecret == "" {
+			clientSecret = basicClientSecret
+		}
+	}
+	return clientID, clientSecret
 }

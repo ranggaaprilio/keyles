@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"time"
 
@@ -20,7 +21,7 @@ const (
 
 // Token TTLs
 const (
-	AccessTokenTTL  = 15 * time.Minute // FR-033: 15 minute access token
+	AccessTokenTTL  = 15 * time.Minute   // FR-033: 15 minute access token
 	RefreshTokenTTL = 7 * 24 * time.Hour // FR-035: 7 day refresh token
 )
 
@@ -52,6 +53,7 @@ type IssueToken struct {
 	clientRepo       repositories.ClientRepository
 	refreshTokenRepo repositories.RefreshTokenRepository
 	roleRepo         repositories.RoleRepository
+	endUserRepo      repositories.EndUserRepository
 	tokenService     services.TokenService
 	issuer           string
 }
@@ -64,12 +66,18 @@ func NewIssueToken(
 	roleRepo repositories.RoleRepository,
 	tokenService services.TokenService,
 	issuer string,
+	endUserRepos ...repositories.EndUserRepository,
 ) *IssueToken {
+	var endUserRepo repositories.EndUserRepository
+	if len(endUserRepos) > 0 {
+		endUserRepo = endUserRepos[0]
+	}
 	return &IssueToken{
 		authCodeRepo:     authCodeRepo,
 		clientRepo:       clientRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		roleRepo:         roleRepo,
+		endUserRepo:      endUserRepo,
 		tokenService:     tokenService,
 		issuer:           issuer,
 	}
@@ -92,7 +100,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 
 	// Retrieve authorization code (FR-023)
 	authCode, err := uc.authCodeRepo.Get(ctx, req.Code)
-	if err != nil {
+	if err != nil || authCode == nil {
 		return nil, &OAuthError{
 			Code:        ErrInvalidGrant,
 			Description: "authorization code is invalid or not found",
@@ -116,7 +124,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 	}
 
 	// Validate client credentials (FR-025)
-	_, err = uc.clientRepo.ValidateCredentials(ctx, req.ClientID, req.ClientSecret)
+	_, err = authenticateOAuthClient(ctx, uc.clientRepo, req.ClientID, req.ClientSecret, true)
 	if err != nil {
 		return nil, &OAuthError{
 			Code:        ErrInvalidClient,
@@ -145,22 +153,38 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		return nil, err
 	}
 
-	// Mark authorization code as used (FR-026)
-	if err := uc.authCodeRepo.MarkAsUsed(ctx, req.Code); err != nil {
+	// Atomically consume the authorization code (FR-026).
+	if err := consumeAuthorizationCode(ctx, uc.authCodeRepo, req.Code); err != nil {
+		if errors.Is(err, repositories.ErrAuthorizationCodeUnavailable) {
+			return nil, &OAuthError{
+				Code:        ErrInvalidGrant,
+				Description: "authorization code is invalid, expired, or already used",
+			}
+		}
 		return nil, &OAuthError{
 			Code:        ErrServerError,
 			Description: "failed to revoke authorization code",
 		}
 	}
 
+	var endUser *entities.User
+	if uc.endUserRepo != nil {
+		endUser, err = uc.endUserRepo.GetByID(ctx, authCode.UserID)
+		if err != nil || endUser == nil || endUser.TenantID != authCode.TenantID || endUser.Status == entities.UserStatusDisabled {
+			return nil, &OAuthError{Code: ErrInvalidGrant, Description: "user account is not eligible for token issuance"}
+		}
+	}
+
 	// Fetch active roles for JWT claims (FR-022, FR-024)
 	roles, err := uc.roleRepo.GetActiveRoles(ctx, authCode.UserID, authCode.ClientID)
 	if err != nil {
-		// Non-fatal: include empty array if roles cannot be fetched
-		roles = []string{}
+		return nil, &OAuthError{Code: ErrServerError, Description: "failed to load user roles"}
 	}
 	if roles == nil {
 		roles = []string{}
+	}
+	if len(roles) == 0 {
+		return nil, &OAuthError{Code: ErrInvalidGrant, Description: "user no longer has access to this client"}
 	}
 
 	// Generate tokens
@@ -180,6 +204,11 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		ClientID:  authCode.ClientID,
 		Scope:     authCode.Scope,
 		Roles:     roles,
+	}
+	if endUser != nil {
+		idTokenClaims.Email = endUser.Email
+		idTokenClaims.EmailVerified = true
+		idTokenClaims.Name = endUser.DisplayName
 	}
 
 	// Sign ID token (FR-036)
@@ -235,6 +264,7 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		Scope:     authCode.Scope,
 		ExpiresAt: refreshTokenExp,
 		CreatedAt: now,
+		FamilyID:  refreshTokenHash,
 	}
 
 	if err := uc.refreshTokenRepo.Create(ctx, refreshTokenEntity); err != nil {
@@ -269,12 +299,6 @@ func ValidateTokenRequest(req TokenRequest) error {
 			Description: "client_id is required",
 		}
 	}
-	if req.ClientSecret == "" {
-		return &OAuthError{
-			Code:        ErrInvalidRequest,
-			Description: "client_secret is required",
-		}
-	}
 	if req.RedirectURI == "" {
 		return &OAuthError{
 			Code:        ErrInvalidRequest,
@@ -300,18 +324,22 @@ func VerifyPKCE(codeVerifier, codeChallenge, codeChallengeMethod string) error {
 		}
 	}
 
-	// S256: code_challenge = BASE64URL(SHA256(code_verifier))
-	hash := sha256.Sum256([]byte(codeVerifier))
-	calculatedChallenge := base64.RawURLEncoding.EncodeToString(hash[:])
-
-	if calculatedChallenge != codeChallenge {
+	if err := verifyS256PKCE(codeVerifier, codeChallenge); err != nil {
 		return &OAuthError{
 			Code:        ErrInvalidGrant,
-			Description: "code_verifier does not match code_challenge",
+			Description: err.Error(),
 		}
 	}
 
 	return nil
+}
+
+func consumeAuthorizationCode(ctx context.Context, repo repositories.AuthCodeRepository, code string) error {
+	if atomicRepo, ok := repo.(repositories.AtomicAuthCodeRepository); ok {
+		_, err := atomicRepo.Consume(ctx, code)
+		return err
+	}
+	return repo.MarkAsUsed(ctx, code)
 }
 
 // generateRefreshToken generates a cryptographically secure refresh token

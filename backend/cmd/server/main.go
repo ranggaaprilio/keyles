@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
+	"github.com/ulule/limiter/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -21,7 +22,6 @@ import (
 	infraServices "github.com/ranggaaprilio/keyles/infrastructure/services"
 	httpServer "github.com/ranggaaprilio/keyles/interfaces/http"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
-	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
 	"github.com/ranggaaprilio/keyles/usecase/client"
 	"github.com/ranggaaprilio/keyles/usecase/role"
@@ -112,9 +112,12 @@ func main() {
 
 	// Initialize OAuth use cases
 	authorizeClientUseCase := auth.NewAuthorizeClient(clientRepo, roleRepo, authCodeRepo, endUserRepo)
-	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, cfg.OAuthIssuer)
-	getUserInfoUseCase := auth.NewGetUserInfo(userRepo, roleRepo)
+	issueTokenUseCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, cfg.OAuthIssuer, endUserRepo)
+	refreshTokenUseCase := auth.NewRefreshToken(refreshTokenRepo, clientRepo, tokenService, cfg.OAuthIssuer, roleRepo, endUserRepo)
+	getUserInfoUseCase := auth.NewGetUserInfo(endUserRepo, roleRepo)
 	revokeTokenUseCase := auth.NewRevokeToken(refreshTokenRepo)
+	oauthTokenValidator := auth.NewAccessTokenValidator(tokenService, clientRepo, endUserRepo, revokedClientCache, userBlacklist, cfg.OAuthIssuer)
+	introspectTokenUseCase := auth.NewIntrospectToken(clientRepo, oauthTokenValidator)
 
 	// Initialize user management use cases
 	inviteUserUseCase := user.NewInviteUser(endUserRepo, invitationRepo, userEventRepo, emailService, userCountCache)
@@ -146,7 +149,7 @@ func main() {
 		listClientsUseCase,
 		rotateSecretUseCase,
 	)
-	oauthHandler := handlers.NewOAuthHandler(authorizeClientUseCase, issueTokenUseCase, clientRepo)
+	oauthHandler := handlers.NewOAuthHandlerFull(authorizeClientUseCase, issueTokenUseCase, clientRepo, refreshTokenUseCase, revokeTokenUseCase, introspectTokenUseCase)
 	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
 	roleHandler := handlers.NewRoleHandler(assignRoleUseCase, revokeRoleUseCase, listUserRolesUseCase)
 	userHandler := handlers.NewUserHandler(
@@ -165,7 +168,10 @@ func main() {
 	userinfoHandler := handlers.NewUserinfoHandler(getUserInfoUseCase)
 
 	// Initialize middleware
-	rateLimiter := middleware.NewRateLimiter(redisClient)
+	rateLimiter, err := redisRepo.NewRedisRateLimiter(redisClient, limiter.Rate{Period: time.Minute, Limit: 10})
+	if err != nil {
+		log.Fatalf("Failed to initialize OAuth rate limiter: %v", err)
+	}
 
 	// Initialize router
 	router := httpServer.NewRouter(
@@ -188,6 +194,7 @@ func main() {
 		userinfoHandler,
 		jwtService,
 		userBlacklist,
+		oauthTokenValidator,
 		cfg.CORSAllowedOrigins,
 		cfg.CORSAllowedMethods,
 		cfg.CORSAllowedHeaders,

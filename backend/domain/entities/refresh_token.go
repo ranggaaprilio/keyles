@@ -7,18 +7,21 @@ import (
 
 // RefreshToken represents a refresh token in the OAuth flow
 type RefreshToken struct {
-	ID           int64
-	Token        string
-	UserID       string
-	ClientID     string
-	TenantID     string
-	Scope        string
-	ExpiresAt    time.Time
-	CreatedAt    time.Time
-	LastUsedAt   *time.Time
-	RevokedFlag  bool
-	RevokedAt    *time.Time
-	RevokedReason string
+	ID                  int64
+	Token               string
+	UserID              string
+	ClientID            string
+	TenantID            string
+	Scope               string
+	ExpiresAt           time.Time
+	CreatedAt           time.Time
+	LastUsedAt          *time.Time
+	RevokedFlag         bool
+	RevokedAt           *time.Time
+	RevokedReason       string
+	FamilyID            string
+	ParentTokenHash     string
+	ReplacedByTokenHash string
 }
 
 // Validate performs basic validation on the refresh token

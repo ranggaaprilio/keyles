@@ -80,6 +80,14 @@ describe('IntegrationDocs', () => {
     expect(allCode).toContain('code_verifier');
   });
 
+  it('shows mandatory PKCE parameters for confidential clients', () => {
+    render(<IntegrationDocs client={confidentialClient} />);
+    const codeBlocks = document.querySelectorAll('code');
+    const allCode = Array.from(codeBlocks).map(el => el.textContent).join('\n');
+    expect(allCode).toContain('code_challenge');
+    expect(allCode).toContain('code_verifier');
+  });
+
   it('renders Token Exchange tab', () => {
     render(<IntegrationDocs client={confidentialClient} />);
     expect(screen.getByText('Token Exchange')).toBeInTheDocument();

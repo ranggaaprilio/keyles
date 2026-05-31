@@ -105,12 +105,15 @@ func TestDiscovery_OpenIDConfiguration(t *testing.T) {
 	assert.Equal(t, "https://sso.test.com", config.Issuer)
 	assert.Equal(t, "https://sso.test.com/oauth2/auth", config.AuthorizationEndpoint)
 	assert.Equal(t, "https://sso.test.com/oauth2/token", config.TokenEndpoint)
+	assert.Equal(t, "https://sso.test.com/oauth2/introspect", config.IntrospectionEndpoint)
 	assert.Equal(t, "https://sso.test.com/.well-known/jwks.json", config.JwksURI)
 	assert.Contains(t, config.ScopesSupported, "openid")
 	assert.Contains(t, config.ResponseTypesSupported, "code")
 	assert.Contains(t, config.GrantTypesSupported, "authorization_code")
 	assert.Contains(t, config.CodeChallengeMethodsSupported, "S256")
 	assert.Contains(t, config.IDTokenSigningAlgValuesSupported, "RS256")
+	assert.Contains(t, config.TokenEndpointAuthMethodsSupported, "none")
+	assert.Contains(t, config.ClaimsSupported, "roles")
 }
 
 func TestDiscovery_JWKS(t *testing.T) {

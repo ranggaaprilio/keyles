@@ -3,38 +3,41 @@ package http
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/ranggaaprilio/keyles/domain/services"
+	redisRepo "github.com/ranggaaprilio/keyles/infrastructure/persistence/redis"
 	infraServices "github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
 	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
+	"github.com/ranggaaprilio/keyles/usecase/auth"
 )
 
 // Router sets up all HTTP routes
 type Router struct {
-	engine               *gin.Engine
-	rateLimiter          *middleware.RateLimiter
-	registrationHandler  *handlers.RegistrationHandler
-	availabilityHandler  *handlers.AvailabilityHandler
-	verificationHandler  *handlers.VerificationHandler
-	resendOTPHandler     *handlers.ResendOTPHandler
-	authHandler          *handlers.AuthHandler
-	dashboardHandler     *handlers.DashboardHandler
-	healthHandler        *handlers.HealthHandler
-	clientHandler        *handlers.ClientHandler
-	oauthHandler         *handlers.OAuthHandler
-	discoveryHandler     *handlers.DiscoveryHandler
-	roleHandler          *handlers.RoleHandler
-	sessionHandler       *handlers.SessionHandler
-	userHandler          *handlers.UserHandler
-	invitationHandler    *handlers.InvitationHandler
-	activityHandler      *handlers.ActivityHandler
-	userinfoHandler      *handlers.UserinfoHandler
-	jwtService           *infraServices.JWTService
-	userBlacklist        services.UserBlacklist
+	engine              *gin.Engine
+	rateLimiter         *redisRepo.RedisRateLimiter
+	registrationHandler *handlers.RegistrationHandler
+	availabilityHandler *handlers.AvailabilityHandler
+	verificationHandler *handlers.VerificationHandler
+	resendOTPHandler    *handlers.ResendOTPHandler
+	authHandler         *handlers.AuthHandler
+	dashboardHandler    *handlers.DashboardHandler
+	healthHandler       *handlers.HealthHandler
+	clientHandler       *handlers.ClientHandler
+	oauthHandler        *handlers.OAuthHandler
+	discoveryHandler    *handlers.DiscoveryHandler
+	roleHandler         *handlers.RoleHandler
+	sessionHandler      *handlers.SessionHandler
+	userHandler         *handlers.UserHandler
+	invitationHandler   *handlers.InvitationHandler
+	activityHandler     *handlers.ActivityHandler
+	userinfoHandler     *handlers.UserinfoHandler
+	jwtService          *infraServices.JWTService
+	userBlacklist       services.UserBlacklist
+	oauthTokenValidator *auth.AccessTokenValidator
 }
 
 // NewRouter creates a new HTTP router
 func NewRouter(
-	rateLimiter *middleware.RateLimiter,
+	rateLimiter *redisRepo.RedisRateLimiter,
 	registrationHandler *handlers.RegistrationHandler,
 	availabilityHandler *handlers.AvailabilityHandler,
 	verificationHandler *handlers.VerificationHandler,
@@ -53,6 +56,7 @@ func NewRouter(
 	userinfoHandler *handlers.UserinfoHandler,
 	jwtService *infraServices.JWTService,
 	userBlacklist services.UserBlacklist,
+	oauthTokenValidator *auth.AccessTokenValidator,
 	corsOrigins, corsMethods, corsHeaders string,
 ) *Router {
 	engine := gin.New()
@@ -84,8 +88,10 @@ func NewRouter(
 		userinfoHandler:     userinfoHandler,
 		jwtService:          jwtService,
 		userBlacklist:       userBlacklist,
+		oauthTokenValidator: oauthTokenValidator,
 	}
 }
+
 // Setup configures all routes
 func (r *Router) Setup() {
 	blacklistCheck := func(c *gin.Context) { c.Next() }
@@ -108,11 +114,16 @@ func (r *Router) Setup() {
 		oauth2.GET("/auth", r.oauthHandler.Authorize)
 		oauth2.POST("/auth", r.oauthHandler.Authorize)
 		// Token endpoint with rate limiting (FR-057: 10 req/min per client_id)
-		oauth2.POST("/token", r.oauthHandler.Token)
+		if r.rateLimiter != nil {
+			oauth2.POST("/token", middleware.RateLimiterMiddleware(r.rateLimiter), r.oauthHandler.Token)
+		} else {
+			oauth2.POST("/token", r.oauthHandler.Token)
+		}
 		// Revocation endpoint per RFC 7009 (FR-051)
 		oauth2.POST("/revoke", r.oauthHandler.Revoke)
+		oauth2.POST("/introspect", r.oauthHandler.Introspect)
 		// UserInfo endpoint per OIDC spec (FR-052) - requires valid access token
-		oauth2.GET("/userinfo", middleware.AuthMiddleware(r.jwtService), r.userinfoHandler.UserInfo)
+		oauth2.GET("/userinfo", middleware.OAuthAccessTokenMiddleware(r.oauthTokenValidator), r.userinfoHandler.UserInfo)
 	}
 
 	// API v1 routes
@@ -125,7 +136,7 @@ func (r *Router) Setup() {
 		{
 			registration.POST("/register", r.registrationHandler.Register)
 			registration.GET("/check-availability", r.availabilityHandler.CheckAvailability)
-			
+
 			// OTP verification routes (Phase 4)
 			registration.POST("/verify-otp", r.verificationHandler.VerifyOTP)
 			registration.POST("/resend-otp", r.resendOTPHandler.ResendOTP)

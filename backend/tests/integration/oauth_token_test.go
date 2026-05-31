@@ -244,6 +244,9 @@ func setupTokenRouter(t *testing.T) (*gin.Engine, *MockClientRepositoryForTokenT
 	refreshTokenRepo := NewMockRefreshTokenRepository()
 	tokenService := NewMockTokenService()
 	roleRepo := NewMockIntegrationRoleRepository()
+	roleRepo.roles["user_123:test_client_123"] = []*entities.UserRoleAssignment{{
+		UserID: "user_123", ClientID: "test_client_123", Role: "user", IsActive: true,
+	}}
 
 	// Create test client with "test-secret" as the raw secret
 	testClient := &entities.Client{
@@ -728,4 +731,29 @@ func TestOAuthHandler_Token_CodeMarkedAsUsed(t *testing.T) {
 	var errResp map[string]interface{}
 	json.Unmarshal(w2.Body.Bytes(), &errResp)
 	assert.Equal(t, "invalid_grant", errResp["error"])
+}
+
+func TestOAuthHandler_Token_PublicClientWithoutSecret(t *testing.T) {
+	router, clientRepo, authCodeRepo, _ := setupTokenRouter(t)
+	clientRepo.clients["test_client_123"].ClientType = entities.ClientTypePublic
+	clientRepo.clients["test_client_123"].ClientSecretHash = ""
+	verifier, challenge := generatePKCEPair()
+	authCodeRepo.codes["public-code"] = &entities.AuthorizationCode{
+		Code: "public-code", ClientID: "test_client_123", TenantID: "tenant_xyz", UserID: "user_123",
+		RedirectURI: "https://app.example.com/callback", Scope: "openid", CodeChallenge: challenge,
+		CodeChallengeMethod: "S256", ExpiresAt: time.Now().Add(time.Minute),
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("code", "public-code")
+	form.Set("redirect_uri", "https://app.example.com/callback")
+	form.Set("client_id", "test_client_123")
+	form.Set("code_verifier", verifier)
+
+	req := httptest.NewRequest(http.MethodPost, "/oauth2/token", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
 }

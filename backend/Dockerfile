@@ -1,5 +1,9 @@
-# Multi-stage build for Go backend
-FROM golang:1.23-alpine AS builder
+# Multi-arch Dockerfile: builds natively on both linux/amd64 and linux/arm64.
+# Builder uses BUILDPLATFORM for fast native compilation; the Go cross-compiler
+# targets the requested OS/arch via TARGETOS/TARGETARCH build args.
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+
+ARG TARGETOS TARGETARCH
 
 # Install build dependencies
 RUN apk add --no-cache git make
@@ -16,14 +20,14 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+# Build the application (cross-compile for target platform)
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-w -s" \
     -o /app/bin/server \
     ./cmd/server
 
 # Final stage - minimal runtime image
-FROM alpine:latest
+FROM alpine:3.21
 
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates tzdata

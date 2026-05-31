@@ -349,14 +349,17 @@ func TestRefreshToken_MissingClientID(t *testing.T) {
 	assert.Equal(t, auth.ErrInvalidRequest, oauthErr.Code)
 }
 
-// TestRefreshToken_MissingClientSecret tests missing client_secret parameter
-func TestRefreshToken_MissingClientSecret(t *testing.T) {
+// TestRefreshToken_MissingClientSecretCanReachPublicClientFlow verifies that
+// client_secret is not rejected before the client type is known.
+func TestRefreshToken_MissingClientSecretCanReachPublicClientFlow(t *testing.T) {
 	mockRefreshTokenRepo := new(MockRefreshTokenRepository)
 	mockClientRepo := new(MockClientRepositoryForToken)
 	mockTokenService := new(MockTokenService)
 
 	ctx := context.Background()
 	issuer := "https://auth.example.com"
+	tokenHash := hashTokenForRefresh("some-token")
+	mockRefreshTokenRepo.On("GetByToken", ctx, tokenHash).Return(nil, errors.New("token not found"))
 
 	uc := auth.NewRefreshToken(mockRefreshTokenRepo, mockClientRepo, mockTokenService, issuer)
 
@@ -371,7 +374,8 @@ func TestRefreshToken_MissingClientSecret(t *testing.T) {
 	assert.Error(t, err)
 	oauthErr, ok := err.(*auth.OAuthError)
 	assert.True(t, ok)
-	assert.Equal(t, auth.ErrInvalidRequest, oauthErr.Code)
+	assert.Equal(t, auth.ErrInvalidGrant, oauthErr.Code)
+	mockRefreshTokenRepo.AssertExpectations(t)
 }
 
 // TestRefreshToken_TokenServiceError tests token service failure

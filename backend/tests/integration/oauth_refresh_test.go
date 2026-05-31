@@ -615,15 +615,6 @@ func TestRefreshTokenEndpoint_MissingParameters(t *testing.T) {
 			},
 			expected: "client_id",
 		},
-		{
-			name: "missing client_secret",
-			formData: url.Values{
-				"grant_type":    {"refresh_token"},
-				"refresh_token": {"token"},
-				"client_id":     {"client"},
-			},
-			expected: "client_secret",
-		},
 	}
 
 	for _, tc := range testCases {

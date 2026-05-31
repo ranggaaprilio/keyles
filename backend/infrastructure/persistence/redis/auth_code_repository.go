@@ -88,6 +88,46 @@ func (r *RedisAuthCodeRepository) MarkAsUsed(ctx context.Context, code string) e
 	return r.client.Set(ctx, key, data, ttl).Err()
 }
 
+// Consume atomically marks an authorization code as used and returns its
+// previous value. The Lua script prevents concurrent exchanges from both
+// succeeding.
+func (r *RedisAuthCodeRepository) Consume(ctx context.Context, code string) (*entities.AuthorizationCode, error) {
+	key := r.authCodeKey(code)
+	script := redis.NewScript(`
+local value = redis.call("GET", KEYS[1])
+if not value then
+	return nil
+end
+
+local parsed = cjson.decode(value)
+if parsed.UsedFlag == true then
+	return nil
+end
+
+parsed.UsedFlag = true
+parsed.UsedAt = ARGV[1]
+redis.call("SET", KEYS[1], cjson.encode(parsed), "KEEPTTL")
+return value
+`)
+
+	value, err := script.Run(ctx, r.client, []string{key}, time.Now().Format(time.RFC3339Nano)).Text()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, repositories.ErrAuthorizationCodeUnavailable
+		}
+		return nil, fmt.Errorf("failed to consume authorization code: %w", err)
+	}
+
+	var authCode entities.AuthorizationCode
+	if err := json.Unmarshal([]byte(value), &authCode); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal authorization code: %w", err)
+	}
+	if authCode.IsExpired() {
+		return nil, repositories.ErrAuthorizationCodeUnavailable
+	}
+	return &authCode, nil
+}
+
 // Delete removes an authorization code
 func (r *RedisAuthCodeRepository) Delete(ctx context.Context, code string) error {
 	key := r.authCodeKey(code)

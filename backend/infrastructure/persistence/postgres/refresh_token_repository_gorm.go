@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
@@ -12,18 +14,21 @@ import (
 
 // RefreshTokenModel is the GORM model for refresh_tokens table
 type RefreshTokenModel struct {
-	ID            int64      `gorm:"column:id;primaryKey;autoIncrement"`
-	Token         string     `gorm:"column:token;not null;uniqueIndex"`
-	UserID        string     `gorm:"column:user_id;not null;index"`
-	ClientID      string     `gorm:"column:client_id;not null;index"`
-	TenantID      string     `gorm:"column:tenant_id;not null;index"`
-	Scope         string     `gorm:"column:scope"`
-	ExpiresAt     time.Time  `gorm:"column:expires_at;not null;index"`
-	CreatedAt     time.Time  `gorm:"column:created_at;not null"`
-	LastUsedAt    *time.Time `gorm:"column:last_used_at"`
-	IsRevoked     bool       `gorm:"column:is_revoked;not null;default:false"`
-	RevokedAt     *time.Time `gorm:"column:revoked_at"`
-	RevokedReason string     `gorm:"column:revoked_reason"`
+	ID                  int64      `gorm:"column:id;primaryKey;autoIncrement"`
+	Token               string     `gorm:"column:token;not null;uniqueIndex"`
+	UserID              string     `gorm:"column:user_id;not null;index"`
+	ClientID            string     `gorm:"column:client_id;not null;index"`
+	TenantID            string     `gorm:"column:tenant_id;not null;index"`
+	Scope               string     `gorm:"column:scope"`
+	ExpiresAt           time.Time  `gorm:"column:expires_at;not null;index"`
+	CreatedAt           time.Time  `gorm:"column:created_at;not null"`
+	LastUsedAt          *time.Time `gorm:"column:last_used_at"`
+	IsRevoked           bool       `gorm:"column:is_revoked;not null;default:false"`
+	RevokedAt           *time.Time `gorm:"column:revoked_at"`
+	RevokedReason       string     `gorm:"column:revoked_reason"`
+	FamilyID            string     `gorm:"column:family_id;not null;index"`
+	ParentTokenHash     string     `gorm:"column:parent_token_hash"`
+	ReplacedByTokenHash string     `gorm:"column:replaced_by_token_hash"`
 }
 
 func (RefreshTokenModel) TableName() string {
@@ -33,36 +38,42 @@ func (RefreshTokenModel) TableName() string {
 // toEntity converts GORM model to domain entity
 func (m *RefreshTokenModel) toEntity() *entities.RefreshToken {
 	return &entities.RefreshToken{
-		ID:            m.ID,
-		Token:         m.Token,
-		UserID:        m.UserID,
-		ClientID:      m.ClientID,
-		TenantID:      m.TenantID,
-		Scope:         m.Scope,
-		ExpiresAt:     m.ExpiresAt,
-		CreatedAt:     m.CreatedAt,
-		LastUsedAt:    m.LastUsedAt,
-		RevokedFlag:   m.IsRevoked,
-		RevokedAt:     m.RevokedAt,
-		RevokedReason: m.RevokedReason,
+		ID:                  m.ID,
+		Token:               m.Token,
+		UserID:              m.UserID,
+		ClientID:            m.ClientID,
+		TenantID:            m.TenantID,
+		Scope:               m.Scope,
+		ExpiresAt:           m.ExpiresAt,
+		CreatedAt:           m.CreatedAt,
+		LastUsedAt:          m.LastUsedAt,
+		RevokedFlag:         m.IsRevoked,
+		RevokedAt:           m.RevokedAt,
+		RevokedReason:       m.RevokedReason,
+		FamilyID:            m.FamilyID,
+		ParentTokenHash:     m.ParentTokenHash,
+		ReplacedByTokenHash: m.ReplacedByTokenHash,
 	}
 }
 
 // fromRefreshTokenEntity converts domain entity to GORM model
 func fromRefreshTokenEntity(e *entities.RefreshToken) *RefreshTokenModel {
 	return &RefreshTokenModel{
-		ID:            e.ID,
-		Token:         e.Token,
-		UserID:        e.UserID,
-		ClientID:      e.ClientID,
-		TenantID:      e.TenantID,
-		Scope:         e.Scope,
-		ExpiresAt:     e.ExpiresAt,
-		CreatedAt:     e.CreatedAt,
-		LastUsedAt:    e.LastUsedAt,
-		IsRevoked:     e.RevokedFlag,
-		RevokedAt:     e.RevokedAt,
-		RevokedReason: e.RevokedReason,
+		ID:                  e.ID,
+		Token:               e.Token,
+		UserID:              e.UserID,
+		ClientID:            e.ClientID,
+		TenantID:            e.TenantID,
+		Scope:               e.Scope,
+		ExpiresAt:           e.ExpiresAt,
+		CreatedAt:           e.CreatedAt,
+		LastUsedAt:          e.LastUsedAt,
+		IsRevoked:           e.RevokedFlag,
+		RevokedAt:           e.RevokedAt,
+		RevokedReason:       e.RevokedReason,
+		FamilyID:            e.FamilyID,
+		ParentTokenHash:     e.ParentTokenHash,
+		ReplacedByTokenHash: e.ReplacedByTokenHash,
 	}
 }
 
@@ -78,6 +89,9 @@ func NewPostgresRefreshTokenRepository(db *gorm.DB) repositories.RefreshTokenRep
 
 // Create stores a new refresh token
 func (r *PostgresRefreshTokenRepository) Create(ctx context.Context, token *entities.RefreshToken) error {
+	if token.FamilyID == "" {
+		token.FamilyID = token.Token
+	}
 	model := fromRefreshTokenEntity(token)
 	if model.CreatedAt.IsZero() {
 		model.CreatedAt = time.Now()
@@ -90,6 +104,80 @@ func (r *PostgresRefreshTokenRepository) Create(ctx context.Context, token *enti
 
 	token.ID = model.ID
 	return nil
+}
+
+// Rotate revokes a refresh token and inserts its replacement in one
+// transaction. A replay revokes the complete token family before returning.
+func (r *PostgresRefreshTokenRepository) Rotate(ctx context.Context, currentTokenHash string, replacement *entities.RefreshToken) error {
+	replayed := false
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var current RefreshTokenModel
+		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("token = ?", currentTokenHash).
+			First(&current)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if current.IsRevoked || current.ReplacedByTokenHash != "" {
+			if err := revokeFamily(tx, current.FamilyID, "refresh token replay detected"); err != nil {
+				return err
+			}
+			replayed = true
+			return nil
+		}
+
+		now := time.Now()
+		if err := tx.Model(&RefreshTokenModel{}).
+			Where("token = ? AND is_revoked = ?", currentTokenHash, false).
+			Updates(map[string]interface{}{
+				"is_revoked":             true,
+				"revoked_at":             now,
+				"revoked_reason":         "rotated",
+				"last_used_at":           now,
+				"replaced_by_token_hash": replacement.Token,
+			}).Error; err != nil {
+			return err
+		}
+
+		replacement.FamilyID = current.FamilyID
+		replacement.ParentTokenHash = currentTokenHash
+		model := fromRefreshTokenEntity(replacement)
+		if model.CreatedAt.IsZero() {
+			model.CreatedAt = now
+		}
+		if err := tx.Create(model).Error; err != nil {
+			return err
+		}
+		replacement.ID = model.ID
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if replayed {
+		return repositories.ErrRefreshTokenReplay
+	}
+	return nil
+}
+
+func (r *PostgresRefreshTokenRepository) RevokeFamily(ctx context.Context, familyID string, reason string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return revokeFamily(tx, familyID, reason)
+	})
+}
+
+func revokeFamily(tx *gorm.DB, familyID string, reason string) error {
+	if familyID == "" {
+		return errors.New("refresh token family_id is required")
+	}
+	return tx.Model(&RefreshTokenModel{}).
+		Where("family_id = ? AND is_revoked = ?", familyID, false).
+		Updates(map[string]interface{}{
+			"is_revoked":     true,
+			"revoked_at":     time.Now(),
+			"revoked_reason": reason,
+		}).Error
 }
 
 // GetByToken retrieves a refresh token by its token value (hashed)
@@ -182,10 +270,13 @@ func (r *PostgresRefreshTokenRepository) RevokeByUserID(ctx context.Context, use
 	return result.Error
 }
 
-// ListByUserID returns all refresh tokens for a user
+// ListByUserID returns active, unexpired refresh tokens for a user
 func (r *PostgresRefreshTokenRepository) ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error) {
 	var models []RefreshTokenModel
-	result := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&models)
+	result := r.db.WithContext(ctx).
+		Where("user_id = ? AND is_revoked = ? AND expires_at > ?", userID, false, time.Now()).
+		Order("created_at DESC").
+		Find(&models)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -209,3 +300,4 @@ func (r *PostgresRefreshTokenRepository) GetByID(ctx context.Context, id int64) 
 
 // Verify interface compliance
 var _ repositories.RefreshTokenRepository = (*PostgresRefreshTokenRepository)(nil)
+var _ repositories.RefreshTokenRotationRepository = (*PostgresRefreshTokenRepository)(nil)

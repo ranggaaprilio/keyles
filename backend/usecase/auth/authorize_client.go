@@ -25,7 +25,9 @@ type AuthorizeRequest struct {
 	CodeChallenge       string
 	CodeChallengeMethod string
 	UserID              string
-	TenantID            string
+	// TenantID is retained for compatibility but ignored. Tenant context is
+	// derived from the registered client.
+	TenantID string
 }
 
 // AuthorizeResponse represents the OAuth authorization response
@@ -104,7 +106,7 @@ func (uc *AuthorizeClient) Execute(ctx context.Context, req AuthorizeRequest) (*
 	}
 
 	// Validate client_id and get client (FR-017)
-	client, err := uc.clientRepo.GetByClientID(ctx, req.ClientID, req.TenantID)
+	client, err := uc.clientRepo.GetByID(ctx, req.ClientID)
 	if err != nil {
 		return nil, &OAuthError{
 			Code:        ErrInvalidClient,
@@ -131,7 +133,13 @@ func (uc *AuthorizeClient) Execute(ctx context.Context, req AuthorizeRequest) (*
 	// Check user is not disabled (FR-028)
 	// This prevents disabled users from initiating new OAuth flows
 	endUser, err := uc.endUserRepo.GetByID(ctx, req.UserID)
-	if err == nil && endUser != nil && endUser.Status == entities.UserStatusDisabled {
+	if err != nil || endUser == nil || endUser.TenantID != client.TenantID {
+		return nil, &OAuthError{
+			Code:        ErrAccessDenied,
+			Description: "user is not authorized for this tenant",
+		}
+	}
+	if endUser.Status == entities.UserStatusDisabled {
 		return nil, &OAuthError{
 			Code:        ErrAccessDenied,
 			Description: ErrAccountDisabled,
@@ -166,7 +174,7 @@ func (uc *AuthorizeClient) Execute(ctx context.Context, req AuthorizeRequest) (*
 	authCode := &entities.AuthorizationCode{
 		Code:                code,
 		ClientID:            req.ClientID,
-		TenantID:            req.TenantID,
+		TenantID:            client.TenantID,
 		UserID:              req.UserID,
 		RedirectURI:         req.RedirectURI,
 		Scope:               req.Scope,

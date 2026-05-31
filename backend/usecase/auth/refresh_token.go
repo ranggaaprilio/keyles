@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"time"
 
+	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 	"github.com/ranggaaprilio/keyles/domain/services"
 )
@@ -32,6 +34,8 @@ type RefreshToken struct {
 	refreshTokenRepo repositories.RefreshTokenRepository
 	clientRepo       repositories.ClientRepository
 	tokenService     services.TokenService
+	roleRepo         repositories.RoleRepository
+	endUserRepo      repositories.EndUserRepository
 	issuer           string
 }
 
@@ -41,11 +45,24 @@ func NewRefreshToken(
 	clientRepo repositories.ClientRepository,
 	tokenService services.TokenService,
 	issuer string,
+	dependencies ...interface{},
 ) *RefreshToken {
+	var roleRepo repositories.RoleRepository
+	var endUserRepo repositories.EndUserRepository
+	for _, dependency := range dependencies {
+		switch typed := dependency.(type) {
+		case repositories.RoleRepository:
+			roleRepo = typed
+		case repositories.EndUserRepository:
+			endUserRepo = typed
+		}
+	}
 	return &RefreshToken{
 		refreshTokenRepo: refreshTokenRepo,
 		clientRepo:       clientRepo,
 		tokenService:     tokenService,
+		roleRepo:         roleRepo,
+		endUserRepo:      endUserRepo,
 		issuer:           issuer,
 	}
 }
@@ -71,9 +88,12 @@ func (uc *RefreshToken) Execute(ctx context.Context, req RefreshTokenRequest) (*
 
 	// Check if token is revoked (FR-046)
 	if storedToken.IsRevoked() {
+		if rotator, ok := uc.refreshTokenRepo.(repositories.RefreshTokenRotationRepository); ok && storedToken.FamilyID != "" {
+			_ = rotator.RevokeFamily(ctx, storedToken.FamilyID, "refresh token replay detected")
+		}
 		return nil, &OAuthError{
 			Code:        ErrInvalidGrant,
-			Description: "refresh_token has been revoked",
+			Description: "refresh_token has been revoked or replayed",
 		}
 	}
 
@@ -94,7 +114,7 @@ func (uc *RefreshToken) Execute(ctx context.Context, req RefreshTokenRequest) (*
 	}
 
 	// Validate client credentials
-	_, err = uc.clientRepo.ValidateCredentials(ctx, req.ClientID, req.ClientSecret)
+	_, err = authenticateOAuthClient(ctx, uc.clientRepo, req.ClientID, req.ClientSecret, true)
 	if err != nil {
 		return nil, &OAuthError{
 			Code:        ErrInvalidClient,
@@ -106,8 +126,28 @@ func (uc *RefreshToken) Execute(ctx context.Context, req RefreshTokenRequest) (*
 	// If scope is requested, validate it's a subset of original scope
 	scope := storedToken.Scope
 	if req.Scope != "" {
-		// In a full implementation, validate req.Scope is subset of storedToken.Scope
+		if !isScopeSubset(req.Scope, storedToken.Scope) {
+			return nil, &OAuthError{Code: ErrInvalidScope, Description: "requested scope exceeds the originally granted scope"}
+		}
 		scope = req.Scope
+	}
+
+	if uc.endUserRepo != nil {
+		user, err := uc.endUserRepo.GetByID(ctx, storedToken.UserID)
+		if err != nil || user == nil || user.TenantID != storedToken.TenantID || user.Status == entities.UserStatusDisabled {
+			return nil, &OAuthError{Code: ErrInvalidGrant, Description: "user account is not eligible for token refresh"}
+		}
+	}
+
+	roles := []string{}
+	if uc.roleRepo != nil {
+		roles, err = uc.roleRepo.GetActiveRoles(ctx, storedToken.UserID, storedToken.ClientID)
+		if err != nil {
+			return nil, &OAuthError{Code: ErrServerError, Description: "failed to load user roles"}
+		}
+		if len(roles) == 0 {
+			return nil, &OAuthError{Code: ErrInvalidGrant, Description: "user no longer has access to this client"}
+		}
 	}
 
 	// Generate new access token (FR-043)
@@ -124,6 +164,7 @@ func (uc *RefreshToken) Execute(ctx context.Context, req RefreshTokenRequest) (*
 		TenantID:  storedToken.TenantID,
 		ClientID:  storedToken.ClientID,
 		Scope:     scope,
+		Roles:     roles,
 	}
 
 	accessToken, err := uc.tokenService.SignAccessToken(ctx, accessTokenClaims)
@@ -134,20 +175,46 @@ func (uc *RefreshToken) Execute(ctx context.Context, req RefreshTokenRequest) (*
 		}
 	}
 
-	// Update last_used_at timestamp (non-fatal if fails)
-	_ = uc.refreshTokenRepo.UpdateLastUsed(ctx, tokenHash)
+	replacementValue, err := generateRefreshToken()
+	if err != nil {
+		return nil, &OAuthError{Code: ErrServerError, Description: "failed to generate refresh token"}
+	}
+	replacementHash := hashRefreshToken(replacementValue)
+	replacement := &entities.RefreshToken{
+		Token:           replacementHash,
+		UserID:          storedToken.UserID,
+		ClientID:        storedToken.ClientID,
+		TenantID:        storedToken.TenantID,
+		Scope:           scope,
+		ExpiresAt:       time.Now().Add(RefreshTokenTTL),
+		CreatedAt:       time.Now(),
+		FamilyID:        storedToken.FamilyID,
+		ParentTokenHash: tokenHash,
+	}
+	if replacement.FamilyID == "" {
+		replacement.FamilyID = tokenHash
+	}
 
-	// Return new access token
-	// Note: Refresh token rotation is optional and not implemented here
-	// To implement rotation:
-	// 1. Revoke the current refresh token
-	// 2. Generate and store a new refresh token
-	// 3. Return the new refresh token in the response
+	if rotator, ok := uc.refreshTokenRepo.(repositories.RefreshTokenRotationRepository); ok {
+		if err := rotator.Rotate(ctx, tokenHash, replacement); err != nil {
+			if errors.Is(err, repositories.ErrRefreshTokenReplay) {
+				return nil, &OAuthError{Code: ErrInvalidGrant, Description: "refresh_token replay detected"}
+			}
+			return nil, &OAuthError{Code: ErrServerError, Description: "failed to rotate refresh_token"}
+		}
+	} else {
+		// Compatibility path for test doubles and adapters that have not opted
+		// into transactional rotation. Production PostgreSQL uses Rotate above.
+		_ = uc.refreshTokenRepo.UpdateLastUsed(ctx, tokenHash)
+		replacementValue = ""
+	}
+
 	return &RefreshTokenResponse{
-		AccessToken: accessToken,
-		TokenType:   "Bearer",
-		ExpiresIn:   int(AccessTokenTTL.Seconds()),
-		Scope:       scope,
+		AccessToken:  accessToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    int(AccessTokenTTL.Seconds()),
+		RefreshToken: replacementValue,
+		Scope:        scope,
 	}, nil
 }
 
@@ -163,12 +230,6 @@ func (uc *RefreshToken) validateRequest(req RefreshTokenRequest) error {
 		return &OAuthError{
 			Code:        ErrInvalidRequest,
 			Description: "client_id is required",
-		}
-	}
-	if req.ClientSecret == "" {
-		return &OAuthError{
-			Code:        ErrInvalidRequest,
-			Description: "client_secret is required",
 		}
 	}
 	return nil

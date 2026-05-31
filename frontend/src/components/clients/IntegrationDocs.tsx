@@ -52,7 +52,9 @@ export function IntegrationDocs({ client }: IntegrationDocsProps) {
   client_id=${client.client_id}&\\
   redirect_uri=${encodeURIComponent(redirectUri)}&\\
   scope=openid profile email&\\
-  state=random_state_value`}
+  state=random_state_value&\\
+  code_challenge=CODE_CHALLENGE&\\
+  code_challenge_method=S256`}
                 </CodeBlock>
               </div>
 
@@ -80,6 +82,7 @@ export function IntegrationDocs({ client }: IntegrationDocsProps) {
   -d "code=AUTHORIZATION_CODE" \\
   -d "redirect_uri=${redirectUri}" \\
   -d "client_id=${client.client_id}" \\
+  -d "code_verifier=YOUR_CODE_VERIFIER" \\
   -d "client_secret=YOUR_CLIENT_SECRET"`}
                     </CodeBlock>
                   </TabsContent>
@@ -93,6 +96,7 @@ export function IntegrationDocs({ client }: IntegrationDocsProps) {
     code: authorizationCode,
     redirect_uri: '${redirectUri}',
     client_id: '${client.client_id}',
+    code_verifier: codeVerifier,
     client_secret: 'YOUR_CLIENT_SECRET',
   }),
 });
@@ -106,6 +110,7 @@ const tokens = await response.json();`}
     "code":          {authorizationCode},
     "redirect_uri":  {"${redirectUri}"},
     "client_id":     {"${client.client_id}"},
+    "code_verifier": {codeVerifier},
     "client_secret": {"YOUR_CLIENT_SECRET"},
 }
 resp, err := http.PostForm("/oauth2/token", data)`}

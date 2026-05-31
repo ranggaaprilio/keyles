@@ -2,9 +2,12 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
 )
+
+var ErrRefreshTokenReplay = errors.New("refresh token replay detected")
 
 // RefreshTokenRepository defines the interface for refresh token data access
 type RefreshTokenRepository interface {
@@ -37,11 +40,18 @@ type RefreshTokenRepository interface {
 	// Used by disable_user and delete_user use cases.
 	RevokeByUserID(ctx context.Context, userID string) error
 
-	// ListByUserID returns all refresh tokens for a user (including revoked/expired).
-	// Used by list_sessions use case to display active sessions.
+	// ListByUserID returns active, unexpired refresh tokens for a user.
+	// Used by list_sessions use case to display current sessions.
 	ListByUserID(ctx context.Context, userID string) ([]*entities.RefreshToken, error)
 
 	// GetByID retrieves a refresh token by its database ID.
 	// Used by revoke_session use case.
 	GetByID(ctx context.Context, id int64) (*entities.RefreshToken, error)
+}
+
+// RefreshTokenRotationRepository atomically replaces single-use refresh tokens.
+// A replay must revoke all active descendants in the token family.
+type RefreshTokenRotationRepository interface {
+	Rotate(ctx context.Context, currentTokenHash string, replacement *entities.RefreshToken) error
+	RevokeFamily(ctx context.Context, familyID string, reason string) error
 }

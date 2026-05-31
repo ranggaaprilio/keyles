@@ -12,6 +12,7 @@ import (
 type RevokeTokenRequest struct {
 	Token         string // The token to revoke
 	TokenTypeHint string // Optional hint: "refresh_token" or "access_token"
+	ClientID      string // Authenticated OAuth client making the request
 }
 
 // RevokeToken handles the OAuth token revocation endpoint (RFC 7009)
@@ -62,6 +63,12 @@ func (uc *RevokeToken) Execute(ctx context.Context, req RevokeTokenRequest) erro
 
 	// If already revoked, return success
 	if token.IsRevoked() {
+		return nil
+	}
+
+	// Per RFC 7009, a client can only revoke tokens issued to itself. Return
+	// success for a mismatched token to preserve the endpoint's opaque behavior.
+	if req.ClientID != "" && token.ClientID != req.ClientID {
 		return nil
 	}
 

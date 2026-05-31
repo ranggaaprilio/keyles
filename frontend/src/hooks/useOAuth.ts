@@ -231,7 +231,12 @@ export function useOAuth(options: UseOAuthOptions): UseOAuthReturn {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const tokens = await service.refreshTokens(state.tokens.refresh_token);
+      const refreshedTokens = await service.refreshTokens(state.tokens.refresh_token);
+      const tokens: TokenResponse = {
+        ...state.tokens,
+        ...refreshedTokens,
+        refresh_token: refreshedTokens.refresh_token ?? state.tokens.refresh_token,
+      };
       saveTokens(tokens);
       return tokens;
     } catch (err) {

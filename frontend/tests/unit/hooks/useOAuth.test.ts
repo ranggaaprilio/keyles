@@ -293,6 +293,27 @@ describe('useOAuth', () => {
       );
     });
 
+    it('persists a replacement refresh token while preserving the prior ID token', async () => {
+      localStorage.setItem(
+        'keyles_oauth_tokens',
+        JSON.stringify({ ...initialTokens, id_token: 'existing-id-token' })
+      );
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(newTokens),
+      });
+
+      const { result } = renderHook(() => useOAuth({ config: mockConfig }));
+
+      await act(async () => {
+        await result.current.refreshTokens();
+      });
+
+      const expectedTokens = { ...newTokens, id_token: 'existing-id-token' };
+      expect(result.current.tokens).toEqual(expectedTokens);
+      expect(JSON.parse(localStorage.getItem('keyles_oauth_tokens')!)).toEqual(expectedTokens);
+    });
+
     it('throws when no refresh token available', async () => {
       localStorage.setItem(
         'keyles_oauth_tokens',
