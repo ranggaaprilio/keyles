@@ -326,6 +326,47 @@ make migrate-down STEPS=4
 # This removes migrations 000012, 000011, 000010, 000009
 ```
 
+## OAuth Browser Consent Flow (Feature 006)
+
+The browser-facing authorization flow stores validated OAuth request data in a
+short-lived Redis transaction before redirecting to the frontend. The frontend
+receives only an opaque `transaction_id`; client IDs, callback URIs, state, PKCE
+values, and consent CSRF state remain server-controlled.
+
+### Browser Flow Environment Variables
+
+| Variable                                  | Description                                      | Default                 |
+| ----------------------------------------- | ------------------------------------------------ | ----------------------- |
+| `FRONTEND_URL`                            | Frontend base URL for login, consent, and errors | `http://localhost:3000` |
+| `SECURITY_COOKIE_SECURE`                  | Require HTTPS for the SSO cookie                 | `false`                 |
+| `SECURITY_SESSION_TTL`                    | Browser SSO session TTL in seconds               | `28800`                 |
+| `OAUTH_AUTH_TRANSACTION_TTL`              | Authorization transaction TTL in seconds         | `600`                   |
+| `RATE_LIMIT_OAUTH_LOGIN_FAILURES`         | Maximum failures per login bucket                | `5`                     |
+| `RATE_LIMIT_OAUTH_LOGIN_WINDOW_SECONDS`   | Fixed login failure window in seconds            | `900`                   |
+
+The `keyles_sso` cookie is host-only, `HttpOnly`, `SameSite=Lax`, and uses
+`Path=/`. Do not add a cookie `Domain` setting.
+
+### Browser Flow Security Notes
+
+- OAuth login throttling uses both source-IP and tenant-scoped normalized-email
+  Redis buckets.
+- Source IP is read from the direct TCP peer. Forwarded IP headers are ignored
+  until a trusted-proxy allowlist is implemented.
+- Authorization initialization, login, consent reads, and consent decisions fail
+  closed when Redis is unavailable.
+- `POST /oauth2/logout` always expires the browser cookie, even when Redis session
+  deletion fails. It does not revoke tokens issued to external clients.
+
+### Browser Flow Redis Keys
+
+| Pattern                                             | Purpose                         | Default TTL |
+| --------------------------------------------------- | ------------------------------- | ----------- |
+| `oauth:transaction:<transaction_id>`                | Validated authorization request | 10 min      |
+| `oauth:session:<session_id>`                        | End-user browser SSO session    | 8 hours     |
+| `oauth:login-failure:ip:<source_ip>`                | Source-IP login throttle        | 15 min      |
+| `oauth:login-failure:email:<tenant_id>:<email_hash>`| Tenant-email login throttle     | 15 min      |
+
 ## License
 
 [Your License Here]

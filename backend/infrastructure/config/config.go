@@ -54,9 +54,18 @@ type Config struct {
 	OAuthRefreshTokenTTL int
 
 	// OTP
-	OTPExpirationMinutes      int
-	OTPLength                  int
-	SkipEmailVerification      bool
+	OTPExpirationMinutes int
+	OTPLength            int
+	SkipEmailVerification bool
+
+	// Browser-flow OAuth configuration
+	FrontendURL                     string
+	SecurityCookieSecure            bool
+	SecuritySessionTTL              int // seconds; default 28800 (8 hours)
+	OAuthAuthTransactionTTL         int // seconds; default 600 (10 minutes)
+	RateLimitOAuthLoginFailures     int // max failures per 15-min window; default 5
+	RateLimitOAuthLoginWindowSeconds int // fixed window duration in seconds; default 900
+
 	// Application
 	AppEnv   string
 	LogLevel string
@@ -112,6 +121,26 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	securityCookieSecure, err := getEnvAsBool("SECURITY_COOKIE_SECURE", false)
+	if err != nil {
+		return nil, err
+	}
+	securitySessionTTL, err := getEnvAsInt("SECURITY_SESSION_TTL", 28800)
+	if err != nil {
+		return nil, err
+	}
+	oauthAuthTransactionTTL, err := getEnvAsInt("OAUTH_AUTH_TRANSACTION_TTL", 600)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitOAuthLoginFailures, err := getEnvAsInt("RATE_LIMIT_OAUTH_LOGIN_FAILURES", 5)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitOAuthLoginWindowSeconds, err := getEnvAsInt("RATE_LIMIT_OAUTH_LOGIN_WINDOW_SECONDS", 900)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		// Database
@@ -156,10 +185,19 @@ func Load() (*Config, error) {
 		OAuthIssuer:          getEnv("OAUTH_ISSUER", "https://sso.keyles.com"),
 		OAuthAccessTokenTTL:  oauthAccessTokenTTL,  // 15 minutes
 		OAuthRefreshTokenTTL: oauthRefreshTokenTTL, // 7 days
+
 		// OTP
-		OTPExpirationMinutes:      otpExpirationMinutes,
-		OTPLength:                  otpLength,
-		SkipEmailVerification:      skipEmailVerification,
+		OTPExpirationMinutes:     otpExpirationMinutes,
+		OTPLength:                otpLength,
+		SkipEmailVerification:    skipEmailVerification,
+
+		// Browser-flow OAuth configuration
+		FrontendURL:                      getEnv("FRONTEND_URL", "http://localhost:3000"),
+		SecurityCookieSecure:              securityCookieSecure,
+		SecuritySessionTTL:                securitySessionTTL,
+		OAuthAuthTransactionTTL:            oauthAuthTransactionTTL,
+		RateLimitOAuthLoginFailures:        rateLimitOAuthLoginFailures,
+		RateLimitOAuthLoginWindowSeconds:    rateLimitOAuthLoginWindowSeconds,
 
 		// Application
 		AppEnv:   getEnv("APP_ENV", "development"),
@@ -169,6 +207,19 @@ func Load() (*Config, error) {
 	// Validate required fields
 	if cfg.DBPassword == "" {
 		return nil, fmt.Errorf("DB_PASSWORD is required")
+	}
+
+	if cfg.SecuritySessionTTL <= 0 {
+		return nil, fmt.Errorf("SECURITY_SESSION_TTL must be a positive integer")
+	}
+	if cfg.OAuthAuthTransactionTTL <= 0 {
+		return nil, fmt.Errorf("OAUTH_AUTH_TRANSACTION_TTL must be a positive integer")
+	}
+	if cfg.RateLimitOAuthLoginFailures <= 0 {
+		return nil, fmt.Errorf("RATE_LIMIT_OAUTH_LOGIN_FAILURES must be a positive integer")
+	}
+	if cfg.RateLimitOAuthLoginWindowSeconds <= 0 {
+		return nil, fmt.Errorf("RATE_LIMIT_OAUTH_LOGIN_WINDOW_SECONDS must be a positive integer")
 	}
 
 	if cfg.AppEnv == "production" {
@@ -187,9 +238,19 @@ func Load() (*Config, error) {
 		if cfg.SkipEmailVerification {
 			return nil, fmt.Errorf("SKIP_EMAIL_VERIFICATION cannot be enabled in production")
 		}
+		if !cfg.SecurityCookieSecure {
+			return nil, fmt.Errorf("SECURITY_COOKIE_SECURE must be true in production")
+		}
 		issuer, err := url.Parse(cfg.OAuthIssuer)
 		if err != nil || issuer.Scheme != "https" || issuer.Host == "" {
 			return nil, fmt.Errorf("OAUTH_ISSUER must be an HTTPS URL in production")
+		}
+		frontendURL, err := url.Parse(cfg.FrontendURL)
+		if err != nil || frontendURL.Scheme == "" || frontendURL.Host == "" {
+			return nil, fmt.Errorf("FRONTEND_URL must be a valid URL in production")
+		}
+		if frontendURL.Scheme != "https" {
+			return nil, fmt.Errorf("FRONTEND_URL must use HTTPS in production")
 		}
 	}
 

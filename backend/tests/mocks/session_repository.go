@@ -45,3 +45,21 @@ func (m *MockSessionRepository) Extend(ctx context.Context, sessionID string, tt
 	args := m.Called(ctx, sessionID, ttl)
 	return args.Error(0)
 }
+
+// NewMockSession creates a session with sensible defaults including AuthenticatedAt.
+func NewMockSession(overrides ...func(*repositories.Session)) *repositories.Session {
+	now := time.Now()
+	s := &repositories.Session{
+		SessionID:      "sess_mock123",
+		UserID:         "user_mock123",
+		TenantID:       "tenant_mock123",
+		AuthenticatedAt: now,
+		CreatedAt:      now,
+		ExpiresAt:      now.Add(8 * time.Hour),
+		Metadata:       map[string]interface{}{},
+	}
+	for _, o := range overrides {
+		o(s)
+	}
+	return s
+}

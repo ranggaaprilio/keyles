@@ -70,6 +70,9 @@ func main() {
 	endUserRepo := postgresRepo.NewPostgresEndUserRepository(db)
 	invitationRepo := postgresRepo.NewPostgresInvitationRepository(db)
 	userEventRepo := postgresRepo.NewPostgresUserEventRepository(db)
+	txnRepo := redisRepo.NewRedisAuthorizationTransactionRepository(redisClient)
+	sessionRepo := redisRepo.NewRedisSessionRepository(redisClient)
+	loginThrottler := redisRepo.NewRedisLoginThrottler(redisClient, cfg.RateLimitOAuthLoginFailures, cfg.RateLimitOAuthLoginWindowSeconds)
 
 	// Initialize Redis caches
 	clientCountCache := redisRepo.NewClientCountCache(redisClient)
@@ -86,8 +89,9 @@ func main() {
 
 	// Initialize OAuth token service
 	tokenService := infraServices.NewRSATokenService(signingKeyRepo)
+	// Initialize OAuth audit helper
+	oauthAuditHelper := auth.NewOAuthAuditHelper(auditRepo)
 
-	// Initialize use cases
 	registerTenantUseCase := tenant.NewRegisterTenantUseCase(
 		tenantRepo, userRepo, otpRepo, auditRepo,
 		emailService, otpService, passwordService,
@@ -119,6 +123,13 @@ func main() {
 	revokeTokenUseCase := auth.NewRevokeToken(refreshTokenRepo)
 	oauthTokenValidator := auth.NewAccessTokenValidator(tokenService, clientRepo, endUserRepo, revokedClientCache, userBlacklist, cfg.OAuthIssuer)
 	introspectTokenUseCase := auth.NewIntrospectToken(clientRepo, oauthTokenValidator)
+	transactionTTL := time.Duration(cfg.OAuthAuthTransactionTTL) * time.Second
+	oauthInteraction := auth.NewOAuthInteraction(clientRepo, roleRepo, txnRepo, sessionRepo, endUserRepo, oauthAuditHelper, cfg.FrontendURL, transactionTTL)
+	sessionTTL := time.Duration(cfg.SecuritySessionTTL) * time.Second
+	authenticateEndUser := auth.NewAuthenticateEndUser(txnRepo, sessionRepo, clientRepo, endUserRepo, roleRepo, loginThrottler, passwordService, oauthAuditHelper, sessionTTL, cfg.FrontendURL)
+	getConsentDetails := auth.NewGetConsentDetails(txnRepo, sessionRepo, clientRepo, endUserRepo)
+	consentDecision := auth.NewConsentDecision(txnRepo, sessionRepo, clientRepo, endUserRepo, roleRepo, authCodeRepo, oauthAuditHelper)
+	logoutEndUser := auth.NewLogoutEndUser(sessionRepo, oauthAuditHelper)
 
 	// Initialize user management use cases
 	inviteUserUseCase := user.NewInviteUser(endUserRepo, invitationRepo, userEventRepo, emailService, userCountCache)
@@ -150,7 +161,7 @@ func main() {
 		listClientsUseCase,
 		rotateSecretUseCase,
 	)
-	oauthHandler := handlers.NewOAuthHandlerFull(authorizeClientUseCase, issueTokenUseCase, clientRepo, refreshTokenUseCase, revokeTokenUseCase, introspectTokenUseCase)
+	oauthHandler := handlers.NewOAuthHandlerFullBrowser(authorizeClientUseCase, issueTokenUseCase, clientRepo, refreshTokenUseCase, revokeTokenUseCase, introspectTokenUseCase, oauthInteraction, authenticateEndUser, getConsentDetails, consentDecision, logoutEndUser, sessionRepo, loginThrottler, oauthAuditHelper, cfg)
 	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
 	roleHandler := handlers.NewRoleHandler(assignRoleUseCase, revokeRoleUseCase, listUserRolesUseCase)
 	userHandler := handlers.NewUserHandler(

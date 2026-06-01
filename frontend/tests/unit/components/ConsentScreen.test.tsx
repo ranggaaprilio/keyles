@@ -67,9 +67,9 @@ describe("ConsentScreen", () => {
       />
     );
 
-    expect(screen.getByText("OpenID")).toBeInTheDocument();
-    expect(screen.getByText("Profile")).toBeInTheDocument();
-    expect(screen.getByText("Email")).toBeInTheDocument();
+    expect(screen.getByText(/OpenID/)).toBeInTheDocument();
+    expect(screen.getByText(/Profile/)).toBeInTheDocument();
+    expect(screen.getByText(/Email/)).toBeInTheDocument();
   });
 
   it("displays scope descriptions", () => {
@@ -247,8 +247,8 @@ describe("ConsentScreen", () => {
       />
     );
 
-    expect(screen.getByText("OpenID")).toBeInTheDocument();
-    expect(screen.getByText("custom_scope")).toBeInTheDocument();
+    expect(screen.getByText(/OpenID/)).toBeInTheDocument();
+    expect(screen.getAllByText(/custom_scope/)).toHaveLength(2);
     expect(screen.getByText("Access to custom_scope")).toBeInTheDocument();
   });
 

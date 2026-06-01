@@ -41,6 +41,8 @@ type TokenClaims struct {
 	ClientID string   `json:"client_id,omitempty"`
 	Scope    string   `json:"scope,omitempty"`
 	Roles    []string `json:"roles"`
+	Nonce    string   `json:"nonce,omitempty"`
+	AuthTime int64   `json:"auth_time,omitempty"`
 }
 
 // TokenService defines the interface for JWT token operations

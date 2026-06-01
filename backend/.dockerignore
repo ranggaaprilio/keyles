@@ -11,6 +11,7 @@ tmp/
 node_modules/
 coverage.txt
 coverage.html
+coverage/
 *.log
 *.md
 tests/

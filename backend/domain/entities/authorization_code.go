@@ -15,6 +15,8 @@ type AuthorizationCode struct {
 	Scope               string
 	CodeChallenge       string
 	CodeChallengeMethod string
+	Nonce               string     // OIDC nonce (optional, mirrors authorization request)
+	AuthenticatedAt     *time.Time // Time of user authentication (optional, for auth_time claim)
 	ExpiresAt           time.Time
 	CreatedAt           time.Time
 	UsedFlag            bool

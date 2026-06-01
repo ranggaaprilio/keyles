@@ -307,3 +307,54 @@ export interface JWK {
   /** RSA exponent (base64url) */
   e: string;
 }
+
+// Browser-flow interaction types
+
+export interface AuthorizationTransaction {
+  transaction_id: string;
+}
+
+export interface OAuthLoginRequest {
+  transaction_id: string;
+  email: string;
+  password: string;
+}
+
+export interface OAuthLoginResponse {
+  redirect_url: string;
+}
+
+export interface OAuthConsentDetails {
+  transaction_id: string;
+  interaction_csrf_token: string;
+  client_id: string;
+  client_name: string;
+  client_logo_uri?: string;
+  scopes: string[];
+  user_display: string;
+}
+
+export interface OAuthConsentDecisionRequest {
+  transaction_id: string;
+  interaction_csrf_token: string;
+  approved: boolean;
+}
+
+export interface OAuthInteractionRedirect {
+  redirect_url: string;
+}
+
+export interface OAuthInteractionError {
+  error: string;
+  error_description: string;
+}
+
+export type OAuthErrorCode =
+  | 'invalid_request'
+  | 'invalid_client'
+  | 'access_denied'
+  | 'temporarily_unavailable'
+  | 'login_required'
+  | 'consent_required'
+  | 'invalid_credentials'
+  | 'throttled';

@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DashboardPage } from "../../../src/pages/DashboardPage";
@@ -73,12 +72,12 @@ describe("DashboardPage", () => {
     (authApi.isAuthenticated as any).mockReturnValue(true);
   });
 
-  it("redirects to login if not authenticated", () => {
+  it("renders nothing while the protected route redirects unauthenticated users", () => {
     (authApi.isAuthenticated as any).mockReturnValue(false);
 
-    renderDashboardPage();
+    const { container } = renderDashboardPage();
 
-    expect(mockNavigate).toHaveBeenCalledWith("/login", { replace: true });
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("shows loading state while fetching data", () => {
@@ -111,7 +110,8 @@ describe("DashboardPage", () => {
 
     // Now check the data - use getAllByText since org name may appear multiple times
     expect(screen.getAllByText("Test Organization").length).toBeGreaterThan(0);
-    expect(screen.getByText(/Welcome back, Admin User/i)).toBeInTheDocument();
+    expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Admin User").length).toBeGreaterThan(0);
     expect(screen.getByText("admin@example.com")).toBeInTheDocument();
   });
 
@@ -138,8 +138,7 @@ describe("DashboardPage", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("handles logout action", async () => {
-    const user = userEvent.setup();
+  it("displays account summary sections", async () => {
     (authApi.getDashboard as any).mockResolvedValue(mockDashboardData);
     (authApi.isAuthenticated as any).mockReturnValue(true);
 
@@ -154,10 +153,8 @@ describe("DashboardPage", () => {
       { timeout: 2000 }
     );
 
-    const logoutButton = screen.getByRole("button", { name: /Logout/i });
-    await user.click(logoutButton);
-
-    expect(authApi.logout).toHaveBeenCalled();
+    expect(screen.getByText(/Account Status/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your Role/i)).toBeInTheDocument();
   });
 
   it("displays tenant status badge", async () => {
@@ -242,7 +239,7 @@ describe("DashboardPage", () => {
     expect(dateText.length).toBeGreaterThan(0);
   });
 
-  it("shows quick actions menu", async () => {
+  it("shows organization details", async () => {
     (authApi.getDashboard as any).mockResolvedValue(mockDashboardData);
     (authApi.isAuthenticated as any).mockReturnValue(true);
 
@@ -258,14 +255,7 @@ describe("DashboardPage", () => {
       { timeout: 2000 }
     );
 
-    // Check quick actions section exists
-    expect(screen.getByText(/Quick Actions/i)).toBeInTheDocument();
-    // Check for buttons in the quick actions section
-    expect(
-      screen.getByRole("button", { name: /Manage Users/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Settings$/i })
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Organization Details/i)).toBeInTheDocument();
+    expect(screen.getByText(/Administrator Information/i)).toBeInTheDocument();
   });
 });

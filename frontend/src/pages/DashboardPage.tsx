@@ -37,7 +37,11 @@ export function DashboardPage() {
     );
   }
 
-  const { tenant, user } = dashboardQuery.data!;
+  if (!dashboardQuery.data) {
+    return null;
+  }
+
+  const { tenant, user } = dashboardQuery.data;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">

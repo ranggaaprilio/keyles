@@ -757,3 +757,62 @@ func TestOAuthHandler_Token_PublicClientWithoutSecret(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
+
+func TestOAuthHandler_Token_BrowserFlowPKCE(t *testing.T) {
+	t.Run("matching verifier succeeds once", func(t *testing.T) {
+		harness := newOAuthBrowserHarness(t)
+		verifier, challenge := generatePKCEPair()
+		code := issueBrowserAuthorizationCode(t, harness, challenge)
+
+		response := exchangeBrowserAuthorizationCode(t, harness, code, verifier)
+		assert.Equal(t, http.StatusOK, response.Code)
+		assert.Equal(t, http.StatusBadRequest, exchangeBrowserAuthorizationCode(t, harness, code, verifier).Code)
+	})
+
+	t.Run("wrong verifier is rejected", func(t *testing.T) {
+		harness := newOAuthBrowserHarness(t)
+		_, challenge := generatePKCEPair()
+		wrongVerifier, _ := generatePKCEPair()
+		code := issueBrowserAuthorizationCode(t, harness, challenge)
+
+		assert.Equal(t, http.StatusBadRequest, exchangeBrowserAuthorizationCode(t, harness, code, wrongVerifier).Code)
+	})
+
+	t.Run("expired code is rejected", func(t *testing.T) {
+		harness := newOAuthBrowserHarness(t)
+		verifier, challenge := generatePKCEPair()
+		code := issueBrowserAuthorizationCode(t, harness, challenge)
+		harness.codes.codes[code].ExpiresAt = time.Now().Add(-time.Second)
+
+		assert.Equal(t, http.StatusBadRequest, exchangeBrowserAuthorizationCode(t, harness, code, verifier).Code)
+	})
+}
+
+func issueBrowserAuthorizationCode(t *testing.T, harness *oauthBrowserHarness, challenge string) string {
+	t.Helper()
+	_, transactionID := harness.beginWithChallenge(t, browserClientA, browserCallbackA, "", challenge, nil)
+	loginResponse := harness.login(t, transactionID, "correct-password")
+	require.Equal(t, http.StatusOK, loginResponse.Code)
+	cookie := responseCookie(t, loginResponse)
+	csrfToken := harness.transactions.transactions[transactionID].InteractionCSRFToken
+	consentResponse := harness.consent(t, transactionID, csrfToken, true, cookie)
+	require.Equal(t, http.StatusOK, consentResponse.Code)
+	code := redirectQuery(t, consentResponse).Get("code")
+	require.NotEmpty(t, code)
+	return code
+}
+
+func exchangeBrowserAuthorizationCode(t *testing.T, harness *oauthBrowserHarness, code, verifier string) *httptest.ResponseRecorder {
+	t.Helper()
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("code", code)
+	form.Set("redirect_uri", browserCallbackA)
+	form.Set("client_id", browserClientA)
+	form.Set("code_verifier", verifier)
+	request := httptest.NewRequest(http.MethodPost, "/oauth2/token", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	harness.router.ServeHTTP(recorder, request)
+	return recorder
+}

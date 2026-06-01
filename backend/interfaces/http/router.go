@@ -111,8 +111,13 @@ func (r *Router) Setup() {
 	// OAuth 2.0 routes (public - handles authentication)
 	oauth2 := r.engine.Group("/oauth2")
 	{
-		oauth2.GET("/auth", r.oauthHandler.Authorize)
+		oauth2.GET("/auth", r.oauthHandler.AuthorizeBrowser)
 		oauth2.POST("/auth", r.oauthHandler.Authorize)
+		// Browser-facing OAuth flow (Phase 3)
+		oauth2.POST("/login", r.oauthHandler.Login)
+		oauth2.GET("/consent/:transactionId", r.oauthHandler.ConsentDetail)
+		oauth2.POST("/consent", r.oauthHandler.ConsentDecision)
+		oauth2.POST("/logout", r.oauthHandler.Logout)
 		// Token endpoint with rate limiting (FR-057: 10 req/min per client_id)
 		if r.rateLimiter != nil {
 			oauth2.POST("/token", middleware.RateLimiterMiddleware(r.rateLimiter), r.oauthHandler.Token)

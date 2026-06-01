@@ -33,6 +33,7 @@ export function RegistrationForm() {
     setError,
   } = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
+    mode: "onBlur",
   });
 
   const mutation = useTenantRegistration({
@@ -41,6 +42,7 @@ export function RegistrationForm() {
         state: {
           tenantId: data.tenant_id,
           organizationName: data.organization_name,
+          message: data.message,
         },
       });
     },
@@ -51,6 +53,8 @@ export function RegistrationForm() {
 
   const orgName = watch("organization_name");
   const email = watch("email");
+  const orgNameRegistration = register("organization_name");
+  const emailRegistration = register("email");
 
   const checkFieldAvailability = async () => {
     if (!orgName && !email) return;
@@ -107,8 +111,11 @@ export function RegistrationForm() {
                   <Input
                     id="organization_name"
                     placeholder="Acme Corporation"
-                    {...register("organization_name")}
-                    onBlur={checkFieldAvailability}
+                    {...orgNameRegistration}
+                    onBlur={(event) => {
+                      orgNameRegistration.onBlur(event);
+                      void checkFieldAvailability();
+                    }}
                     className={errors.organization_name ? "border-red-700" : ""}
                   />
                   {checkingAvailability && (
@@ -144,8 +151,11 @@ export function RegistrationForm() {
                     id="email"
                     type="email"
                     placeholder="admin@acme.com"
-                    {...register("email")}
-                    onBlur={checkFieldAvailability}
+                    {...emailRegistration}
+                    onBlur={(event) => {
+                      emailRegistration.onBlur(event);
+                      void checkFieldAvailability();
+                    }}
                     className={errors.email ? "border-red-700" : ""}
                   />
                   {checkingAvailability && (

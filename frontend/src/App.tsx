@@ -15,6 +15,10 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ClientManagementPage } from "./pages/ClientManagementPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
+import { OAuthLoginPage } from './pages/OAuthLoginPage';
+import { OAuthConsentPage } from './pages/OAuthConsentPage';
+import { OAuthErrorPage } from './pages/OAuthErrorPage';
+import { OAuthLogoutPage } from './pages/OAuthLogoutPage';
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
 
 // Create a client
@@ -66,6 +70,10 @@ export function App() {
             <Route path="/verify-otp" element={<VerifyOTPPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/invite/:token" element={<AcceptInvitationPage />} />
+            <Route path="/oauth2/login" element={<OAuthLoginPage />} />
+            <Route path="/oauth2/consent" element={<OAuthConsentPage />} />
+            <Route path="/oauth2/error" element={<OAuthErrorPage />} />
+            <Route path="/oauth2/logout" element={<OAuthLogoutPage />} />
 
             {/* Protected routes — wrapped in DashboardLayout */}
             <Route

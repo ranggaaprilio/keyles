@@ -351,6 +351,46 @@ func TestIssueToken_Execute_Success(t *testing.T) {
 	roleRepo.AssertExpectations(t)
 }
 
+func TestIssueToken_Execute_PropagatesNonceAndAuthTime(t *testing.T) {
+	ctx := context.Background()
+	verifier, _ := generatePKCEPair()
+	authenticatedAt := time.Unix(1700000000, 0)
+
+	authCodeRepo := new(MockAuthCodeRepository)
+	clientRepo := new(MockClientRepositoryForToken)
+	refreshTokenRepo := new(MockRefreshTokenRepository)
+	tokenService := new(MockTokenService)
+	roleRepo := new(mocks.MockRoleRepository)
+
+	authCode := createValidAuthCode(verifier)
+	authCode.Nonce = "nonce-1"
+	authCode.AuthenticatedAt = &authenticatedAt
+
+	authCodeRepo.On("Get", ctx, "test-auth-code").Return(authCode, nil)
+	clientRepo.On("ValidateCredentials", ctx, "test-client-id", "test-client-secret").Return(createValidClient(), nil)
+	authCodeRepo.On("MarkAsUsed", ctx, "test-auth-code").Return(nil)
+	roleRepo.On("GetActiveRoles", ctx, "test-user-id", "test-client-id").Return([]string{"user"}, nil)
+	tokenService.On("SignIDToken", ctx, mock.MatchedBy(func(claims *services.TokenClaims) bool {
+		return claims.Nonce == "nonce-1" && claims.AuthTime == authenticatedAt.Unix()
+	})).Return("id-token-jwt", nil)
+	tokenService.On("SignAccessToken", ctx, mock.AnythingOfType("*services.TokenClaims")).Return("access-token-jwt", nil)
+	refreshTokenRepo.On("Create", ctx, mock.AnythingOfType("*entities.RefreshToken")).Return(nil)
+
+	useCase := auth.NewIssueToken(authCodeRepo, clientRepo, refreshTokenRepo, roleRepo, tokenService, "https://sso.example.com")
+	resp, err := useCase.Execute(ctx, auth.TokenRequest{
+		GrantType:    "authorization_code",
+		Code:         "test-auth-code",
+		RedirectURI:  "https://app.example.com/callback",
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		CodeVerifier: verifier,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	tokenService.AssertExpectations(t)
+}
+
 func TestIssueToken_Execute_ConcurrentConsumeReturnsInvalidGrant(t *testing.T) {
 	ctx := context.Background()
 	verifier, _ := generatePKCEPair()

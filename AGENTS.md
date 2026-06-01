@@ -41,3 +41,16 @@ Pull requests should include a brief summary, linked issue or spec when relevant
 ## Security & Configuration Tips
 
 Never commit `.env` files, generated private keys, or secrets. Backend RSA keys are generated with `make keygen` and should stay under ignored local paths such as `backend/keys/`. Use `.env.example` files as templates.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan:
+`specs/006-oauth-consent-flow/plan.md`
+<!-- SPECKIT END -->
+
+## Active Technologies
+- Go 1.23.0; TypeScript 5.4; React 18.3 + Gin 1.10, Redis go-redis/v9, GORM, bcrypt, React Router 6, Axios, React Hook Form, Zod, Tailwind CSS, Vitest, React Testing Library (006-oauth-consent-flow)
+- Existing PostgreSQL for clients/users/roles/audit logs; Redis for authorization transactions, end-user sessions, login-throttle counters, and authorization codes (006-oauth-consent-flow)
+
+## Recent Changes
+- 006-oauth-consent-flow: Added Go 1.23.0; TypeScript 5.4; React 18.3 + Gin 1.10, Redis go-redis/v9, GORM, bcrypt, React Router 6, Axios, React Hook Form, Zod, Tailwind CSS, Vitest, React Testing Library

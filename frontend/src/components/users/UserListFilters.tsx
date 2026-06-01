@@ -32,7 +32,6 @@ export function UserListFilters({
     }, 300);
     return () => clearTimeout(t);
     // Only re-run when the local search value changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const handleStatusChange = useCallback(
