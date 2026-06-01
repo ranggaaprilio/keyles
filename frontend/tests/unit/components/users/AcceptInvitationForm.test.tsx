@@ -38,7 +38,7 @@ describe("AcceptInvitationForm", () => {
 
     await user.type(screen.getByLabelText("Password *"), "Ab1");
     await user.type(screen.getByLabelText("Confirm Password *"), "Ab1");
-    await user.click(screen.getByText("Create Account"));
+    await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(
@@ -56,7 +56,7 @@ describe("AcceptInvitationForm", () => {
       screen.getByLabelText("Confirm Password *"),
       "DifferentPass2",
     );
-    await user.click(screen.getByText("Create Account"));
+    await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Passwords do not match")).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe("AcceptInvitationForm", () => {
 
     await user.type(screen.getByLabelText("Password *"), "StrongPass1");
     await user.type(screen.getByLabelText("Confirm Password *"), "StrongPass1");
-    await user.click(screen.getByText("Create Account"));
+    await user.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith("StrongPass1");

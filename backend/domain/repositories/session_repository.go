@@ -5,15 +5,18 @@ import (
 	"time"
 )
 
-// Session represents a user session stored in Redis
+// Session represents a client-agnostic end-user SSO session stored in Redis.
+// Sessions are ephemeral with a configurable TTL (default 8 hours).
+// A single session can be reused across multiple OAuth clients in the same tenant
+// as long as the end-user remains active and has a valid role assignment.
 type Session struct {
-	SessionID string
-	UserID    string
-	TenantID  string
-	ClientID  string
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	Metadata  map[string]interface{}
+	SessionID      string
+	UserID         string
+	TenantID       string
+	AuthenticatedAt time.Time
+	CreatedAt      time.Time
+	ExpiresAt      time.Time
+	Metadata       map[string]interface{}
 }
 
 // SessionRepository defines the interface for session storage in Redis

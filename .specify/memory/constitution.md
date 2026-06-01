@@ -1,22 +1,20 @@
 <!--
 Sync Impact Report - Constitution Update
 =========================================
-Version Change: Initial (template) → 1.0.0
-Modified Principles: All principles newly defined (initial constitution creation)
-Added Sections:
-  - Core Principles (7 principles defined)
-  - Technology Stack Requirements
-  - Quality Gates
-  - Governance
-Removed Sections: None (initial version)
+Version Change: 1.0.0 → 1.0.1
+Modified Principles:
+  - I. Clean Architecture: distinguish domain rules from use-case orchestration
+  - V. Frontend Code Conventions: permit PascalCase route screens in src/pages/
+  - Technology Stack Requirements: align contracts and API logic paths with repository layout
+Added Sections: None
+Removed Sections: None
 Templates Status:
-  ✅ plan-template.md - Updated with Clean Architecture validation gates
-  ✅ spec-template.md - Compatible with current structure
-  ✅ tasks-template.md - Updated with test-first workflow requirements
-  ⚠ agent-file-template.md - May need Golang/TypeScript conventions added
-  ⚠ checklist-template.md - Compatible as-is
-Follow-up TODOs:
-  - RATIFICATION_DATE needs to be set when constitution is formally adopted
+  - plan-template.md - Compatible with clarified layer responsibilities
+  - spec-template.md - Compatible with current structure
+  - tasks-template.md - Updated to require constitution-mandated tests
+  - agent-file-template.md - No change required
+  - checklist-template.md - No change required
+Follow-up Items: None
 -->
 
 # Keyles Constitution
@@ -28,7 +26,9 @@ Follow-up TODOs:
 Backend structure MUST follow Clean Architecture or Hexagonal Architecture principles:
 
 - **Domain/Entities** (innermost layer) MUST be completely independent of frameworks, databases, and UI
-- **Business logic** MUST reside in the Domain layer with zero external dependencies
+- **Domain rules and entities** MUST reside in the Domain layer with zero external dependencies
+- **Application-specific orchestration** MAY reside in the Usecase layer and MUST depend
+  only on Domain abstractions for outbound operations
 - **Infrastructure concerns** (database, external APIs, UI) MUST remain in outer layers
 - **Dependency direction** MUST always point inward toward the Domain layer
 - Outer layers (Handlers, Controllers) MAY depend on Domain, but Domain MUST NEVER depend on outer layers
@@ -42,7 +42,7 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 - **Single Responsibility Principle**: Each module/class has one reason to change
 - **Open/Closed Principle**: Open for extension, closed for modification
 - **Liskov Substitution Principle**: Subtypes must be substitutable for base types
-- **Interface Segregation Principle**: Clients should not depend on interfaces they don't use
+- **Interface Segregation Principle**: Clients MUST NOT depend on interfaces they do not use
 - **Dependency Inversion Principle (DIP)**: Domain MUST depend on abstractions, NOT concrete implementations
 
 **Critical for DIP**:
@@ -64,7 +64,7 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 **React/TypeScript Frontend**:
 
 - Use abstractions/interfaces for all external dependencies (API clients, storage services)
-- Components should depend on abstract contracts, not concrete implementations
+- Components MUST depend on abstract contracts, not concrete implementations
 
 **Rationale**: Enables independent testing of business logic and decouples domain from infrastructure details.
 
@@ -93,7 +93,9 @@ All code in both Golang and React/TypeScript stacks MUST adhere to SOLID princip
 - Use TypeScript exclusively (no plain JavaScript)
 - Use functional components and React Hooks exclusively
 - All components MUST use PascalCase naming
-- Component files MUST be placed in `src/components/` directory structure
+- Reusable component files MUST be placed in the `src/components/` directory structure
+- Route-level screen files MAY be placed in `src/pages/`; all component and screen files
+  MUST use PascalCase naming
 - Prefer composition over inheritance
 - Use proper TypeScript typing (avoid `any` unless absolutely necessary)
 
@@ -166,7 +168,8 @@ Every feature plan MUST pass these validation gates before implementation:
 - **Language**: TypeScript (strict mode enabled)
 - **Framework**: React with Functional Components and Hooks
 - **Testing**: Vitest + React Testing Library
-- **Code Organization**: Component-based architecture in `src/components/`
+- **Code Organization**: Reusable components in `src/components/`; route-level screens
+  MAY be organized in `src/pages/`
 
 **Database**:
 
@@ -176,9 +179,10 @@ Every feature plan MUST pass these validation gates before implementation:
 
 **API Design**:
 
-- RESTful or GraphQL contracts defined in `/contracts/`
+- RESTful or GraphQL feature contracts defined in `specs/<feature>/contracts/`
 - API layer serves as boundary between frontend and backend
-- Handlers/Controllers in outer layer, business logic in Domain layer
+- Handlers/Controllers in outer layer, application orchestration in Usecase layer, and
+  dependency-free domain rules in Domain layer
 
 ## Quality Gates
 
@@ -239,4 +243,4 @@ Every feature plan MUST pass these validation gates before implementation:
 - Test-first approach enforced through task ordering
 - Integration and unit tests required before feature completion
 
-**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE: Set when constitution is formally adopted by team) | **Last Amended**: 2025-11-30
+**Version**: 1.0.1 | **Ratified**: 2025-11-30 | **Last Amended**: 2026-06-01

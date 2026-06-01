@@ -9,6 +9,7 @@ Dockerfile*
 node_modules
 dist
 coverage
+coverage/
 tests
 *.log
 *.md

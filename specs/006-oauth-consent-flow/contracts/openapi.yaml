@@ -1,0 +1,324 @@
+openapi: 3.0.3
+info:
+  title: Keyles OAuth Browser Interaction API
+  version: 1.0.0
+  description: |
+    Browser-facing login and consent interaction around the existing OAuth 2.0 /
+    OIDC Authorization Code flow. OAuth request parameters are validated and stored
+    server-side before login or consent pages are rendered.
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+tags:
+  - name: OAuth Browser Flow
+paths:
+  /oauth2/auth:
+    get:
+      tags: [OAuth Browser Flow]
+      summary: Initialize authorization interaction
+      operationId: initializeAuthorization
+      parameters:
+        - $ref: '#/components/parameters/ClientId'
+        - $ref: '#/components/parameters/RedirectUri'
+        - $ref: '#/components/parameters/ResponseType'
+        - $ref: '#/components/parameters/Scope'
+        - $ref: '#/components/parameters/State'
+        - $ref: '#/components/parameters/CodeChallenge'
+        - $ref: '#/components/parameters/CodeChallengeMethod'
+        - name: nonce
+          in: query
+          schema:
+            type: string
+        - name: prompt
+          in: query
+          description: Space-delimited OIDC prompt values
+          schema:
+            type: string
+          example: login
+        - name: max_age
+          in: query
+          description: Maximum authentication age in seconds
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '302':
+          description: Redirect to frontend login, consent, local error, or validated callback error
+          headers:
+            Location:
+              schema:
+                type: string
+              examples:
+                login:
+                  value: http://localhost:3000/oauth2/login?transaction_id=opaque
+                consent:
+                  value: http://localhost:3000/oauth2/consent?transaction_id=opaque
+                localError:
+                  value: http://localhost:3000/oauth2/error?error=temporarily_unavailable
+                callbackError:
+                  value: https://client.example/callback?error=login_required&state=opaque-client-state
+        '400':
+          description: Malformed request that cannot be redirected safely
+  /oauth2/login:
+    post:
+      tags: [OAuth Browser Flow]
+      summary: Authenticate end-user for an OAuth transaction
+      operationId: authenticateOAuthEndUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthLoginRequest'
+      responses:
+        '200':
+          description: Login succeeded and session cookie was created
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Host-only HttpOnly SameSite=Lax Path=/ end-user SSO session cookie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionRedirect'
+        '400':
+          description: Invalid or expired transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '401':
+          description: Generic end-user authentication failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '429':
+          description: Source-IP or tenant-email login failure limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '503':
+          description: Local temporary-unavailable error when Redis security state cannot be read or written
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+  /oauth2/consent/{transactionId}:
+    get:
+      tags: [OAuth Browser Flow]
+      summary: Read consent screen details
+      operationId: getConsentDetails
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Display-safe details for the authenticated transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentDetails'
+        '401':
+          description: Session missing or not bound to transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '410':
+          description: Transaction expired or already consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '503':
+          description: Local temporary-unavailable error when Redis security state cannot be read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+  /oauth2/consent:
+    post:
+      tags: [OAuth Browser Flow]
+      summary: Submit end-user consent decision
+      operationId: submitConsentDecision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentDecisionRequest'
+      responses:
+        '200':
+          description: Decision accepted; browser must navigate to redirect_url
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InteractionRedirect'
+        '400':
+          description: Invalid CSRF token or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '401':
+          description: Session missing or not bound to transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '410':
+          description: Transaction expired or already consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+        '503':
+          description: Local temporary-unavailable error when Redis security state cannot be read or written
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthInteractionError'
+  /oauth2/logout:
+    post:
+      tags: [OAuth Browser Flow]
+      summary: End the provider-local browser SSO session
+      operationId: logoutOAuthEndUser
+      description: |
+        Deletes the Redis-backed end-user SSO session when available and always
+        returns an expired host-only session cookie. This endpoint is idempotent,
+        does not revoke external-client tokens, and does not accept a post-logout
+        redirect URI.
+      responses:
+        '204':
+          description: Session ended or already absent
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Expired host-only HttpOnly SameSite=Lax Path=/ end-user SSO session cookie
+components:
+  parameters:
+    ClientId:
+      name: client_id
+      in: query
+      required: true
+      schema:
+        type: string
+    RedirectUri:
+      name: redirect_uri
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uri
+    ResponseType:
+      name: response_type
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [code]
+    Scope:
+      name: scope
+      in: query
+      required: true
+      schema:
+        type: string
+      example: openid profile email
+    State:
+      name: state
+      in: query
+      required: true
+      schema:
+        type: string
+    CodeChallenge:
+      name: code_challenge
+      in: query
+      required: true
+      schema:
+        type: string
+    CodeChallengeMethod:
+      name: code_challenge_method
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [S256]
+  schemas:
+    OAuthLoginRequest:
+      type: object
+      required: [transaction_id, email, password]
+      properties:
+        transaction_id:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    ConsentDecisionRequest:
+      type: object
+      required: [transaction_id, interaction_csrf_token, approved]
+      properties:
+        transaction_id:
+          type: string
+        interaction_csrf_token:
+          type: string
+        approved:
+          type: boolean
+    ConsentDetails:
+      type: object
+      required: [transaction_id, interaction_csrf_token, client, scopes, user]
+      properties:
+        transaction_id:
+          type: string
+        interaction_csrf_token:
+          type: string
+        client:
+          $ref: '#/components/schemas/ConsentClient'
+        scopes:
+          type: array
+          items:
+            type: string
+        user:
+          type: string
+          description: Display-safe signed-in user label
+    ConsentClient:
+      type: object
+      required: [client_id, client_name]
+      properties:
+        client_id:
+          type: string
+        client_name:
+          type: string
+        logo_uri:
+          type: string
+          format: uri
+        policy_uri:
+          type: string
+          format: uri
+        tos_uri:
+          type: string
+          format: uri
+    InteractionRedirect:
+      type: object
+      required: [redirect_url]
+      properties:
+        redirect_url:
+          type: string
+          format: uri
+    OAuthInteractionError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        error_description:
+          type: string

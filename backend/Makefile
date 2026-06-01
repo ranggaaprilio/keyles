@@ -1,4 +1,4 @@
-.PHONY: build run test test-coverage migrate-up migrate-down seed clean docker-up docker-down dev-infra dev-db dev test-docker keygen docker-build docker-buildx help
+.PHONY: build run test test-coverage migrate-up migrate-down seed clean docker-up docker-down dev-infra dev-db dev test-docker test-compose-e2e keygen docker-build docker-buildx help
 
 # Variables
 BINARY_NAME=server
@@ -8,6 +8,7 @@ SEED_PATH=./cmd/seed
 DATABASE_URL?=postgres://keyles:keyles_dev_password@localhost:5432/keyles?sslmode=disable
 MIGRATIONS_PATH=./migrations
 DOCKER_COMPOSE ?= docker compose -f ../docker-compose.yml
+CONTAINER_ENGINE ?= podman
 
 # Default target
 help:
@@ -27,6 +28,7 @@ help:
 	@echo "  dev-db         - Run migrations and seed data"
 	@echo "  dev            - Prepare local dependencies and run server"
 	@echo "  test-docker    - Run integration tests with Docker dependencies"
+	@echo "  test-compose-e2e - Run the live OAuth browser matrix against the Compose stack"
 	@echo "  docker-build  - Build Docker image for native architecture"
 	@echo "  docker-buildx - Build multi-arch image (amd64+arm64) and push"
 
@@ -49,7 +51,7 @@ test:
 # Run tests with coverage
 test-coverage:
 	@echo "Running tests with coverage..."
-	@go test -coverprofile=coverage.out ./...
+	@go test -coverpkg=./... -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "✓ Coverage report generated: coverage.html"
 	@go tool cover -func=coverage.out
@@ -112,6 +114,11 @@ dev: dev-infra dev-db
 test-docker: docker-up
 	@echo "Running tests in Docker environment..."
 	@trap '$(MAKE) docker-down' EXIT; go test -v ./tests/integration/...
+
+# Run the seeded OAuth browser-flow matrix against the active Compose stack.
+test-compose-e2e:
+	@echo "Running live OAuth browser-flow matrix..."
+	@KEYLES_COMPOSE_E2E=1 CONTAINER_ENGINE=$(CONTAINER_ENGINE) go test -count=1 -run TestDockerComposeOAuthBrowserFlow -v ./tests/integration
 
 
 # Build Docker image for native architecture

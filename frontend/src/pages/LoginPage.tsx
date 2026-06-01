@@ -50,7 +50,7 @@ export function LoginPage() {
   useEffect(() => {
     if (loginMutation.isSuccess) {
       success('Login successful! Redirecting...');
-      setTimeout(() => navigate('/dashboard'), 500);
+      setTimeout(() => navigate('/dashboard', { replace: true }), 500);
     }
     if (loginMutation.isError) {
       const err = loginMutation.error as { message?: string };

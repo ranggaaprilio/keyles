@@ -24,12 +24,20 @@ const (
 	EventLogout               EventType = "logout"
 	EventTenantActivated      EventType = "tenant_activated"
 	EventTenantSuspended      EventType = "tenant_suspended"
-
 	// Client management events
 	EventClientCreated        EventType = "client_created"
 	EventClientUpdated        EventType = "client_updated"
 	EventClientDeleted        EventType = "client_deleted"
 	EventClientSecretRotated  EventType = "client_secret_rotated"
+
+	// OAuth browser-flow events
+	EventOAuthLoginSucceeded   EventType = "oauth_login_succeeded"
+	EventOAuthLoginFailed      EventType = "oauth_login_failed"
+	EventOAuthLoginThrottled   EventType = "oauth_login_throttled"
+	EventOAuthConsentApproved  EventType = "oauth_consent_approved"
+	EventOAuthConsentDenied    EventType = "oauth_consent_denied"
+	EventOAuthLogout           EventType = "oauth_logout"
+	EventOAuthInvalidCallback  EventType = "oauth_invalid_callback"
 )
 
 // AuditLog represents security and activity events for compliance and monitoring

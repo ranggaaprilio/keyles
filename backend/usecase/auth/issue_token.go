@@ -204,6 +204,10 @@ func (uc *IssueToken) Execute(ctx context.Context, req TokenRequest) (*TokenResp
 		ClientID:  authCode.ClientID,
 		Scope:     authCode.Scope,
 		Roles:     roles,
+		Nonce:     authCode.Nonce,
+	}
+	if authCode.AuthenticatedAt != nil {
+		idTokenClaims.AuthTime = authCode.AuthenticatedAt.Unix()
 	}
 	if endUser != nil {
 		idTokenClaims.Email = endUser.Email

@@ -99,7 +99,7 @@ describe("ClientList", () => {
       />,
     );
     expect(
-      screen.getByText(/no client applications registered/i),
+      screen.getByText(/no client applications found/i),
     ).toBeInTheDocument();
   });
 

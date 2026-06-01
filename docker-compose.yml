@@ -49,6 +49,13 @@ services:
       - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
       - SKIP_EMAIL_VERIFICATION=${SKIP_EMAIL_VERIFICATION:-false}
       - GIN_MODE=release
+      - FRONTEND_URL=http://localhost:3000
+      - OAUTH_ISSUER=http://localhost:8080
+      - SECURITY_COOKIE_SECURE=false
+      - SECURITY_SESSION_TTL=28800
+      - OAUTH_AUTH_TRANSACTION_TTL=600
+      - RATE_LIMIT_OAUTH_LOGIN_FAILURES=5
+      - RATE_LIMIT_OAUTH_LOGIN_WINDOW_SECONDS=900
       - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
       - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
       - CORS_ALLOWED_HEADERS=Origin,Content-Type,Accept,Authorization

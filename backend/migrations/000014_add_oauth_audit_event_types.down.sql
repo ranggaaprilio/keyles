@@ -1,0 +1,2 @@
+-- PostgreSQL enum values cannot be removed safely without rebuilding the type.
+-- Keep the OAuth audit values when rolling back this migration.

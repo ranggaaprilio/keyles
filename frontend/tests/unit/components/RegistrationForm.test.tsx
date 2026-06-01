@@ -63,8 +63,10 @@ describe('RegistrationForm', () => {
     it('should render form title and description', () => {
       renderForm();
 
-      expect(screen.getByText(/create your organization/i)).toBeInTheDocument();
-      expect(screen.getByText(/register your organization to get started/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /create your organization/i })
+      ).toBeInTheDocument();
+      expect(screen.getByText(/register for keyles sso/i)).toBeInTheDocument();
     });
 
     it('should render password requirements hint', () => {
@@ -216,7 +218,7 @@ describe('RegistrationForm', () => {
       await waitFor(() => {
         const icons = document.querySelectorAll('svg');
         const hasCheckIcon = Array.from(icons).some(icon => 
-          icon.classList.contains('text-green-600')
+          icon.classList.contains('text-green-700')
         );
         expect(hasCheckIcon).toBe(true);
       });
@@ -265,20 +267,17 @@ describe('RegistrationForm', () => {
       const checkAvailabilityMock = vi.mocked(tenantApi.checkAvailability);
       checkAvailabilityMock.mockRejectedValue(new Error('Network error'));
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       renderForm();
 
       await user.type(screen.getByLabelText(/organization name/i), 'Test Org');
       await user.type(screen.getByLabelText(/admin email/i), 'test@test.com');
       await user.tab();
 
-      // Should not crash, just log error
+      // Availability checks are optional and must not block the form.
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith('Availability check failed:', expect.any(Error));
+        expect(checkAvailabilityMock).toHaveBeenCalled();
       });
-
-      consoleSpy.mockRestore();
+      expect(screen.getByRole('button', { name: /create organization/i })).toBeEnabled();
     });
   });
 
@@ -454,7 +453,7 @@ describe('RegistrationForm', () => {
           /organization name must be at least 3 characters/i
         );
         expect(errorMessage).toBeInTheDocument();
-        expect(errorMessage.closest('p')).toHaveClass('text-red-600');
+        expect(errorMessage.closest('p')).toHaveClass('text-red-800');
       });
     });
 

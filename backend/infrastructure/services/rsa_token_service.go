@@ -74,6 +74,14 @@ func (s *RSATokenService) signToken(ctx context.Context, claims *services.TokenC
 		"scope":          claims.Scope,
 		"roles":          claims.Roles,
 	})
+	// Set OIDC claims conditionally on non-zero values to avoid cluttering
+	// access tokens with unused fields.
+	if claims.Nonce != "" {
+		token.Claims.(jwt.MapClaims)["nonce"] = claims.Nonce
+	}
+	if claims.AuthTime != 0 {
+		token.Claims.(jwt.MapClaims)["auth_time"] = claims.AuthTime
+	}
 
 	// Set the key ID in the header
 	token.Header["kid"] = key.KeyID
@@ -118,13 +126,11 @@ func (s *RSATokenService) ValidateTokenSignature(ctx context.Context, tokenStrin
 	if !token.Valid {
 		return nil, errors.New("invalid token")
 	}
-
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, errors.New("failed to extract claims")
 	}
-
 	// Convert to TokenClaims
 	tokenClaims := &services.TokenClaims{
 		Issuer:        getString(claims, "iss"),
@@ -143,6 +149,8 @@ func (s *RSATokenService) ValidateTokenSignature(ctx context.Context, tokenStrin
 		ClientID:      getString(claims, "client_id"),
 		Scope:         getString(claims, "scope"),
 		Roles:         getStringArray(claims, "roles"),
+		Nonce:         getString(claims, "nonce"),
+		AuthTime:      getInt64(claims, "auth_time"),
 	}
 
 	return tokenClaims, nil
@@ -295,4 +303,11 @@ func getTime(claims jwt.MapClaims, key string) time.Time {
 		return time.Unix(int64(val), 0)
 	}
 	return time.Time{}
+}
+
+func getInt64(claims jwt.MapClaims, key string) int64 {
+	if val, ok := claims[key].(float64); ok {
+		return int64(val)
+	}
+	return 0
 }

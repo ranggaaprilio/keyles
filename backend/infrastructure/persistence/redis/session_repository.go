@@ -21,6 +21,68 @@ func NewRedisSessionRepository(client *redis.Client) repositories.SessionReposit
 	return &RedisSessionRepository{client: client}
 }
 
+// sessionData is the on-wire shape stored in Redis.
+// All time.Time fields are represented as RFC3339Nano strings so that
+// nanosecond precision survives JSON round-trips deterministically.
+// No ClientID field — sessions are client-agnostic; a single session
+// may service multiple OAuth clients within the same tenant.
+type sessionData struct {
+	SessionID       string                 `json:"session_id"`
+	UserID          string                 `json:"user_id"`
+	TenantID        string                 `json:"tenant_id"`
+	AuthenticatedAt string                 `json:"authenticated_at"`
+	CreatedAt       string                 `json:"created_at"`
+	ExpiresAt       string                 `json:"expires_at"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+}
+
+func marshalSession(s *repositories.Session) ([]byte, error) {
+	d := sessionData{
+		SessionID:       s.SessionID,
+		UserID:          s.UserID,
+		TenantID:        s.TenantID,
+		AuthenticatedAt: s.AuthenticatedAt.Format(time.RFC3339Nano),
+		CreatedAt:       s.CreatedAt.Format(time.RFC3339Nano),
+		ExpiresAt:       s.ExpiresAt.Format(time.RFC3339Nano),
+		Metadata:        s.Metadata,
+	}
+	data, err := json.Marshal(d)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal session: %w", err)
+	}
+	return data, nil
+}
+
+func unmarshalSession(data []byte) (*repositories.Session, error) {
+	var d sessionData
+	if err := json.Unmarshal(data, &d); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
+	}
+
+	authenticatedAt, err := time.Parse(time.RFC3339Nano, d.AuthenticatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse authenticated_at: %w", err)
+	}
+	createdAt, err := time.Parse(time.RFC3339Nano, d.CreatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse created_at: %w", err)
+	}
+	expiresAt, err := time.Parse(time.RFC3339Nano, d.ExpiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse expires_at: %w", err)
+	}
+
+	return &repositories.Session{
+		SessionID:       d.SessionID,
+		UserID:          d.UserID,
+		TenantID:        d.TenantID,
+		AuthenticatedAt: authenticatedAt,
+		CreatedAt:       createdAt,
+		ExpiresAt:       expiresAt,
+		Metadata:        d.Metadata,
+	}, nil
+}
+
 // sessionKey generates the Redis key for a session
 func (r *RedisSessionRepository) sessionKey(sessionID string) string {
 	return fmt.Sprintf("oauth:session:%s", sessionID)
@@ -30,9 +92,9 @@ func (r *RedisSessionRepository) sessionKey(sessionID string) string {
 func (r *RedisSessionRepository) Create(ctx context.Context, session *repositories.Session, ttl time.Duration) error {
 	key := r.sessionKey(session.SessionID)
 
-	data, err := json.Marshal(session)
+	data, err := marshalSession(session)
 	if err != nil {
-		return fmt.Errorf("failed to marshal session: %w", err)
+		return err
 	}
 
 	return r.client.Set(ctx, key, data, ttl).Err()
@@ -50,12 +112,7 @@ func (r *RedisSessionRepository) Get(ctx context.Context, sessionID string) (*re
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
 
-	var session repositories.Session
-	if err := json.Unmarshal(data, &session); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
-	}
-
-	return &session, nil
+	return unmarshalSession(data)
 }
 
 // Delete removes a session (logout)
