@@ -1,22 +1,28 @@
-# Keyles Frontend - OAuth 2.0 SSO Integration
+# Keyles Frontend — SSO Provider UI & Admin Portal
 
-React + TypeScript frontend for the Keyles multi-tenant SSO platform with OAuth 2.0 + OIDC integration.
+React + TypeScript single-page application for the Keyles multi-tenant SSO
+platform. Serves the OAuth browser consent flow (login, consent, logout,
+error pages) and the admin portal for tenant, client, user, and role
+management.
 
 ## Features
 
-- **OAuth 2.0 Client**: Full Authorization Code Flow with PKCE support
-- **Admin Portal**: Client management, role assignments, user administration
-- **Consent UI**: OAuth consent screen for user authorization
-- **JWT Handling**: Secure token storage and automatic refresh
+- **OAuth Browser Consent Flow**: Login page, consent approval/denial,
+  provider-local logout, and user-facing error rendering
+- **Admin Portal**: OAuth client registration, user invitation and
+  lifecycle management, role assignment, session listing, and audit
+  activity feeds
+- **OAuth Relying Party Demo**: Callback handler and PKCE-based token
+  exchange for testing the authorization code flow
 - **TypeScript**: Full type safety with strict mode
-- **React 18**: Functional components with hooks only
+- **React 18**: Functional components and hooks exclusively
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- Backend API running (see `backend/README.md`)
+- Node.js 20 LTS
+- Backend API running (see [backend/README.md](../backend/README.md))
 
 ### Installation
 
@@ -27,36 +33,13 @@ cd frontend
 npm install
 
 # Copy environment file
-cp .env.example .env.local
+cp .env.example .env
 
-# Edit .env.local with your configuration
-nano .env.local
-
-# Start development server
+# Start development server (port 5173)
 npm run dev
 ```
 
-Visit http://localhost:5173
-
-## OAuth Configuration
-
-### Environment Variables
-
-Configure OAuth in `.env.local`:
-
-```bash
-# API Configuration
-VITE_API_URL=http://localhost:8080
-
-# OAuth Configuration
-VITE_OAUTH_ISSUER=http://localhost:8080
-VITE_CLIENT_ID=dev_client_001
-VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
-VITE_OAUTH_SCOPES=openid profile email
-
-# Application
-VITE_APP_NAME=Keyles SSO
-```
+Visit http://localhost:5173 (dev) or http://localhost:3000 (Docker).
 
 ## Project Structure
 
@@ -64,156 +47,191 @@ VITE_APP_NAME=Keyles SSO
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── auth/              # OAuth authentication components
-│   │   │   ├── ConsentScreen.tsx
-│   │   │   ├── OAuthCallback.tsx
-│   │   │   └── LoginForm.tsx
-│   │   ├── admin/             # Admin portal components
-│   │   │   ├── ClientManagement.tsx
-│   │   │   ├── ClientForm.tsx
-│   │   │   ├── RoleManagement.tsx
-│   │   │   └── UserRoles.tsx
-│   │   └── common/            # Shared components
+│   │   ├── auth/              # ConsentScreen, OAuthCallback, OAuthErrorPanel
+│   │   ├── admin/             # ClientManagement, UserManagement, RoleManagement
+│   │   ├── ui/                # Radix UI primitives (button, dialog, select, etc.)
+│   │   ├── landing/           # Public landing page components
+│   │   ├── registration/      # Tenant registration form
+│   │   ├── verification/      # OTP verification form
+│   │   ├── clients/           # Client form components
+│   │   ├── users/             # User form components
+│   │   ├── dashboard/         # Dashboard widgets
+│   │   ├── ErrorBoundary.tsx  # React error boundary
+│   │   └── ProtectedRoute.tsx # JWT auth guard
+│   ├── pages/                 # Route-level page components
+│   │   ├── OAuthLoginPage.tsx       # /oauth2/login
+│   │   ├── OAuthConsentPage.tsx     # /oauth2/consent
+│   │   ├── OAuthLogoutPage.tsx      # /oauth2/logout
+│   │   ├── OAuthErrorPage.tsx       # /oauth2/error
+│   │   ├── LoginPage.tsx            # Admin login
+│   │   ├── DashboardPage.tsx        # Admin dashboard
+│   │   ├── ClientManagementPage.tsx # OAuth client CRUD
+│   │   ├── UserManagementPage.tsx   # User invitation & lifecycle
+│   │   ├── RegisterPage.tsx         # Tenant registration
+│   │   ├── VerifyOTPPage.tsx        # OTP verification
+│   │   ├── AcceptInvitationPage.tsx # Invitation acceptance
+│   │   └── LandingPage.tsx          # Public landing
 │   ├── services/              # API clients
-│   │   ├── api.ts             # Base API client
-│   │   ├── oauthService.ts    # OAuth flow API
-│   │   ├── clientService.ts   # Client management API
-│   │   └── roleService.ts     # Role management API
+│   │   ├── api.ts             # Axios instance with JWT interceptor
+│   │   ├── oauthService.ts    # Relying-party OAuth flow (PKCE, token exchange)
+│   │   ├── oauthInteractionService.ts # Provider-side browser flow (login, consent, logout)
+│   │   ├── clientService.ts   # OAuth client management
+│   │   ├── roleService.ts     # Role assignment
+│   │   └── api/               # Domain-specific API modules (auth, tenant, user, etc.)
 │   ├── hooks/                 # Custom React hooks
-│   │   ├── useAuth.ts
-│   │   ├── useOAuth.ts        # OAuth flow hook
-│   │   └── usePKCE.ts         # PKCE generation hook
-│   ├── types/                 # TypeScript definitions
-│   │   ├── oauth.ts           # OAuth types
-│   │   ├── client.ts          # Client types
-│   │   └── role.ts            # Role types
+│   │   ├── useAuth.ts         # Admin authentication
+│   │   ├── useOAuth.ts        # Relying-party OAuth flow
+│   │   ├── usePKCE.ts         # S256 PKCE challenge generation
+│   │   ├── useClients.ts      # Client CRUD operations
+│   │   ├── useUsers.ts        # User management operations
+│   │   ├── useRoles.ts        # Role assignment operations
+│   │   ├── useSessions.ts     # Session listing & revocation
+│   │   ├── useInvitation.ts   # Invitation validation & acceptance
+│   │   ├── useTenantRegistration.ts # Registration flow
+│   │   └── useOTPVerification.ts    # OTP verification flow
+│   ├── stores/                # Zustand state management
+│   ├── types/                 # TypeScript type definitions
+│   │   ├── oauth.ts           # OAuth interaction types
+│   │   ├── api.ts             # API request/response types (OpenAPI-generated)
+│   │   ├── client.ts          # OAuth client types
+│   │   ├── role.ts            # Role types
+│   │   ├── user.ts            # User types
+│   │   └── tenant.ts          # Tenant types
 │   ├── utils/                 # Utility functions
-│   │   ├── pkce.ts            # PKCE helper
-│   │   └── tokenStorage.ts    # Token storage helper
-│   └── tests/                 # Unit and integration tests
+│   │   ├── pkce.ts            # PKCE code verifier & challenge
+│   │   └── tokenStorage.ts    # Admin JWT token persistence
+│   ├── tests/                 # Test files mirroring src structure
+│   ├── App.tsx                # Route definitions
+│   ├── main.tsx               # Application entry point
+│   └── index.css              # Tailwind base styles
+├── emails/                    # React Email templates
+├── tests/                     # Legacy test directory
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
-└── tailwind.config.js
+├── tailwind.config.js
+└── postcss.config.js
 ```
 
-## OAuth Integration Guide
+## OAuth Browser Consent Flow (Feature 006)
 
-### 1. Implementing OAuth Login
+The frontend serves the **provider-side** pages that end-users interact with
+during an OAuth authorization request. The backend validates the request,
+stores it in a Redis transaction, and redirects the browser to these pages
+with only an opaque `transaction_id`.
+
+### Flow Overview
+
+```
+User → /oauth2/auth (backend validates)
+     → /oauth2/login?transaction_id=... (frontend login form)
+     → POST /oauth2/login (backend authenticates, sets SSO cookie)
+     → /oauth2/consent?transaction_id=... (frontend consent screen)
+     → POST /oauth2/consent (backend issues auth code, redirects to callback)
+```
+
+### Pages
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/oauth2/login` | `OAuthLoginPage` | Email/password form; reads `transaction_id` from query params |
+| `/oauth2/consent` | `OAuthConsentPage` | Displays client name, scopes, user identity; allow/deny buttons |
+| `/oauth2/logout` | `OAuthLogoutPage` | Submits logout via POST; renders signed-out confirmation |
+| `/oauth2/error` | `OAuthErrorPage` | Displays safe, user-friendly error messages |
+
+### Interaction API Client
+
+```typescript
+import {
+  submitLogin,
+  getConsentDetails,
+  submitConsentDecision,
+  submitLogout,
+  parseInteractionError,
+} from '@/services/oauthInteractionService';
+
+// Login: sends transaction_id + credentials, receives consent redirect URL
+const response = await submitLogin({ transaction_id, email, password });
+// → { redirect_url: "/oauth2/consent?transaction_id=..." }
+
+// Consent details: loads trusted info for the consent screen
+const details = await getConsentDetails(transactionId);
+// → { client_name, scopes, user_display_name, csrf_token }
+
+// Consent decision: approve or deny
+const result = await submitConsentDecision({
+  transaction_id,
+  csrf_token,
+  approved: true,
+});
+// → { redirect_url: "https://client.example.com/callback?code=...&state=..." }
+
+// Logout: terminates provider-local session
+await submitLogout();
+```
+
+## Admin Portal
+
+The admin portal is protected by JWT authentication and serves tenant
+administrators.
+
+### Routes
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/login` | `LoginPage` | Admin email/password login |
+| `/dashboard` | `DashboardPage` | Tenant dashboard (requires JWT) |
+| `/admin/clients` | `ClientManagementPage` | OAuth client CRUD |
+| `/admin/users` | `UserManagementPage` | User invitation & lifecycle |
+| `/register` | `RegisterPage` | New tenant registration |
+| `/verify-otp` | `VerifyOTPPage` | Email OTP verification |
+| `/invite/:token` | `AcceptInvitationPage` | Invitation acceptance |
+
+### Admin Service Clients
+
+```typescript
+import { clientService } from '@/services/clientService';
+import { roleService } from '@/services/roleService';
+
+// Client management
+const clients = await clientService.listClients();
+await clientService.createClient({ name, redirectUris, type });
+await clientService.rotateSecret(clientId);
+
+// Role management
+await roleService.assignRole({ userId, clientId, role });
+await roleService.revokeRole(assignmentId);
+```
+
+## OAuth Relying Party Demo
+
+The frontend includes a demo relying party callback and PKCE helpers for
+testing the authorization code flow end-to-end.
 
 ```typescript
 import { useOAuth } from '@/hooks/useOAuth';
+import { usePKCE } from '@/hooks/usePKCE';
 
-function LoginButton() {
-  const { initiateLogin } = useOAuth();
+// Generate S256 PKCE challenge
+const { codeVerifier, codeChallenge } = generateChallenge();
+sessionStorage.setItem('code_verifier', codeVerifier);
 
-  const handleLogin = async () => {
-    // Generates PKCE challenge and redirects to authorization endpoint
-    await initiateLogin({
-      clientId: import.meta.env.VITE_CLIENT_ID,
-      redirectUri: import.meta.env.VITE_OAUTH_REDIRECT_URI,
-      scope: 'openid profile email',
-    });
-  };
+// Redirect user to provider
+const authURL = buildAuthURL({
+  clientId: 'dev_client_001',
+  redirectUri: 'http://localhost:3000/auth/callback',
+  scope: 'openid profile email',
+  codeChallenge,
+  state: crypto.randomUUID(),
+});
+window.location.href = authURL;
 
-  return <button onClick={handleLogin}>Sign in with SSO</button>;
-}
-```
-
-### 2. Handling OAuth Callback
-
-```typescript
-import { OAuthCallback } from '@/components/auth/OAuthCallback';
-
-// In your router configuration
-<Route path="/auth/callback" element={<OAuthCallback />} />
-```
-
-### 3. Using PKCE
-
-```typescript
-import { usePKCE } from "@/hooks/usePKCE";
-
-function Component() {
-  const { generateChallenge, verifyChallenge } = usePKCE();
-
-  // Generate code_verifier and code_challenge
-  const { codeVerifier, codeChallenge } = await generateChallenge();
-
-  // Store code_verifier securely
-  sessionStorage.setItem("code_verifier", codeVerifier);
-
-  // Use code_challenge in authorization request
-  // Later, retrieve code_verifier for token exchange
-}
-```
-
-### 4. Managing Tokens
-
-```typescript
-import { tokenStorage } from "@/utils/tokenStorage";
-
-// Store tokens after successful authentication
-tokenStorage.setAccessToken(accessToken);
-tokenStorage.setRefreshToken(refreshToken);
-
-// Retrieve tokens
-const accessToken = tokenStorage.getAccessToken();
-
-// Clear tokens on logout
-tokenStorage.clearTokens();
-```
-
-### 5. Automatic Token Refresh
-
-The API client automatically refreshes expired access tokens using refresh tokens:
-
-```typescript
-// Configured in src/services/api.ts
-axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Attempt to refresh token
-      const newAccessToken = await refreshAccessToken();
-      // Retry original request with new token
-    }
-    return Promise.reject(error);
-  }
+// After callback, exchange code for tokens
+const tokens = await oauthService.exchangeCodeForTokens(
+  code,
+  codeVerifier,
+  redirectUri
 );
-```
-
-## Admin Portal Features
-
-### Client Management
-
-Admin users can:
-
-- Register new OAuth clients
-- View all clients for their tenant
-- Update client configurations (name, redirect URIs)
-- Rotate client secrets
-- Delete clients
-
-```typescript
-import { ClientManagement } from '@/components/admin/ClientManagement';
-
-<Route path="/admin/clients" element={<ClientManagement />} />
-```
-
-### Role Management
-
-Admin users can:
-
-- Assign roles to users for specific clients
-- Revoke user roles
-- View role assignments
-- Control user access to client applications
-
-```typescript
-import { RoleManagement } from '@/components/admin/RoleManagement';
-
-<Route path="/admin/roles" element={<RoleManagement />} />
 ```
 
 ## Development
@@ -221,151 +239,80 @@ import { RoleManagement } from '@/components/admin/RoleManagement';
 ### Available Scripts
 
 ```bash
-npm run dev        # Start development server
-npm run build      # Build for production
-npm run preview    # Preview production build
-npm run lint       # Run ESLint
-npm test           # Run tests
-npm run test:coverage  # Generate coverage report
+npm run dev      # Start Vite dev server (port 5173)
+npm run build    # Type-check and build production assets
+npm run preview  # Preview production build
+npm run lint     # ESLint with zero warnings
+npm run test     # Vitest with jsdom
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-npm test
+npm run test
 
 # Run tests in watch mode
-npm test -- --watch
+npm run test -- --watch
 
-# Generate coverage report
-npm run test:coverage
+# Run a specific test file
+npm run test -- OAuthLoginPage.test.tsx
 
-# Run specific test file
-npm test -- LoginForm.test.tsx
+# Run with coverage
+npm run test -- --coverage
 ```
 
 ### Code Quality
 
-The project enforces:
-
 - **TypeScript strict mode**: Full type safety
-- **ESLint**: Code linting and style checking
-- **Prettier**: Code formatting (if configured)
-- **Functional components only**: No class components (per constitution)
-- **PascalCase naming**: For all React components
+- **ESLint**: Zero warnings enforced
+- **Functional components only**: No class components
+- **PascalCase naming**: For React components
+- **Tailwind CSS**: Utility-first styling
 
-## API Integration
+## Environment Variables
 
-### Base API Configuration
-
-```typescript
-// src/services/api.ts
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// Add authorization header
-api.interceptors.request.use((config) => {
-  const token = tokenStorage.getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-```
-
-### OAuth Service
-
-```typescript
-// src/services/oauthService.ts
-export const oauthService = {
-  // Build authorization URL with PKCE
-  buildAuthURL: (params: AuthParams) => string,
-
-  // Exchange authorization code for tokens
-  exchangeCodeForTokens: (code: string, codeVerifier: string) =>
-    Promise<TokenResponse>,
-
-  // Refresh access token
-  refreshAccessToken: (refreshToken: string) => Promise<TokenResponse>,
-
-  // Revoke token
-  revokeToken: (token: string) => Promise<void>,
-};
-```
-
-### Client Service
-
-```typescript
-// src/services/clientService.ts
-export const clientService = {
-  createClient: (data: CreateClientRequest) => Promise<Client>,
-  listClients: () => Promise<Client[]>,
-  getClient: (clientId: string) => Promise<Client>,
-  updateClient: (clientId: string, data: UpdateClientRequest) =>
-    Promise<Client>,
-  deleteClient: (clientId: string) => Promise<void>,
-  rotateSecret: (clientId: string) => Promise<{ clientSecret: string }>,
-};
-```
-
-## Testing OAuth Flow
-
-### 1. Start Backend
+Configure in `.env`:
 
 ```bash
-cd backend
-make dev  # Starts Docker, runs migrations, seeds data
+# API Configuration
+VITE_API_URL=http://localhost:8080
+
+# OAuth Configuration (relying party demo)
+VITE_OAUTH_ISSUER=http://localhost:8080
+VITE_CLIENT_ID=dev_client_001
+VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+VITE_OAUTH_SCOPES=openid profile email
+
+# Application
+VITE_APP_NAME=Keyles SSO
+VITE_APP_DESCRIPTION=Multi-Tenant SSO Platform
+
+# Feature Flags
+VITE_ENABLE_DEBUG=true
 ```
 
-### 2. Start Frontend
+## Security
 
-```bash
-cd frontend
-npm run dev
-```
-
-### 3. Test Login Flow
-
-1. Click "Sign in with SSO" button
-2. Redirected to authorization endpoint
-3. Enter credentials: `admin@dev-tenant.com` / `admin123`
-4. Consent screen (if required)
-5. Redirected back with authorization code
-6. Code exchanged for tokens automatically
-7. Access token stored and used for API requests
-
-### 4. Admin Portal Access
-
-Visit http://localhost:3000/admin (requires admin role)
-
-## Security Considerations
-
-- **PKCE**: Always use PKCE for OAuth flows (prevents authorization code interception)
-- **Token Storage**: Store tokens in memory or sessionStorage, never in localStorage
-- **HTTPS**: Use HTTPS in production (`SECURITY_COOKIE_SECURE=true`)
-- **CSP**: Configure Content Security Policy headers
-- **CORS**: Backend validates allowed origins
-- **XSS Protection**: React escapes content by default, avoid `dangerouslySetInnerHTML`
+- **Provider SSO Cookie**: The backend sets a host-only, HttpOnly,
+  SameSite=Lax cookie (`keyles_sso`). The frontend never accesses it;
+  all browser-flow API calls use `credentials: 'include'`
+- **Admin JWT**: Stored in memory (not localStorage) and sent via
+  `Authorization: Bearer` header; refreshed automatically
+- **PKCE**: S256 mandatory for the relying party demo flow
+- **CSRF**: Consent decisions include a per-transaction CSRF token
+- **CORS**: Backend validates allowed origins; credentials enabled for
+  browser-flow endpoints
 
 ## Production Build
 
 ```bash
-# Build for production
 npm run build
-
-# Preview production build
-npm run preview
-
-# The build output will be in dist/
-# Deploy dist/ to your hosting provider
+# Output in dist/ — deploy to any static file server
 ```
+
+The Dockerfile uses `npm run build` and serves the output via a
+lightweight static server on port 3000.
 
 ### Production Checklist
 
@@ -373,44 +320,40 @@ npm run preview
 - [ ] Set `VITE_OAUTH_ISSUER` to production issuer
 - [ ] Set `VITE_OAUTH_REDIRECT_URI` to production callback URL
 - [ ] Enable HTTPS for all URLs
-- [ ] Configure proper CORS on backend
-- [ ] Set up CDN for static assets
-- [ ] Enable error tracking (Sentry, etc.)
-- [ ] Configure monitoring and analytics
+- [ ] Configure CORS origins on backend
+- [ ] Remove `VITE_ENABLE_DEBUG` or set to `false`
 
 ## Documentation
 
-- [Feature Specification](../specs/003-sso-auth-provider/spec.md)
-- [Quickstart Guide](../specs/003-sso-auth-provider/quickstart.md)
-- [API Contracts](../specs/003-sso-auth-provider/contracts/openapi.yaml)
+- [Feature 003: SSO Auth Provider](../specs/003-sso-auth-provider/spec.md)
+- [Feature 004: Client App Registration](../specs/004-client-app-registration/spec.md)
+- [Feature 005: User Management & RBAC](../specs/005-user-management-rbac/spec.md)
+- [Feature 006: OAuth Consent Flow](../specs/006-oauth-consent-flow/spec.md)
 - [Backend README](../backend/README.md)
 
 ## Troubleshooting
 
 ### CORS Errors
 
-Ensure backend `CORS_ALLOWED_ORIGINS` includes your frontend URL:
+Ensure the backend `CORS_ALLOWED_ORIGINS` includes your frontend URL:
 
-```bash
+```
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
-### Token Refresh Failures
+### 401 on Browser-Flow Endpoints
 
-Check that:
-
-- Refresh token is valid and not expired (7 days)
-- Refresh token hasn't been revoked
-- Client credentials are correct
+The `keyles_sso` cookie requires `credentials: 'include'` on fetch
+requests. The `oauthInteractionService` already sets this; ensure
+custom calls do the same.
 
 ### PKCE Validation Errors
 
-Verify that:
-
-- `code_verifier` matches the `code_challenge` used in authorization request
-- `code_verifier` is stored securely in sessionStorage
-- Challenge method is S256 (SHA-256)
+- `code_verifier` must match the `code_challenge` sent in the
+  authorization request
+- Store `code_verifier` in `sessionStorage` before redirecting
+- Challenge method must be S256
 
 ## License
 
-[Your License Here]
+MIT License — see [LICENSE](../LICENSE)

@@ -1,667 +1,233 @@
-# Keyles - Multi-Tenant SSO Platform
+# Keyles — Multi-Tenant SSO Platform
 
-A modern, secure, and scalable Single Sign-On (SSO) platform built with Go and React, featuring multi-tenant architecture, email-based OTP verification, and JWT authentication.
+OAuth 2.0 + OpenID Connect identity provider with multi-tenant isolation,
+role-based access control, and a browser-facing consent flow. Built in Go
+and React with Clean Architecture.
 
-[![CI/CD](https://github.com/ranggaaprilio/keyles/workflows/Backend%20CI/badge.svg)](https://github.com/ranggaaprilio/keyles/actions)
-[![Coverage](https://codecov.io/gh/ranggaaprilio/keyles/branch/main/graph/badge.svg)](https://codecov.io/gh/ranggaaprilio/keyles)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+## Features
 
-## 🎯 Features
+- **OAuth 2.0 + OIDC**: Authorization Code Flow with S256 PKCE, token
+  exchange, refresh, revocation, and introspection (RFC 6749, 7009, 7662)
+- **Browser Consent Flow**: Redis-backed authorization transactions,
+  end-user login, consent approval/denial, and provider-local logout
+- **Multi-Tenant**: Complete tenant isolation with organization-scoped
+  users, clients, and roles
+- **User Management & RBAC**: Invitation-based onboarding, user lifecycle
+  (enable/disable/delete), role assignment per client, session listing,
+  and audit activity feeds
+- **OAuth Client Management**: Register, update, rotate secrets, and
+  manage redirect URIs for OAuth client applications
+- **JWT Tokens**: RS256 asymmetric signing with JWKS endpoint and OIDC
+  discovery
+- **Security**: Dual-key login throttling (source IP + tenant email),
+  host-only HttpOnly SSO cookies, direct-peer source IP, PKCE mandatory,
+  fail-closed Redis behavior, and bcrypt credential hashing
+- **Clean Architecture**: Domain-driven design with strict dependency
+  inversion; domain layer has zero infrastructure imports
 
-### ✅ Implemented (v1.0.0)
-
-- **Multi-Tenant Architecture**: Complete tenant isolation with organization-level management
-- **Email OTP Verification**: Secure 6-digit OTP with 10-minute expiration  
-- **JWT Authentication**: Stateless auth with 24-hour token expiration
-- **Admin Dashboard**: Post-verification access to tenant management console
-- **Health Monitoring**: Comprehensive health check endpoints for all services
-- **Production Ready**: Docker images, CI/CD pipelines, error boundaries
-- **Accessibility**: WCAG 2.1 AA compliant forms with ARIA labels
-- **RESTful API**: Clean, documented API endpoints
-
-### 🚧 Roadmap
-
-- [ ] OAuth 2.0 / OpenID Connect provider
-- [ ] SAML 2.0 Support
-- [ ] Multi-factor authentication (TOTP)
-- [ ] User Management with RBAC
 ## Architecture
 
-This project follows **Clean Architecture** (Hexagonal Architecture) with strict separation of concerns:
-
 ```
-backend/
-├── cmd/server/           # Application entry point
-├── domain/               # Business entities and interfaces (NO external dependencies)
-│   ├── entities/         # Core business entities (Tenant, User, OTP)
-│   ├── repositories/     # Repository interfaces
-│   └── services/         # Domain services interfaces
-├── usecase/              # Application business rules
+├── backend/                # Go API server (Clean Architecture)
+│   ├── cmd/server/         # Application entry point
+│   ├── domain/             # Entities, repository & service interfaces
+│   ├── usecase/            # Application business rules
+│   │   ├── auth/           # OAuth flows, consent, logout
+│   │   ├── client/         # OAuth client management
+│   │   ├── user/           # User lifecycle & invitations
+│   │   ├── tenant/         # Tenant registration & verification
+│   │   └── role/           # Role assignment & revocation
+│   ├── infrastructure/     # PostgreSQL, Redis, RSA token service, config
+│   ├── interfaces/http/    # Gin handlers, middleware, routing
+│   ├── migrations/         # SQL migration files
+│   └── tests/              # Unit, integration, and mock fixtures
+├── frontend/               # React + TypeScript SPA (Vite)
+│   └── src/
+│       ├── components/     # Shared UI primitives (Radix + Tailwind)
+│       ├── pages/          # OAuth login, consent, logout, error pages
+│       ├── services/       # API clients (auth, OAuth interaction, users)
+│       ├── stores/         # Zustand state management
+│       └── hooks/          # Shared React hooks
+├── specs/                  # Feature specs, plans, data models, contracts
+│   ├── 003-sso-auth-provider/
+│   ├── 004-client-app-registration/
+│   ├── 005-user-management-rbac/
+│   └── 006-oauth-consent-flow/
+└── docker-compose.yml      # PostgreSQL, Redis, backend, frontend
+```
+
 ## Technology Stack
 
-### Backend
-- **Language**: Go 1.23+
-- **Web Framework**: Gin (HTTP router and middleware)
-- **ORM**: GORM with PostgreSQL driver
+| Layer    | Technologies |
+|----------|-------------|
+| Backend  | Go 1.23, Gin 1.10, GORM, go-redis/v9, bcrypt, golang-migrate |
+| Frontend | TypeScript 5.4, React 18.3, Vite 5, React Router 6, Axios, React Hook Form, Zod, Zustand, Tailwind CSS, Radix UI |
+| Storage  | PostgreSQL 15, Redis 7 |
+| Auth     | OAuth 2.0, OIDC, RS256 JWT, S256 PKCE |
+| Testing  | Go testing + Testify, Vitest + React Testing Library |
+| Infra    | Docker Compose, multi-stage Docker builds |
+
 ## Quick Start
 
 ### Prerequisites
 
-- **Docker** 20+ and **Docker Compose** 2+ (recommended)
-- **Go** 1.23+ (for local backend development)
-- **Node.js** 20 LTS (for local frontend development)
-- **PostgreSQL** 15+ (if running without Docker)
-- **Redis** 7+ (if running without Docker)
+- Docker 20+ and Docker Compose 2+
+- Go 1.23+ (for local backend development)
+- Node.js 20 LTS (for local frontend development)
 
-### Running with Docker Compose (Recommended)
+### Running with Docker Compose
 
-1. **Clone the repository**
 ```bash
 git clone https://github.com/ranggaaprilio/keyles.git
 cd keyles
-```
 
-2. **Set up environment variables**
-```bash
-# Create backend .env (or use defaults in docker-compose.yml)
-echo "BREVO_API_KEY=your_brevo_api_key" > backend/.env
-echo "JWT_SECRET=$(openssl rand -base64 32)" >> backend/.env
+# Copy and configure environment
+cp backend/.env.example backend/.env
 
-# Frontend environment variables are in docker-compose.yml
-```
-
-3. **Start all services**
-```bash
-# Start PostgreSQL, Redis, Backend, and Frontend
-docker-compose up -d
-
-# Check service health
-docker-compose ps
-
-# View logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-```
-
-4. **Access the application**
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080
-- **Health Checks**: 
-  - http://localhost:8080/health
-### Running Locally (Development)
-
-#### Backend Setup
-
-```bash
-cd backend
-
-# Install Go dependencies
-go mod download
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Ensure PostgreSQL and Redis are running
-# Update .env with connection details
-
-# Run the server
-go run cmd/server/main.go
-
-# Or build and run
-go build -o bin/server cmd/server/main.go
-./bin/server
-```
-
-#### Frontend Setup
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Set up environment variables  
-cp .env.example .env
-# Edit .env: VITE_API_URL=http://localhost:8080
-
-# Run development server with hot reload
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-### Environment Variables
-
-#### Backend (.env)
-```env
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=keyles
-DB_USER=keyles
-DB_PASSWORD=secure_password
-
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# JWT
-JWT_SECRET=your_jwt_secret_minimum_32_characters
-
-# Email (Brevo)
-BREVO_API_KEY=your_brevo_api_key
-
-# Server
-GIN_MODE=release  # or debug for development
-PORT=8080
-```
-
-#### Frontend (.env)
-```env
-VITE_API_URL=http://localhost:8080
-VITE_APP_NAME=Keyles SSO
-```backend/.env.example backend/.env
-# Edit backend/.env and set BREVO_API_KEY
-
-# Frontend
-cp frontend/.env.example frontend/.env
-```
-
-### 3. Start Services
-
-```bash
-# Start all services (PostgreSQL, Redis, Backend, Frontend)
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f backend
-
-# Run database migrations
-cd backend
-go run cmd/server/main.go migrate
-```
-
-### 4. Access Application
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:8080
-- **API Health Check**: http://localhost:8080/health
-
-## Development
-
-### Backend Development
-
-```bash
-cd backend
-
-# Install dependencies
-go mod tidy
-
-# Run tests
-go test ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Run server locally
-go run cmd/server/main.go
-```
-
-### Frontend Development
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-```
-
-### Database Migrations
-
-```bash
-cd backend
-
-# Create new migration
-migrate create -ext sql -dir migrations -seq <migration_name>
+# Start all services (PostgreSQL, Redis, backend, frontend)
+docker compose up -d
 
 # Run migrations
-migrate -path migrations -database "postgres://keyles:password@localhost:5432/keyles?sslmode=disable" up
+cd backend && make migrate-up && make seed
 
-# Rollback migration
-migrate -path migrations -database "postgres://keyles:password@localhost:5432/keyles?sslmode=disable" down 1
+# Access the application
+# Frontend:  http://localhost:3000
+# Backend:   http://localhost:8080
+# Health:    http://localhost:8080/health
 ```
 
-## Testing
+### Running Locally
 
-### Backend Tests
+See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for detailed local development setup.
 
-```bash
-cd backend
+## API Endpoints
 
-# Run all tests
-go test ./...
+### OAuth 2.0 / OIDC
 
-# Run specific test packages
-go test ./tests/unit/domain/...
-go test ./tests/unit/usecase/...
-go test ./tests/integration/...
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/oauth2/auth` | Browser authorization (redirects to login or consent) |
+| `POST` | `/oauth2/login` | End-user credential authentication |
+| `GET` | `/oauth2/consent/:transactionId` | Read consent details |
+| `POST` | `/oauth2/consent` | Approve or deny consent |
+| `POST` | `/oauth2/logout` | Terminate provider-local SSO session |
+| `POST` | `/oauth2/token` | Token endpoint (code exchange, refresh) |
+| `POST` | `/oauth2/revoke` | Token revocation (RFC 7009) |
+| `POST` | `/oauth2/introspect` | Token introspection (RFC 7662) |
+| `GET` | `/oauth2/userinfo` | User profile (Bearer token) |
+| `GET` | `/.well-known/openid-configuration` | OIDC discovery |
+| `GET` | `/.well-known/jwks.json` | JSON Web Key Set |
 
-# Run with coverage
-go test -cover ./...
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
+### Tenant Registration
 
-# Run specific test
-go test ./tests/integration/ -run TestLogin -v
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/register` | Register new tenant |
+| `GET` | `/api/v1/check-availability` | Check email or org name availability |
+| `POST` | `/api/v1/verify-otp` | Verify email OTP |
+| `POST` | `/api/v1/resend-otp` | Resend verification OTP |
 
-# Run tests with race detection
-go test -race ./...
-```
+### Authentication
 
-### Frontend Tests
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/login` | Admin login (returns JWT) |
+| `GET` | `/api/v1/dashboard` | Tenant dashboard (requires JWT) |
 
-```bash
-cd frontend
+### Admin: Client Management
 
-# Run all tests
-npm test
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/admin/clients` | Register OAuth client |
+| `GET` | `/api/v1/admin/clients` | List clients |
+| `GET` | `/api/v1/admin/clients/:clientId` | Get client details |
+| `PUT` | `/api/v1/admin/clients/:clientId` | Update client |
+| `DELETE` | `/api/v1/admin/clients/:clientId` | Delete client |
+| `POST` | `/api/v1/admin/clients/:clientId/rotate-secret` | Rotate client secret |
 
-# Run with coverage
-npm test -- --coverage
+### Admin: User Management
 
-# Run in watch mode
-npm test -- --watch
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/v1/admin/users` | List users |
+| `POST` | `/api/v1/admin/users/invite` | Invite new user |
+| `GET` | `/api/v1/admin/users/:id` | Get user details |
+| `PATCH` | `/api/v1/admin/users/:id` | Update user |
+| `PATCH` | `/api/v1/admin/users/:id/status` | Enable or disable user |
+| `DELETE` | `/api/v1/admin/users/:id` | Delete user |
+| `POST` | `/api/v1/admin/users/:id/resend-invitation` | Resend invitation |
+| `GET` | `/api/v1/admin/users/:id/roles` | List user's role assignments |
+| `POST` | `/api/v1/admin/users/:id/roles` | Assign role to user |
+| `DELETE` | `/api/v1/admin/users/:id/roles/:assignmentId` | Revoke role |
+| `GET` | `/api/v1/admin/users/:id/sessions` | List user's active sessions |
+| `DELETE` | `/api/v1/admin/users/:id/sessions/:sessionId` | Revoke session |
+| `GET` | `/api/v1/admin/users/:id/activity` | List user's audit activity |
 
-# Run specific test file
-npm test -- LoginPage.test.tsx
+### Admin: Role Management
 
-# Run UI tests (if configured)
-npm run test:ui
-```
-
-### Test Coverage Goals
-
-- **Domain Layer**: ≥90% statement coverage ✅
-- **Use Case Layer**: ≥85% statement coverage ✅  
-- **Handler Layer**: ≥80% statement coverage ✅
-- **Frontend**: ≥70% statement coverage ✅
-
-### Current Test Stats
-
-- **Backend Unit Tests**: 15+ test files
-- **Backend Integration Tests**: 7+ test files
-- **Frontend Unit Tests**: 3+ test files
-- **Total Test Cases**: 100+ assertions
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/v1/admin/roles/assign` | Assign user role |
+| `POST` | `/api/v1/admin/roles/revoke` | Revoke user role |
+| `GET` | `/api/v1/admin/roles/users/:userId` | List roles for a user |
+| `GET` | `/api/v1/admin/roles/clients/:clientId` | List roles for a client |
 
 ## Security
 
-### Authentication & Authorization
+- **PKCE**: S256 mandatory for all authorization code flows
+- **RS256**: Asymmetric JWT signing with 2048-bit RSA keys
+- **Rate Limiting**: Token endpoint throttled per client; dual-key
+  (source IP + tenant email) fixed-window throttle for OAuth login
+- **Browser SSO**: Host-only, HttpOnly, SameSite=Lax cookie; no Domain
+  attribute; Path=/
+- **Source IP**: Direct TCP peer address for throttling and audit;
+  forwarded headers are not trusted
+- **Fail-Closed**: Authorization, login, and consent operations return
+  local errors during Redis outages; logout always expires the cookie
 - **Password Hashing**: bcrypt with cost factor 10
-- **JWT Tokens**: HS256 signing algorithm, 24-hour expiration
-- **Token Storage**: localStorage (frontend), memory (backend validation)
-- **Protected Routes**: JWT middleware validates all dashboard endpoints
+- **HTTPS**: Required in production (`SECURITY_COOKIE_SECURE=true`)
 
-### OTP Security
-- **Format**: 6-digit numeric codes
-- **Expiration**: 10 minutes from generation
-- **One-Time Use**: OTPs invalidated after successful verification
-## Deployment
+## Testing
 
-### Docker Production Deployment
+### Backend
 
-```bash
-# Build images
-docker-compose build
-
-# Start in production mode
-## Contributing
-
-We welcome contributions! Please follow these guidelines:
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Authors
-
-- **Rangga Aprilio** - *Initial work* - [GitHub](https://github.com/ranggaaprilio)
-
-## Acknowledgments
-
-- Clean Architecture by Robert C. Martin
-- Domain-Driven Design by Eric Evans
-- The Go and React communities
-- All contributors and supporters
-   - Domain/Use Case layers: ≥85% coverage
-   - All new features must have tests
-5. **Lint**: Ensure code passes linting
-   ```bash
-   # Backend
-   cd backend && golangci-lint run
-   
-   # Frontend
-   cd frontend && npm run lint
-   ```
-6. **Commit**: Write clear commit messages
-7. **Push**: Push to your fork
-8. **PR**: Open a Pull Request with description
-
-### Architecture Rules (NON-NEGOTIABLE)
-
-✅ **Domain Independence**: Domain layer has ZERO infrastructure dependencies  
-✅ **Dependency Direction**: All dependencies point inward  
-✅ **Interface Definition**: Repositories defined in domain, implemented in infrastructure  
-✅ **Test Coverage**: ≥85% for business logic layers  
-✅ **Clean Code**: Single Responsibility, DRY, KISS principles
-
-### Code Style
-
-**Go (Backend)**:
-- Follow [Effective Go](https://golang.org/doc/effective_go.html)
-- Use `go fmt` for formatting
-- Use meaningful variable names
-- Document exported functions and types
-- Handle errors explicitly
-
-**TypeScript (Frontend)**:
-- Follow [TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)
-- Use Prettier for formatting
-- Use functional components and hooks
-- Prefer composition over inheritance
-- Type everything (avoid `any`)
-
-### Commit Message Format
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-
-Examples:
-- `feat(auth): add JWT token refresh endpoint`
-- `fix(otp): resolve expiration check bug`
-- `docs(readme): update installation instructions`
-docker-compose ps
-
-# View logs
-docker-compose logs -f
-
-# Scale services (if needed)
-docker-compose up -d --scale backend=3
-```
-
-### Manual Deployment
-
-#### Backend
 ```bash
 cd backend
-
-# Build binary
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-  -ldflags="-w -s" \
-  -o bin/server \
-  ./cmd/server
-
-# Run with environment variables
-export DB_HOST=your-db-host
-export JWT_SECRET=your-secret
-./bin/server
+make test              # All tests
+make test-coverage     # With coverage report
+make test-compose-e2e  # Full OAuth browser matrix against Compose
 ```
 
-#### Frontend
+### Frontend
+
 ```bash
 cd frontend
-
-# Build for production
-npm run build
-
-# Serve with nginx or any static file server
-# Output is in dist/ directory
+npm run test           # Vitest with jsdom
+npm run lint           # ESLint (zero warnings)
+npm run build          # TypeScript + Vite production build
 ```
 
-### Environment Configuration
+## Documentation
 
-Production environment checklist:
-- [ ] Set strong `JWT_SECRET` (minimum 32 characters)
-- [ ] Configure `BREVO_API_KEY` for email sending
-- [ ] Set `GIN_MODE=release` for backend
-- [ ] Use strong database passwords
-- [ ] Configure proper CORS origins
-- [ ] Enable HTTPS (via reverse proxy)
-- [ ] Set up database backups
-- [ ] Configure log aggregation
-- [ ] Set up monitoring and alerting
-- [ ] Enable rate limiting
-- [ ] Configure firewall rules
-
-### Health Checks
-
-Monitor these endpoints:
-- `GET /health` - Basic application health
-- `GET /health/db` - Database connectivity
-- `GET /health/redis` - Cache connectivity
-
-All health endpoints return:
-- `200 OK` when healthy
-- `503 Service Unavailable` when unhealthy endpoints (login, registration)
-- **HTTPS**: Required in production (handled by reverse proxy)
-
-### HTTP Security Headers
-```
-X-Frame-Options: SAMEORIGIN
-X-Content-Type-Options: nosniff
-X-XSS-Protection: 1; mode=block
-Referrer-Policy: no-referrer-when-downgrade
-```
-
-### Best Practices
-✅ Non-root containers (user 1000:appuser)
-✅ Multi-stage Docker builds (minimal attack surface)
-✅ Secret management via environment variables
-✅ Health checks for monitoring
-✅ Structured error messages (no stack traces to clients)
-✅ CSRF protection via JWT in Authorization header
-
-## API Documentation
-
-### Core Endpoints
-
-#### 1. Health Check Endpoints
-
-```http
-# Basic health check
-GET /health
-Response: { "status": "healthy", "service": "keyles-api", "version": "1.0.0" }
-
-# Database health check  
-GET /health/db
-Response: { "status": "healthy", "checks": { "database": "healthy" } }
-
-# Redis health check
-GET /health/redis  
-Response: { "status": "healthy", "checks": { "redis": "healthy" } }
-```
-
-#### 2. Registration Flow
-
-**Step 1: Check Availability**
-```http
-GET /api/v1/check-availability?email=admin@acme.com
-GET /api/v1/check-availability?organization_name=Acme
-
-Response:
-{
-  "available": true,
-  "field": "email"
-}
-```
-
-**Step 2: Register Tenant**
-```http
-POST /api/v1/register
-Content-Type: application/json
-
-{
-  "organization_name": "Acme Corporation",
-  "admin_email": "admin@acme.com",
-  "admin_full_name": "John Doe",
-  "admin_password": "SecurePassword123!"
-}
-
-Response: 201 Created
-{
-  "message": "Registration successful. Please check your email for verification code.",
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "admin@acme.com"
-}
-```
-
-**Step 3: Verify OTP**
-```http
-POST /api/v1/verify-otp
-Content-Type: application/json
-
-{
-  "email": "admin@acme.com",
-  "otp_code": "123456"
-}
-
-Response: 200 OK
-{
-  "message": "Email verified successfully",
-  "tenant_status": "active"
-}
-```
-
-**Step 3b: Resend OTP (if expired)**
-```http
-POST /api/v1/resend-otp
-Content-Type: application/json
-
-{
-  "email": "admin@acme.com"
-}
-
-Response: 200 OK
-{
-  "message": "New verification code sent to your email"
-}
-```
-
-#### 3. Authentication Flow
-
-**Login**
-```http
-POST /api/v1/login
-Content-Type: application/json
-
-{
-  "email": "admin@acme.com",
-  "password": "SecurePassword123!"
-}
-
-Response: 200 OK
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expires_in": 86400,
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "email": "admin@acme.com",
-    "full_name": "John Doe",
-    "role": "admin"
-  },
-  "tenant": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "organization_name": "Acme Corporation",
-    "status": "active"
-  }
-}
-```
-
-**Access Dashboard (Protected)**
-```http
-GET /api/v1/dashboard
-Authorization: Bearer <jwt_token>
-
-Response: 200 OK
-{
-  "tenant": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "organization_name": "Acme Corporation",
-    "status": "active",
-    "created_at": "2024-01-15T10:00:00Z",
-    "verified_at": "2024-01-15T10:05:00Z"
-  },
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "full_name": "John Doe",
-    "email": "admin@acme.com",
-    "role": "admin"
-  }
-}
-```
-
-### Error Responses
-
-All endpoints return consistent error responses:
-
-```json
-{
-  "error": "Error message description",
-  "code": "ERROR_CODE",
-  "details": {} // Optional additional context
-}
-```
-
-Common HTTP status codes:
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request (validation errors)
-- `401` - Unauthorized (invalid credentials or token)
-- `403` - Forbidden (tenant not verified)
-- `404` - Not Found (resource doesn't exist)
-- `409` - Conflict (duplicate email/organization)
-- `429` - Too Many Requests (rate limit exceeded)
-- `500` - Internal Server Error
+- [Feature 003: SSO Auth Provider](specs/003-sso-auth-provider/spec.md)
+- [Feature 004: Client App Registration](specs/004-client-app-registration/spec.md)
+- [Feature 005: User Management & RBAC](specs/005-user-management-rbac/spec.md)
+- [Feature 006: OAuth Consent Flow](specs/006-oauth-consent-flow/spec.md)
+- [Backend README](backend/README.md)
+- [Frontend README](frontend/README.md)
 
 ## Contributing
 
-1. Read the [Constitution](.specify/memory/constitution.md) (NON-NEGOTIABLE principles)
-2. Create feature branch from `main`
-3. Follow Clean Architecture - domain layer has ZERO infrastructure dependencies
-4. Write tests FIRST (TDD approach, ≥85% coverage for domain/usecase layers)
-5. Run all tests before submitting PR
-6. Ensure no lint errors (`go fmt`, `eslint`)
+1. Read [AGENTS.md](AGENTS.md) for repository guidelines
+2. Follow Clean Architecture: domain layer has zero infrastructure imports
+3. Write tests before implementation (TDD)
+4. Run `make test` and `npm run test` before submitting PRs
+5. Use conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file
-
-## Support
-
-- **Documentation**: See `/specs/` directory for feature specifications
-- **Issues**: https://github.com/yourusername/keyles/issues
-- **Email**: support@keyles.com
+MIT License — see [LICENSE](LICENSE)
 
 ---
 
-**Version**: 0.1.0 | **Status**: Alpha | **Last Updated**: 2025-12-06
+**Version**: 0.2.0 | **Status**: Active Development | **Last Updated**: 2026-06-01
