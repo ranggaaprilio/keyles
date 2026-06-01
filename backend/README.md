@@ -15,8 +15,7 @@ Multi-tenant SSO authentication service implementing OAuth 2.0 Authorization Cod
 See [specs/003-sso-auth-provider/quickstart.md](../specs/003-sso-auth-provider/quickstart.md) for comprehensive setup guide.
 
 ### Prerequisites
-
-- Go 1.21+
+- Go 1.23+
 - PostgreSQL 14+
 - Redis 7+
 - golang-migrate CLI
@@ -119,8 +118,10 @@ backend/
 │   ├── repositories/    # Repository interfaces
 │   └── services/        # Service interfaces
 ├── usecase/             # Application business rules
-│   ├── auth/            # OAuth flows
+│   ├── auth/            # OAuth flows & browser interaction
 │   ├── client/          # Client management
+│   ├── user/            # User lifecycle management
+│   ├── tenant/          # Tenant registration
 │   └── role/            # RBAC management
 ├── infrastructure/      # External implementations
 │   ├── config/          # Configuration
@@ -142,31 +143,57 @@ backend/
 
 ## OAuth Endpoints
 
-### Authorization Flow
+### Browser Authorization Flow (Feature 006)
 
-- `GET /oauth2/auth` - Authorization endpoint (user authentication)
-- `POST /oauth2/token` - Token endpoint (code exchange, refresh)
-- `POST /oauth2/revoke` - Token revocation endpoint
+- `GET /oauth2/auth` - Authorization endpoint (redirects to frontend login or consent)
+- `POST /oauth2/login` - End-user credential authentication for OAuth
+- `GET /oauth2/consent/:transactionId` - Read consent details for authenticated session
+- `POST /oauth2/consent` - Approve or deny consent, redirect to callback
+- `POST /oauth2/logout` - Terminate provider-local browser SSO session
+
+### Token & Revocation
+
+- `POST /oauth2/token` - Token endpoint (authorization_code, refresh_token grants)
+- `POST /oauth2/revoke` - Token revocation (RFC 7009)
+- `POST /oauth2/introspect` - Token introspection (RFC 7662)
 
 ### Discovery & Validation
 
 - `GET /.well-known/openid-configuration` - OIDC discovery document
 - `GET /.well-known/jwks.json` - JSON Web Key Set (public keys)
-- `GET /oauth2/userinfo` - User profile endpoint
+- `GET /oauth2/userinfo` - User profile endpoint (requires Bearer token)
 
-### Admin Endpoints
+### Admin Endpoints: Client Management
 
-- `POST /api/admin/clients` - Register OAuth client
-- `GET /api/admin/clients` - List clients
-- `GET /api/admin/clients/:id` - Get client details
-- `PUT /api/admin/clients/:id` - Update client
-- `DELETE /api/admin/clients/:id` - Delete client
-- `POST /api/admin/clients/:id/rotate-secret` - Rotate client secret
+- `POST /api/v1/admin/clients` - Register OAuth client
+- `GET /api/v1/admin/clients` - List clients
+- `GET /api/v1/admin/clients/:clientId` - Get client details
+- `PUT /api/v1/admin/clients/:clientId` - Update client
+- `DELETE /api/v1/admin/clients/:clientId` - Delete client
+- `POST /api/v1/admin/clients/:clientId/rotate-secret` - Rotate client secret
 
-- `POST /api/admin/roles/assign` - Assign user role
-- `POST /api/admin/roles/revoke` - Revoke user role
-- `GET /api/admin/roles/users/:userId` - List user roles
+### Admin Endpoints: Role Management
 
+- `POST /api/v1/admin/roles/assign` - Assign user role
+- `POST /api/v1/admin/roles/revoke` - Revoke user role
+- `GET /api/v1/admin/roles/users/:userId` - List roles for a user
+- `GET /api/v1/admin/roles/clients/:clientId` - List roles for a client
+
+### Admin Endpoints: User Management (Feature 005)
+
+- `GET /api/v1/admin/users` - List users
+- `POST /api/v1/admin/users/invite` - Invite a new user
+- `GET /api/v1/admin/users/:id` - Get user details
+- `PATCH /api/v1/admin/users/:id` - Update user
+- `PATCH /api/v1/admin/users/:id/status` - Enable or disable user
+- `DELETE /api/v1/admin/users/:id` - Delete user
+- `POST /api/v1/admin/users/:id/resend-invitation` - Resend invitation email
+- `GET /api/v1/admin/users/:id/roles` - List user's role assignments
+- `POST /api/v1/admin/users/:id/roles` - Assign role to user
+- `DELETE /api/v1/admin/users/:id/roles/:assignmentId` - Revoke role from user
+- `GET /api/v1/admin/users/:id/sessions` - List user's active sessions
+- `DELETE /api/v1/admin/users/:id/sessions/:sessionId` - Revoke a user session
+- `GET /api/v1/admin/users/:id/activity` - List user's audit activity
 ## Development
 
 ### Available Make Commands
@@ -184,7 +211,13 @@ make seed              # Seed test data
 make clean             # Remove build artifacts
 make docker-up         # Start Docker services
 make docker-down       # Stop Docker services
-make dev               # Full dev setup (docker + migrate + seed + run)
+make dev-infra         # Start local Docker dependencies
+make dev-db            # Run migrations and seed data
+make dev               # Full dev setup (infra + db + run)
+make test-docker       # Run integration tests with Docker dependencies
+make test-compose-e2e  # Run the live OAuth browser matrix against Compose stack
+make docker-build      # Build Docker image for native architecture
+make docker-buildx     # Build multi-arch image (amd64+arm64) and push
 ```
 
 ### Running Tests
@@ -205,17 +238,46 @@ go test ./tests/integration/...
 
 ## Testing OAuth Flow
 
-### 1. Manual Authorization Request
+### 1. Start Authorization Request
+
+The browser-facing `/oauth2/auth` endpoint validates the request and redirects
+the end-user to the frontend login page via an opaque transaction:
 
 ```bash
-# Visit in browser (generates PKCE challenge first)
+# Generate PKCE challenge first, then visit:
 open "http://localhost:8080/oauth2/auth?client_id=dev_client_001&redirect_uri=http://localhost:3000/auth/callback&response_type=code&scope=openid%20profile%20email&state=random123&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+# → Redirects to http://localhost:3000/oauth2/login?transaction_id=...
 ```
 
-### 2. Token Exchange
+### 2. Log In at the Frontend
+
+The frontend login page at `/oauth2/login` sends credentials to `POST /oauth2/login`:
 
 ```bash
-# After receiving authorization code from callback
+curl -X POST http://localhost:8080/oauth2/login \
+  -H "Content-Type: application/json" \
+  -d '{"transaction_id":"...","email":"user@dev-tenant.com","password":"user123"}'
+# → Returns consent URL; sets host-only HttpOnly keyles_sso cookie
+```
+
+### 3. Approve or Deny Consent
+
+```bash
+# Read consent details
+curl http://localhost:8080/oauth2/consent/:transactionId \
+  -H "Cookie: keyles_sso=..."
+
+# Approve consent
+curl -X POST http://localhost:8080/oauth2/consent \
+  -H "Content-Type: application/json" \
+  -H "Cookie: keyles_sso=..." \
+  -d '{"transaction_id":"...","csrf_token":"...","approved":true}'
+# → Returns callback URL with authorization code and original state
+```
+
+### 4. Token Exchange
+
+```bash
 curl -X POST http://localhost:8080/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
@@ -226,12 +288,22 @@ curl -X POST http://localhost:8080/oauth2/token \
   -d "client_secret=dev_client_secret_change_in_production"
 ```
 
-### 3. JWKS Endpoint
+### 5. End Provider Session
 
 ```bash
-# Fetch public keys for token validation
+curl -X POST http://localhost:8080/oauth2/logout \
+  -H "Cookie: keyles_sso=..." \
+  -v
+```
+
+### 6. JWKS Endpoint
+
+```bash
 curl http://localhost:8080/.well-known/jwks.json
 ```
+
+See [quickstart.md](../specs/006-oauth-consent-flow/quickstart.md) for the
+complete browser-flow verification matrix.
 
 ## Architecture
 
@@ -246,12 +318,15 @@ This project follows **Clean Architecture** principles:
 
 ## Security
 
-- **PKCE**: Mandatory for all authorization flows
+- **PKCE**: S256 mandatory for all authorization flows
 - **RS256**: Asymmetric JWT signing with 2048-bit RSA keys
-- **Rate Limiting**: 10 requests/minute per client_id on token endpoint
-- **Token Expiration**: Access tokens 15min, Refresh tokens 7 days
-- **RBAC**: Role-based access control for client applications
+- **Rate Limiting**: 10 requests/minute per client_id on token endpoint; dual-key (source IP + tenant email) fixed-window throttle for OAuth login (5 failures / 15 min)
+- **Token Expiration**: Access tokens 15 min, Refresh tokens 7 days, Auth codes 5 min
+- **RBAC**: Role-based access control for client applications; active-user and role revalidated at each consent
 - **Tenant Isolation**: Complete separation between tenants
+- **Browser SSO**: Host-only HttpOnly SameSite=Lax cookie with Path=/; no Domain attribute
+- **Source IP**: Direct TCP peer address for throttling and audit; forwarded headers not trusted
+- **Fail-Closed**: Authorization, login, consent, and Redis-dependent operations return local errors during infrastructure outages; logout always expires the cookie
 
 ## Production Deployment
 
@@ -272,12 +347,14 @@ See [quickstart.md Production Deployment Checklist](../specs/003-sso-auth-provid
 
 ## Documentation
 
-- [Feature Specification](../specs/003-sso-auth-provider/spec.md)
-- [Implementation Plan](../specs/003-sso-auth-provider/plan.md)
-- [Quickstart Guide](../specs/003-sso-auth-provider/quickstart.md)
-- [Data Model](../specs/003-sso-auth-provider/data-model.md)
-- [API Contracts](../specs/003-sso-auth-provider/contracts/openapi.yaml)
-- [Tasks](../specs/003-sso-auth-provider/tasks.md)
+- [Feature 003: SSO Auth Provider](../specs/003-sso-auth-provider/spec.md)
+- [Feature 005: User Management & RBAC](../specs/005-user-management-rbac/spec.md)
+- [Feature 006: OAuth Consent Flow](../specs/006-oauth-consent-flow/spec.md)
+- [Feature 006: Implementation Plan](../specs/006-oauth-consent-flow/plan.md)
+- [Feature 006: Quickstart Guide](../specs/006-oauth-consent-flow/quickstart.md)
+- [Feature 006: Data Model](../specs/006-oauth-consent-flow/data-model.md)
+- [Feature 006: API Contracts](../specs/006-oauth-consent-flow/contracts/openapi.yaml)
+- [Feature 006: Tasks](../specs/006-oauth-consent-flow/tasks.md)
 
 ## User Management & RBAC (Feature 005)
 
@@ -318,6 +395,13 @@ Feature 005 adds migrations 000009–000012:
 | `000010_create_invitations`           | Invitation tracking with token, expiry, status                 |
 | `000011_extend_user_role_assignments` | Partial index for active role lookups                          |
 | `000012_create_user_events`           | Audit event log with composite indexes                         |
+
+Feature 006 adds migrations 000013–000014:
+
+| Migration                             | Description                                         |
+| ------------------------------------- | --------------------------------------------------- |
+| `000013_oauth_security_hardening`     | Additional OAuth audit indexes and constraints      |
+| `000014_add_oauth_audit_event_types`  | Extend audit event enum with OAuth browser-flow types |
 
 **Rollback**: To remove Feature 005 changes, migrate down 4 steps:
 
