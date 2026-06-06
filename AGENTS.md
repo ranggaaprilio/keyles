@@ -42,10 +42,23 @@ Pull requests should include a brief summary, linked issue or spec when relevant
 
 Never commit `.env` files, generated private keys, or secrets. Backend RSA keys are generated with `make keygen` and should stay under ignored local paths such as `backend/keys/`. Use `.env.example` files as templates.
 
+### Production Security Hardening (Feature 007)
+
+- **TLS Termination**: Caddy reverse proxy in `docker-compose.yml` handles HTTPS with automatic certificate renewal
+- **Secrets Management**: All secrets externalized via environment variables; `docker-compose.prod.yml` enforces production overrides
+- **CSRF Protection**: Double-submit cookie pattern with `keyles_csrf` cookie and `X-CSRF-Token` header
+- **Security Headers**: CSP, HSTS, Permissions-Policy, COOP, COEP on all responses via Gin middleware and nginx
+- **Rate Limiting**: Sliding window algorithm using Redis sorted sets; fail-closed on Redis outage (503)
+- **Error Sanitization**: Email masking (`***@***`), path redaction (`[REDACTED]`), no stack traces in responses
+- **Structured Logging**: `log/slog` with JSON output; `LOG_LEVEL` filtering (debug disabled in production)
+- **Database Security**: TLS required in production, connection pool limits (25/10), 30s statement timeout
+- **Metrics**: Prometheus `/metrics` endpoint with `keyles_security_events_total` counter
+- **Docker Compose**: Base `docker-compose.yml` + `docker-compose.prod.yml` for production overrides
+
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/006-oauth-consent-flow/plan.md`
+`specs/007-production-security-hardening/plan.md`
 <!-- SPECKIT END -->
 
 ## Active Technologies

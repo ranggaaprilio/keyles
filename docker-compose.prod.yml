@@ -1,0 +1,17 @@
+# Production overrides for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  backend:
+    environment:
+      - APP_ENV=production
+      - DB_SSL_MODE=require
+      - SECURITY_COOKIE_SECURE=true
+      - GIN_MODE=release
+      - LOG_LEVEL=info
+    restart: always
+
+  caddy:
+    environment:
+      - ACME_EMAIL=${ACME_EMAIL}
+    restart: always

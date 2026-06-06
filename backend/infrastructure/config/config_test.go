@@ -270,4 +270,57 @@ func setValidProductionEnv(t *testing.T) {
 	t.Setenv("OAUTH_ISSUER", "https://sso.example.com")
 	t.Setenv("SECURITY_COOKIE_SECURE", "true")
 	t.Setenv("FRONTEND_URL", "https://sso.example.com")
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("DB_SSL_MODE", "require")
+}
+
+func TestLoadProductionRejectsDBSSLModeDisable(t *testing.T) {
+	setValidProductionEnv(t)
+	t.Setenv("DB_SSL_MODE", "disable")
+
+	_, err := Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "DB_SSL_MODE must be require, verify-ca, or verify-full in production")
+}
+
+func TestLoadProductionRejectsDBSSLModeAllow(t *testing.T) {
+	setValidProductionEnv(t)
+	t.Setenv("DB_SSL_MODE", "allow")
+
+	_, err := Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "DB_SSL_MODE must be require, verify-ca, or verify-full in production")
+}
+
+func TestLoadProductionRejectsDebugLogLevel(t *testing.T) {
+	setValidProductionEnv(t)
+	t.Setenv("LOG_LEVEL", "debug")
+
+	_, err := Load()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "LOG_LEVEL must not be debug in production")
+}
+
+func TestLoadSecurityHardeningDefaults(t *testing.T) {
+	t.Setenv("DB_PASSWORD", "test_password")
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.True(t, cfg.CSRFEnabled, "CSRFEnabled should default to true")
+	require.Equal(t, "keyles_csrf", cfg.CSRFCookieName)
+	require.Equal(t, "X-CSRF-Token", cfg.CSRFHeaderName)
+	require.Equal(t, 32, cfg.CSRFTokenLength)
+	require.Equal(t, 1048576, cfg.RequestMaxBodySize)
+	require.Equal(t, "15s", cfg.RequestReadTimeout)
+	require.Equal(t, "15s", cfg.RequestWriteTimeout)
+	require.Equal(t, "60s", cfg.RequestIdleTimeout)
+	require.True(t, cfg.MetricsEnabled)
+	require.Equal(t, "/metrics", cfg.MetricsPath)
+	require.Equal(t, 25, cfg.DBMaxOpenConns)
+	require.Equal(t, 10, cfg.DBMaxIdleConns)
+	require.Equal(t, "5m", cfg.DBConnMaxLifetime)
+	require.Equal(t, "30s", cfg.DBStatementTimeout)
+	require.Equal(t, 3, cfg.RateLimitRegisterPerHour)
+	require.Equal(t, 5, cfg.RateLimitVerifyOTPPer10Min)
+	require.Equal(t, 3, cfg.RateLimitResendOTPPerHour)
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -35,15 +36,22 @@ func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Starting SSO cleanup job...")
+	// Initialize structured logger
+	lg := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
+	lg.Info("Starting SSO cleanup job")
 
 	// Connect to PostgreSQL
 	db, err := initPostgreSQL(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+		lg.Error("Failed to connect to PostgreSQL", "error", err)
+		os.Exit(1)
 	}
 	defer func() {
 		sqlDB, _ := db.DB()
@@ -61,9 +69,9 @@ func main() {
 		// Expire stale pending invitations
 		expiredInvs, err := expireStalePendingInvitations(ctx, db)
 		if err != nil {
-			log.Printf("Error expiring stale invitations: %v", err)
+			lg.Error("Error expiring stale invitations", "error", err)
 		} else {
-			log.Printf("Expired %d stale pending invitations", expiredInvs)
+			lg.Info("Expired stale pending invitations", "count", expiredInvs)
 		}
 	}
 
@@ -72,45 +80,45 @@ func main() {
 		cutoff := time.Now().Add(-90 * 24 * time.Hour)
 		purgedEvents, err := purgeOldUserEvents(ctx, db, cutoff)
 		if err != nil {
-			log.Printf("Error purging old user events: %v", err)
+			lg.Error("Error purging old user events", "error", err)
 		} else {
-			log.Printf("Purged %d user events older than %s", purgedEvents, cutoff.Format(time.RFC3339))
+			lg.Info("Purged old user events", "count", purgedEvents, "cutoff", cutoff.Format(time.RFC3339))
 		}
 	}
 
 	if !flagsSet {
 		// Run the default legacy tasks only when no specific flags are set
-		log.Println("Running default cleanup tasks...")
+		lg.Info("Running default cleanup tasks")
 
 		// 1. Delete expired refresh tokens
 		deletedTokens, err := cleanupExpiredRefreshTokens(ctx, db)
 		if err != nil {
-			log.Printf("Error cleaning up refresh tokens: %v", err)
+			lg.Error("Error cleaning up refresh tokens", "error", err)
 		} else {
-			log.Printf("Deleted %d expired refresh tokens", deletedTokens)
+			lg.Info("Deleted expired refresh tokens", "count", deletedTokens)
 		}
 
 		// 2. Delete expired signing keys
 		deletedKeys, err := cleanupExpiredSigningKeys(ctx, db)
 		if err != nil {
-			log.Printf("Error cleaning up signing keys: %v", err)
+			lg.Error("Error cleaning up signing keys", "error", err)
 		} else {
-			log.Printf("Deleted %d expired signing keys", deletedKeys)
+			lg.Info("Deleted expired signing keys", "count", deletedKeys)
 		}
 
 		// 3. Connect to Redis and scan keys
 		redisClient, err := initRedis(cfg)
 		if err != nil {
-			log.Printf("Warning: Failed to connect to Redis: %v", err)
+			lg.Warn("Failed to connect to Redis", "error", err)
 		} else {
 			defer redisClient.Close()
-			scanKeys(ctx, redisClient, "authcode:*")
-			scanKeys(ctx, redisClient, "session:*")
-			scanKeys(ctx, redisClient, "otp:*")
+			scanKeys(ctx, lg, redisClient, "authcode:*")
+			scanKeys(ctx, lg, redisClient, "session:*")
+			scanKeys(ctx, lg, redisClient, "otp:*")
 		}
 	}
 
-	log.Println("Cleanup job completed successfully")
+	lg.Info("Cleanup job completed")
 }
 
 // expireStalePendingInvitations marks pending invitations that have passed their expires_at as expired.
@@ -137,11 +145,11 @@ func purgeOldUserEvents(ctx context.Context, db *gorm.DB, before time.Time) (int
 func cleanupExpiredRefreshTokens(ctx context.Context, db *gorm.DB) (int64, error) {
 	result := db.WithContext(ctx).
 		Exec("DELETE FROM refresh_tokens WHERE expires_at < NOW()")
-	
+
 	if result.Error != nil {
 		return 0, result.Error
 	}
-	
+
 	return result.RowsAffected, nil
 }
 
@@ -149,35 +157,35 @@ func cleanupExpiredRefreshTokens(ctx context.Context, db *gorm.DB) (int64, error
 func cleanupExpiredSigningKeys(ctx context.Context, db *gorm.DB) (int64, error) {
 	result := db.WithContext(ctx).
 		Exec("DELETE FROM signing_keys WHERE expires_at IS NOT NULL AND expires_at < NOW() AND is_active = false")
-	
+
 	if result.Error != nil {
 		return 0, result.Error
 	}
-	
+
 	return result.RowsAffected, nil
 }
 
 // scanKeys checks how many keys exist for a pattern (for monitoring)
-func scanKeys(ctx context.Context, redisClient *redis.Client, pattern string) {
+func scanKeys(ctx context.Context, lg *slog.Logger, redisClient *redis.Client, pattern string) {
 	var cursor uint64
 	var count int
-	
+
 	for {
 		keys, nextCursor, err := redisClient.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
-			log.Printf("Error scanning Redis keys for pattern %s: %v", pattern, err)
+			lg.Error("Error scanning Redis keys", "pattern", pattern, "error", err)
 			return
 		}
-		
+
 		count += len(keys)
 		cursor = nextCursor
-		
+
 		if cursor == 0 {
 			break
 		}
 	}
-	
-	log.Printf("Found %d Redis keys matching pattern: %s", count, pattern)
+
+	lg.Info("Found Redis keys matching pattern", "pattern", pattern, "count", count)
 }
 
 // initPostgreSQL connects to PostgreSQL

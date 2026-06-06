@@ -1,8 +1,12 @@
 package http
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/ranggaaprilio/keyles/domain/services"
+	"github.com/ranggaaprilio/keyles/infrastructure/config"
+	"github.com/ranggaaprilio/keyles/infrastructure/monitoring"
 	redisRepo "github.com/ranggaaprilio/keyles/infrastructure/persistence/redis"
 	infraServices "github.com/ranggaaprilio/keyles/infrastructure/services"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
@@ -13,7 +17,9 @@ import (
 // Router sets up all HTTP routes
 type Router struct {
 	engine              *gin.Engine
+	config              *config.Config
 	rateLimiter         *redisRepo.RedisRateLimiter
+	slidingRateLimiter  *middleware.RateLimiter
 	registrationHandler *handlers.RegistrationHandler
 	availabilityHandler *handlers.AvailabilityHandler
 	verificationHandler *handlers.VerificationHandler
@@ -37,7 +43,9 @@ type Router struct {
 
 // NewRouter creates a new HTTP router
 func NewRouter(
+	cfg *config.Config,
 	rateLimiter *redisRepo.RedisRateLimiter,
+	slidingRateLimiter *middleware.RateLimiter,
 	registrationHandler *handlers.RegistrationHandler,
 	availabilityHandler *handlers.AvailabilityHandler,
 	verificationHandler *handlers.VerificationHandler,
@@ -65,11 +73,15 @@ func NewRouter(
 	engine.Use(gin.Logger())
 	engine.Use(middleware.RecoveryHandler())
 	engine.Use(middleware.CORS(corsOrigins, corsMethods, corsHeaders))
+	engine.Use(middleware.SecurityHeaders(cfg))
+	engine.Use(middleware.CSRF(cfg))
 	engine.Use(middleware.ErrorHandler())
 
 	return &Router{
 		engine:              engine,
+		config:              cfg,
 		rateLimiter:         rateLimiter,
+		slidingRateLimiter:  slidingRateLimiter,
 		registrationHandler: registrationHandler,
 		availabilityHandler: availabilityHandler,
 		verificationHandler: verificationHandler,
@@ -104,6 +116,11 @@ func (r *Router) Setup() {
 	r.engine.GET("/health/db", r.healthHandler.HealthDB)
 	r.engine.GET("/health/redis", r.healthHandler.HealthRedis)
 
+	// Metrics endpoint
+	if r.config.MetricsEnabled {
+		r.engine.GET(r.config.MetricsPath, gin.WrapH(monitoring.GetMetricsHandler()))
+	}
+
 	// OIDC Discovery endpoints (public - no auth required)
 	r.engine.GET("/.well-known/openid-configuration", r.discoveryHandler.OpenIDConfiguration)
 	r.engine.GET("/.well-known/jwks.json", r.discoveryHandler.JWKS)
@@ -136,19 +153,26 @@ func (r *Router) Setup() {
 	{
 		v1.GET("/health", r.healthHandler.Health)
 
-		// Registration routes (public)
+		// Registration routes (public) with rate limiting
 		registration := v1.Group("/")
-		{
+		if r.slidingRateLimiter != nil {
+			registration.POST("/register", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitRegisterPerHour, 60*time.Minute), r.registrationHandler.Register)
+			registration.GET("/check-availability", r.availabilityHandler.CheckAvailability)
+			registration.POST("/verify-otp", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitVerifyOTPPer10Min, 10*time.Minute), r.verificationHandler.VerifyOTP)
+			registration.POST("/resend-otp", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitResendOTPPerHour, 60*time.Minute), r.resendOTPHandler.ResendOTP)
+		} else {
 			registration.POST("/register", r.registrationHandler.Register)
 			registration.GET("/check-availability", r.availabilityHandler.CheckAvailability)
-
-			// OTP verification routes (Phase 4)
 			registration.POST("/verify-otp", r.verificationHandler.VerifyOTP)
 			registration.POST("/resend-otp", r.resendOTPHandler.ResendOTP)
 		}
 
 		// Auth routes (public) - Phase 5
-		v1.POST("/login", r.authHandler.Login)
+		if r.slidingRateLimiter != nil {
+			v1.POST("/login", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitLoginAttemptsPer15Min, 15*time.Minute), r.authHandler.Login)
+		} else {
+			v1.POST("/login", r.authHandler.Login)
+		}
 		if r.invitationHandler != nil {
 			v1.GET("/invitations/:token/validate", r.invitationHandler.ValidateInvitation)
 			v1.POST("/invitations/:token/accept", r.invitationHandler.AcceptInvitation)

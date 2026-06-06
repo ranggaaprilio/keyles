@@ -135,3 +135,13 @@ docker-buildx:
 	@echo "Building multi-arch image (amd64+arm64)..."
 	@docker buildx build --platform linux/amd64,linux/arm64 -t keyles-backend:latest --push .
 	@echo "✓ Multi-arch image pushed: keyles-backend:latest"
+
+# Generate random secrets for .env file
+generate-secrets:
+	@echo "Generating random secrets..."
+	@echo "JWT_SECRET=$$(openssl rand -base64 48)" > .env.secrets
+	@echo "DB_PASSWORD=$$(openssl rand -base64 32)" >> .env.secrets
+	@echo "REDIS_PASSWORD=$$(openssl rand -base64 32)" >> .env.secrets
+	@echo "BREVO_API_KEY=your_brevo_api_key_here" >> .env.secrets
+	@echo "✓ Secrets written to .env.secrets"
+	@echo "Copy these values into your .env file"

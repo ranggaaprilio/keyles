@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,12 +17,15 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/infrastructure/config"
+	"github.com/ranggaaprilio/keyles/infrastructure/logging"
 	postgresRepo "github.com/ranggaaprilio/keyles/infrastructure/persistence/postgres"
 	redisRepo "github.com/ranggaaprilio/keyles/infrastructure/persistence/redis"
 	infraServices "github.com/ranggaaprilio/keyles/infrastructure/services"
 	httpServer "github.com/ranggaaprilio/keyles/interfaces/http"
 	"github.com/ranggaaprilio/keyles/interfaces/http/handlers"
+	"github.com/ranggaaprilio/keyles/interfaces/http/middleware"
 	"github.com/ranggaaprilio/keyles/usecase/auth"
 	"github.com/ranggaaprilio/keyles/usecase/client"
 	"github.com/ranggaaprilio/keyles/usecase/role"
@@ -36,26 +40,55 @@ func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+
+	// Initialize structured logger
+	logger := logging.NewLogger(cfg.LogLevel)
+	middleware.Logger = logger.With("component", "middleware")
+
+	// Validate security configuration for production
+	securityConfig := &entities.SecurityConfig{
+		AppEnv:               cfg.AppEnv,
+		JWTSecret:            cfg.JWTSecret,
+		DBPassword:           cfg.DBPassword,
+		DBSSLMode:            cfg.DBSSLMode,
+		BrevoAPIKey:          cfg.BrevoAPIKey,
+		SecurityCookieSecure: cfg.SecurityCookieSecure,
+		OAuthIssuer:          cfg.OAuthIssuer,
+		FrontendURL:          cfg.FrontendURL,
+		LogLevel:             cfg.LogLevel,
+	}
+	if err := securityConfig.ValidateForProduction(); err != nil {
+		logger.Error("Security validation failed", "error", err)
+		os.Exit(1)
+	}
+
+	// Initialize Prometheus metrics
+	if cfg.MetricsEnabled {
+		logger.Info("Metrics enabled", "path", cfg.MetricsPath)
 	}
 
 	// Initialize logger
-	log.Printf("Starting Keyles SSO service in %s mode...", cfg.GinMode)
+	logger.Info("Starting Keyles SSO service", "mode", cfg.GinMode)
 
 	// Connect to PostgreSQL
 	db, err := initPostgreSQL(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to PostgreSQL: %v", err)
+		logger.Error("Failed to connect to PostgreSQL", "error", err)
+		os.Exit(1)
 	}
-	log.Println("Connected to PostgreSQL")
+	logger.Info("Connected to PostgreSQL")
 
 	// Connect to Redis
 	redisClient, err := initRedis(cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		logger.Error("Failed to connect to Redis", "error", err)
+		os.Exit(1)
 	}
 	defer redisClient.Close()
-	log.Println("Connected to Redis")
+	logger.Info("Connected to Redis")
 
 	// Initialize repositories
 	tenantRepo := postgresRepo.NewPostgresTenantRepository(db)
@@ -182,12 +215,18 @@ func main() {
 	// Initialize middleware
 	rateLimiter, err := redisRepo.NewRedisRateLimiter(redisClient, limiter.Rate{Period: time.Minute, Limit: 10})
 	if err != nil {
-		log.Fatalf("Failed to initialize OAuth rate limiter: %v", err)
+		logger.Error("Failed to initialize OAuth rate limiter", "error", err)
+		os.Exit(1)
 	}
+
+	// Initialize sliding window rate limiter for public endpoints
+	slidingRateLimiter := middleware.NewRateLimiter(redisClient)
 
 	// Initialize router
 	router := httpServer.NewRouter(
+		cfg,
 		rateLimiter,
+		slidingRateLimiter,
 		registrationHandler,
 		availabilityHandler,
 		verificationHandler,
@@ -214,24 +253,47 @@ func main() {
 	router.Setup()
 
 	// Log dependency injection status
-	log.Printf("Dependency injection complete:")
-	log.Printf("  - TenantRepository: %T", tenantRepo)
-	log.Printf("  - UserRepository: %T", userRepo)
-	log.Printf("  - AuditRepository: %T", auditRepo)
-	log.Printf("  - OTPRepository: %T", otpRepo)
-	log.Printf("  - EmailService: %T", emailService)
-	log.Printf("  - OTPService: %T", otpService)
-	log.Printf("  - PasswordService: %T", passwordService)
-	log.Printf("  - SkipEmailVerification: %v", cfg.SkipEmailVerification)
+	logger.Info("Dependency injection complete",
+		"tenantRepository", fmt.Sprintf("%T", tenantRepo),
+		"userRepository", fmt.Sprintf("%T", userRepo),
+		"auditRepository", fmt.Sprintf("%T", auditRepo),
+		"otpRepository", fmt.Sprintf("%T", otpRepo),
+		"emailService", fmt.Sprintf("%T", emailService),
+		"otpService", fmt.Sprintf("%T", otpService),
+		"passwordService", fmt.Sprintf("%T", passwordService),
+		"skipEmailVerification", cfg.SkipEmailVerification,
+	)
 
-	// Start HTTP server
+	// Start HTTP server with timeouts
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)
-	log.Printf("Starting HTTP server on %s", serverAddr)
+	readTimeout, _ := time.ParseDuration(cfg.RequestReadTimeout)
+	writeTimeout, _ := time.ParseDuration(cfg.RequestWriteTimeout)
+	idleTimeout, _ := time.ParseDuration(cfg.RequestIdleTimeout)
+	if readTimeout == 0 {
+		readTimeout = 15 * time.Second
+	}
+	if writeTimeout == 0 {
+		writeTimeout = 15 * time.Second
+	}
+	if idleTimeout == 0 {
+		idleTimeout = 60 * time.Second
+	}
+
+	server := &http.Server{
+		Addr:         serverAddr,
+		Handler:      router.GetEngine(),
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
+	}
+
+	logger.Info("Starting HTTP server", "address", serverAddr)
 
 	// Graceful shutdown
 	go func() {
-		if err := router.Run(serverAddr); err != nil {
-			log.Fatalf("Failed to start HTTP server: %v", err)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("Failed to start HTTP server", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -240,7 +302,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	logger.Info("Shutting down server")
+
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error("Server forced to shutdown", "error", err)
+	}
 
 	// Cleanup
 	sqlDB, _ := db.DB()
@@ -248,7 +317,7 @@ func main() {
 		sqlDB.Close()
 	}
 
-	log.Println("Server stopped")
+	logger.Info("Server stopped")
 }
 
 // initPostgreSQL connects to PostgreSQL and configures GORM
@@ -271,15 +340,27 @@ func initPostgreSQL(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
 
-	// Configure connection pool
+	// Configure connection pool from config
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database instance: %w", err)
 	}
 
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	connMaxLifetime, _ := time.ParseDuration(cfg.DBConnMaxLifetime)
+	if connMaxLifetime == 0 {
+		connMaxLifetime = 5 * time.Minute
+	}
+
+	sqlDB.SetMaxOpenConns(cfg.DBMaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.DBMaxIdleConns)
+	sqlDB.SetConnMaxLifetime(connMaxLifetime)
+
+	// Set statement timeout on each new connection
+	if cfg.DBStatementTimeout != "" {
+		if err := db.Exec(fmt.Sprintf("SET statement_timeout = '%s'", cfg.DBStatementTimeout)).Error; err != nil {
+			return nil, fmt.Errorf("failed to set statement timeout: %w", err)
+		}
+	}
 
 	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

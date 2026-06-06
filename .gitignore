@@ -36,3 +36,6 @@ backend/vendor/
 
 # Docker
 **/docker-compose.override.yml
+
+# Development certificates
+backend/infrastructure/certs/dev-certs/
