@@ -1,8 +1,24 @@
-# Keyles — Multi-Tenant SSO Platform
+# Keyles - Multi-Tenant SSO Platform
 
 OAuth 2.0 + OpenID Connect identity provider with multi-tenant isolation,
-role-based access control, and a browser-facing consent flow. Built in Go
-and React with Clean Architecture.
+role-based access control, a browser-facing consent flow, and production
+security controls. Built with Go, React, PostgreSQL, and Redis using Clean
+Architecture.
+
+## Project Status
+
+Keyles is in active development. The core SSO platform and production
+security hardening are implemented through Feature 007.
+
+| Feature | Status |
+|---------|--------|
+| Tenant registration and email verification | Implemented |
+| SSO landing page and tenant dashboard | Implemented |
+| OAuth 2.0 and OpenID Connect provider | Implemented |
+| OAuth client registration and secret rotation | Implemented |
+| User management and client-scoped RBAC | Implemented |
+| Browser login, consent, and logout flow | Implemented |
+| Production security hardening | Implemented |
 
 ## Features
 
@@ -19,9 +35,14 @@ and React with Clean Architecture.
   manage redirect URIs for OAuth client applications
 - **JWT Tokens**: RS256 asymmetric signing with JWKS endpoint and OIDC
   discovery
-- **Security**: Dual-key login throttling (source IP + tenant email),
-  host-only HttpOnly SSO cookies, direct-peer source IP, PKCE mandatory,
-  fail-closed Redis behavior, and bcrypt credential hashing
+- **Integration Guide**: Public and dashboard documentation for client
+  registration, authorization, token handling, refresh, revocation, and
+  production readiness
+- **Production Security**: Caddy TLS termination, externalized secrets,
+  startup configuration validation, security headers, double-submit CSRF,
+  request limits, structured sanitized logging, and fail-closed rate limiting
+- **Operations**: PostgreSQL connection limits and statement timeouts,
+  dependency health checks, and Prometheus security metrics
 - **Clean Architecture**: Domain-driven design with strict dependency
   inversion; domain layer has zero infrastructure imports
 
@@ -44,16 +65,22 @@ and React with Clean Architecture.
 ├── frontend/               # React + TypeScript SPA (Vite)
 │   └── src/
 │       ├── components/     # Shared UI primitives (Radix + Tailwind)
-│       ├── pages/          # OAuth login, consent, logout, error pages
+│       ├── pages/          # Admin, OAuth interaction, and documentation pages
 │       ├── services/       # API clients (auth, OAuth interaction, users)
 │       ├── stores/         # Zustand state management
 │       └── hooks/          # Shared React hooks
 ├── specs/                  # Feature specs, plans, data models, contracts
+│   ├── 001-tenant-registration/
+│   ├── 002-sso-landing-page/
 │   ├── 003-sso-auth-provider/
 │   ├── 004-client-app-registration/
 │   ├── 005-user-management-rbac/
-│   └── 006-oauth-consent-flow/
-└── docker-compose.yml      # PostgreSQL, Redis, backend, frontend
+│   ├── 006-oauth-consent-flow/
+│   └── 007-production-security-hardening/
+├── docs/                   # Product and educational documentation
+├── Caddyfile               # TLS termination and reverse proxy
+├── docker-compose.yml      # Local service topology
+└── docker-compose.prod.yml # Production security overrides
 ```
 
 ## Technology Stack
@@ -65,7 +92,9 @@ and React with Clean Architecture.
 | Storage  | PostgreSQL 15, Redis 7 |
 | Auth     | OAuth 2.0, OIDC, RS256 JWT, S256 PKCE |
 | Testing  | Go testing + Testify, Vitest + React Testing Library |
-| Infra    | Docker Compose, multi-stage Docker builds |
+| Security | Caddy TLS, CSRF protection, bcrypt, security headers, rate limiting |
+| Observability | Structured `slog` JSON logs, health checks, Prometheus metrics |
+| Infra    | Docker Compose, Caddy 2, nginx, multi-stage Docker builds |
 
 ## Quick Start
 
@@ -81,10 +110,11 @@ and React with Clean Architecture.
 git clone https://github.com/ranggaaprilio/keyles.git
 cd keyles
 
-# Copy and configure environment
-cp backend/.env.example backend/.env
+# Copy and configure the Compose environment
+cp .env.example .env
+# Set POSTGRES_PASSWORD, DB_PASSWORD, JWT_SECRET, and other required values
 
-# Start all services (PostgreSQL, Redis, backend, frontend)
+# Start PostgreSQL, Redis, backend, frontend, and Caddy
 docker compose up -d
 
 # Run migrations
@@ -94,11 +124,27 @@ cd backend && make migrate-up && make seed
 # Frontend:  http://localhost:3000
 # Backend:   http://localhost:8080
 # Health:    http://localhost:8080/health
+# HTTPS:     https://localhost
+# Metrics:   http://localhost:8080/metrics
 ```
 
 ### Running Locally
 
 See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/README.md) for detailed local development setup.
+
+### Production Deployment
+
+Production deployment uses the base Compose file plus hardened overrides:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+Before deployment, configure strong secrets, HTTPS URLs, `ACME_EMAIL`, and a
+TLS-enabled PostgreSQL connection. The backend rejects insecure production
+configuration at startup. See the
+[production hardening quickstart](specs/007-production-security-hardening/quickstart.md)
+for the complete checklist.
 
 ## API Endpoints
 
@@ -133,6 +179,8 @@ See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/REA
 |--------|------|-------------|
 | `POST` | `/api/v1/login` | Admin login (returns JWT) |
 | `GET` | `/api/v1/dashboard` | Tenant dashboard (requires JWT) |
+| `GET` | `/api/v1/invitations/:token/validate` | Validate a user invitation |
+| `POST` | `/api/v1/invitations/:token/accept` | Accept an invitation and set a password |
 
 ### Admin: Client Management
 
@@ -176,16 +224,26 @@ See [backend/README.md](backend/README.md) and [frontend/README.md](frontend/REA
 
 - **PKCE**: S256 mandatory for all authorization code flows
 - **RS256**: Asymmetric JWT signing with 2048-bit RSA keys
-- **Rate Limiting**: Token endpoint throttled per client; dual-key
-  (source IP + tenant email) fixed-window throttle for OAuth login
+- **TLS**: Caddy terminates HTTPS and manages certificates; production
+  configuration requires HTTPS issuer/frontend URLs
+- **Secrets**: Runtime environment variables replace committed credentials;
+  weak production configuration is rejected during startup
+- **CSRF**: Double-submit cookie validation protects state-changing API
+  operations, with explicit exemptions for protocol and public auth endpoints
+- **Security Headers**: CSP, HSTS, X-Frame-Options, X-Content-Type-Options,
+  Permissions-Policy, COOP, COEP, and Referrer-Policy
+- **Rate Limiting**: Redis sliding windows protect login, registration, OTP,
+  and token endpoints and fail closed when Redis is unavailable
 - **Browser SSO**: Host-only, HttpOnly, SameSite=Lax cookie; no Domain
   attribute; Path=/
-- **Source IP**: Direct TCP peer address for throttling and audit;
-  forwarded headers are not trusted
-- **Fail-Closed**: Authorization, login, and consent operations return
-  local errors during Redis outages; logout always expires the cookie
+- **Error and Log Safety**: Sanitized responses, masked email addresses and
+  file paths, structured JSON logs, and no production debug logging
+- **Request Hardening**: Body-size limits plus read, write, and idle timeouts
+- **Database Security**: TLS required in production, bounded connection pools,
+  30-second statement timeout, and hashed client secrets
 - **Password Hashing**: bcrypt with cost factor 10
-- **HTTPS**: Required in production (`SECURITY_COOKIE_SECURE=true`)
+- **Metrics**: `/metrics` exposes `keyles_security_events_total` and security
+  event duration metrics for external monitoring
 
 ## Testing
 
@@ -209,10 +267,15 @@ npm run build          # TypeScript + Vite production build
 
 ## Documentation
 
+- [Feature 001: Tenant Registration](specs/001-tenant-registration/spec.md)
+- [Feature 002: SSO Landing Page](specs/002-sso-landing-page/spec.md)
 - [Feature 003: SSO Auth Provider](specs/003-sso-auth-provider/spec.md)
 - [Feature 004: Client App Registration](specs/004-client-app-registration/spec.md)
 - [Feature 005: User Management & RBAC](specs/005-user-management-rbac/spec.md)
 - [Feature 006: OAuth Consent Flow](specs/006-oauth-consent-flow/spec.md)
+- [Feature 007: Production Security Hardening](specs/007-production-security-hardening/spec.md)
+- [OAuth/OIDC Integration Guide](http://localhost:3000/docs/oauth)
+- [Understanding Single Sign-On](docs/articles/understanding-single-sign-on.md)
 - [Backend README](backend/README.md)
 - [Frontend README](frontend/README.md)
 
@@ -224,10 +287,6 @@ npm run build          # TypeScript + Vite production build
 4. Run `make test` and `npm run test` before submitting PRs
 5. Use conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
 
-## License
-
-MIT License — see [LICENSE](LICENSE)
-
 ---
 
-**Version**: 0.2.0 | **Status**: Active Development | **Last Updated**: 2026-06-01
+**Version**: 0.3.0 | **Status**: Features 001-007 Implemented, Active Development | **Last Updated**: 2026-06-06
