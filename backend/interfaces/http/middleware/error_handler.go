@@ -2,14 +2,23 @@ package middleware
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	"regexp"
 	"runtime/debug"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ory/fosite"
+	"github.com/ranggaaprilio/keyles/infrastructure/logging"
+	"github.com/ranggaaprilio/keyles/infrastructure/monitoring"
 )
+
+// Logger is the structured logger used by middleware
+var Logger *logging.Logger
+
+func init() {
+	Logger = logging.NewLogger("info")
+}
 
 // ErrorHandler is a middleware that handles errors and sanitizes error messages
 // per FR-021: provide clear error messages without exposing security details
@@ -85,9 +94,14 @@ func RecoveryHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Log the full error and stack trace internally
-				log.Printf("[PANIC RECOVERED] %s %s - Error: %v", c.Request.Method, c.Request.URL.Path, err)
-				log.Printf("[PANIC STACK] %s", debug.Stack())
+			// Log the full error and stack trace internally
+			Logger.Error("panic recovered",
+				"method", c.Request.Method,
+				"path", c.Request.URL.Path,
+				"error", err,
+				"stack", string(debug.Stack()),
+			)
+			monitoring.IncrementSecurityEvent("tls_error")
 
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"success": false,
@@ -112,6 +126,20 @@ func sanitizeError(err error) string {
 	}
 
 	errMsg := err.Error()
+
+	// Mask email addresses
+	emailRegex := regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
+	errMsg = emailRegex.ReplaceAllString(errMsg, "***@***")
+
+	// Mask internal file paths
+	pathPatterns := []string{"/Users/", "/home/", "/app/", "/var/", "/opt/", "/tmp/"}
+	for _, path := range pathPatterns {
+		if strings.Contains(errMsg, path) {
+			// Replace the path and the following word (filename) with [REDACTED]
+			pathRegex := regexp.MustCompile(regexp.QuoteMeta(path) + `[^\s:,;]+`)
+			errMsg = pathRegex.ReplaceAllString(errMsg, "[REDACTED]")
+		}
+	}
 
 	// List of sensitive patterns to hide
 	sensitivePatterns := []string{

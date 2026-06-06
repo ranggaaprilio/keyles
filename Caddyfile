@@ -1,0 +1,43 @@
+{
+	# Global options
+	auto_https off
+}
+
+:80 {
+	# HTTP to HTTPS redirect (handled by Caddy automatically when TLS is configured)
+	# For local dev without TLS, just proxy to backend
+	reverse_proxy backend:8080
+
+	# Security headers
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Embedder-Policy "require-corp"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+# Production HTTPS configuration
+# Uncomment and configure for production with Let's Encrypt
+# {
+# 	email {env.ACME_EMAIL}
+# }
+#
+# sso.yourdomain.com {
+# 	tls {env.ACME_EMAIL}
+# 	reverse_proxy backend:8080
+# 	header {
+# 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+# 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+# 		X-Frame-Options "DENY"
+# 		X-Content-Type-Options "nosniff"
+# 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+# 		Cross-Origin-Opener-Policy "same-origin"
+# 		Cross-Origin-Embedder-Policy "require-corp"
+# 		Referrer-Policy "strict-origin-when-cross-origin"
+# 	}
+# }

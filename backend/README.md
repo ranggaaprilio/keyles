@@ -332,7 +332,7 @@ This project follows **Clean Architecture** principles:
 
 Before deploying to production:
 
-1. Set `SERVER_ENV=production`
+1. Set `APP_ENV=production`
 2. Use HTTPS (`SECURITY_COOKIE_SECURE=true`)
 3. Generate production RSA keys (4096-bit recommended)
 4. Configure strong database passwords
@@ -343,7 +343,43 @@ Before deploying to production:
 9. Configure logging aggregation
 10. Review and test disaster recovery plan
 
+### Production Security Hardening Checklist
+
+- [ ] **TLS**: Caddy reverse proxy configured with `tls { env ACME_EMAIL }`
+- [ ] **Secrets**: All secrets externalized to `.env` (no hardcoded values)
+- [ ] **CSRF**: Double-submit cookie pattern enabled (`CSRF_ENABLED=true`)
+- [ ] **Security Headers**: CSP, HSTS, Permissions-Policy, COOP, COEP configured
+- [ ] **Rate Limiting**: Sliding window rate limiting on all public endpoints
+- [ ] **Error Sanitization**: No stack traces, SQL, or paths in error responses
+- [ ] **Structured Logging**: `LOG_LEVEL=info` in production (no debug)
+- [ ] **Database Security**: `DB_SSL_MODE=require`, connection pool limits, statement timeout
+- [ ] **Metrics**: `/metrics` endpoint exposed with security event counters
+- [ ] **Client Secrets**: Stored as bcrypt hashes (verified in migrations)
+
 See [quickstart.md Production Deployment Checklist](../specs/003-sso-auth-provider/quickstart.md#production-deployment-checklist).
+
+### Secret Rotation
+
+To rotate secrets without a full redeployment:
+
+1. **Generate new secrets**:
+   ```bash
+   make generate-secrets
+   ```
+
+2. **Update environment variables** in your `.env` file or secret management system
+
+3. **Restart the backend service** (no database migration required):
+   ```bash
+   docker compose restart backend
+   ```
+
+4. **Verify the service starts** with the new secrets by checking logs:
+   ```bash
+   docker compose logs backend
+   ```
+
+**Important**: Never commit secrets to version control. The `.env` file and `backend/keys/` directory are gitignored by default.
 
 ## Documentation
 

@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ranggaaprilio/keyles/infrastructure/monitoring"
 	"github.com/redis/go-redis/v9"
 )
 
-// RateLimiter provides rate limiting functionality
+// RateLimiter provides rate limiting functionality using sliding window algorithm
+// with Redis sorted sets for smoother rate limiting than fixed window
 type RateLimiter struct {
 	redis *redis.Client
 }
@@ -20,7 +22,7 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 	return &RateLimiter{redis: redisClient}
 }
 
-// Limit creates a rate limiting middleware
+// Limit creates a rate limiting middleware with sliding window
 func (rl *RateLimiter) Limit(maxRequests int, window time.Duration, keyFunc func(*gin.Context) string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := keyFunc(c)
@@ -31,20 +33,35 @@ func (rl *RateLimiter) Limit(maxRequests int, window time.Duration, keyFunc func
 
 		ctx := context.Background()
 		rateLimitKey := fmt.Sprintf("ratelimit:%s", key)
+		now := time.Now().UnixMilli()
+		windowStart := now - window.Milliseconds()
 
-		// Increment counter
+		// Sliding window using Redis sorted sets
 		pipe := rl.redis.Pipeline()
-		incr := pipe.Incr(ctx, rateLimitKey)
+		// Remove entries outside the window
+		pipe.ZRemRangeByScore(ctx, rateLimitKey, "0", fmt.Sprintf("%d", windowStart))
+		// Add current request
+		pipe.ZAdd(ctx, rateLimitKey, redis.Z{Score: float64(now), Member: now})
+		// Count entries in window
+		countCmd := pipe.ZCard(ctx, rateLimitKey)
+		// Set expiry on the key
 		pipe.Expire(ctx, rateLimitKey, window)
-		
+
 		_, err := pipe.Exec(ctx)
 		if err != nil {
-			// Log error but don't block request if Redis fails
-			c.Next()
+			// Fail-closed: reject request on Redis error
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "RATE_LIMIT_ERROR",
+					"message": "Rate limiting service unavailable. Please try again later.",
+				},
+			})
+			c.Abort()
 			return
 		}
 
-		count := int(incr.Val())
+		count := int(countCmd.Val())
 
 		// Set rate limit headers
 		c.Header("X-RateLimit-Limit", fmt.Sprintf("%d", maxRequests))
@@ -53,6 +70,7 @@ func (rl *RateLimiter) Limit(maxRequests int, window time.Duration, keyFunc func
 
 		// Check if limit exceeded
 		if count > maxRequests {
+			monitoring.IncrementSecurityEvent("rate_limit_triggered")
 			c.JSON(http.StatusTooManyRequests, gin.H{
 				"success": false,
 				"error": gin.H{

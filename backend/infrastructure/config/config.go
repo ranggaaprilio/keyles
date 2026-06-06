@@ -69,6 +69,37 @@ type Config struct {
 	// Application
 	AppEnv   string
 	LogLevel string
+
+	// CSRF Protection
+	CSRFEnabled     bool
+	CSRFCookieName  string
+	CSRFHeaderName  string
+	CSRFTokenLength int
+
+	// Security Headers
+	SecurityHeadersCSP  string
+	SecurityHeadersHSTS string
+
+	// Request Limits & Timeouts
+	RequestMaxBodySize  int
+	RequestReadTimeout  string
+	RequestWriteTimeout string
+	RequestIdleTimeout  string
+
+	// Metrics
+	MetricsEnabled bool
+	MetricsPath    string
+
+	// Database Connection Pool
+	DBMaxOpenConns     int
+	DBMaxIdleConns     int
+	DBConnMaxLifetime  string
+	DBStatementTimeout string
+
+	// Per-Endpoint Rate Limiting
+	RateLimitRegisterPerHour   int
+	RateLimitVerifyOTPPer10Min int
+	RateLimitResendOTPPerHour  int
 }
 
 // Load loads configuration from environment variables
@@ -142,6 +173,44 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	// New security hardening config fields
+	csrfEnabled, err := getEnvAsBool("CSRF_ENABLED", true)
+	if err != nil {
+		return nil, err
+	}
+	csrfTokenLength, err := getEnvAsInt("CSRF_TOKEN_LENGTH", 32)
+	if err != nil {
+		return nil, err
+	}
+	requestMaxBodySize, err := getEnvAsInt("REQUEST_MAX_BODY_SIZE", 1048576)
+	if err != nil {
+		return nil, err
+	}
+	metricsEnabled, err := getEnvAsBool("METRICS_ENABLED", true)
+	if err != nil {
+		return nil, err
+	}
+	dbMaxOpenConns, err := getEnvAsInt("DB_MAX_OPEN_CONNS", 25)
+	if err != nil {
+		return nil, err
+	}
+	dbMaxIdleConns, err := getEnvAsInt("DB_MAX_IDLE_CONNS", 10)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitRegisterPerHour, err := getEnvAsInt("RATE_LIMIT_REGISTER_PER_HOUR", 3)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitVerifyOTPPer10Min, err := getEnvAsInt("RATE_LIMIT_VERIFY_OTP_PER_10MIN", 5)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitResendOTPPerHour, err := getEnvAsInt("RATE_LIMIT_RESEND_OTP_PER_HOUR", 3)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		// Database
 		DBHost:     getEnv("DB_HOST", "localhost"),
@@ -202,6 +271,37 @@ func Load() (*Config, error) {
 		// Application
 		AppEnv:   getEnv("APP_ENV", "development"),
 		LogLevel: getEnv("LOG_LEVEL", "debug"),
+
+		// CSRF Protection
+		CSRFEnabled:     csrfEnabled,
+		CSRFCookieName:  getEnv("CSRF_COOKIE_NAME", "keyles_csrf"),
+		CSRFHeaderName:  getEnv("CSRF_HEADER_NAME", "X-CSRF-Token"),
+		CSRFTokenLength: csrfTokenLength,
+
+		// Security Headers
+		SecurityHeadersCSP:  getEnv("SECURITY_HEADERS_CSP", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"),
+		SecurityHeadersHSTS: getEnv("SECURITY_HEADERS_HSTS", "max-age=31536000; includeSubDomains"),
+
+		// Request Limits & Timeouts
+		RequestMaxBodySize:  requestMaxBodySize,
+		RequestReadTimeout:  getEnv("REQUEST_READ_TIMEOUT", "15s"),
+		RequestWriteTimeout: getEnv("REQUEST_WRITE_TIMEOUT", "15s"),
+		RequestIdleTimeout:  getEnv("REQUEST_IDLE_TIMEOUT", "60s"),
+
+		// Metrics
+		MetricsEnabled: metricsEnabled,
+		MetricsPath:    getEnv("METRICS_PATH", "/metrics"),
+
+		// Database Connection Pool
+		DBMaxOpenConns:     dbMaxOpenConns,
+		DBMaxIdleConns:     dbMaxIdleConns,
+		DBConnMaxLifetime:  getEnv("DB_CONN_MAX_LIFETIME", "5m"),
+		DBStatementTimeout: getEnv("DB_STATEMENT_TIMEOUT", "30s"),
+
+		// Per-Endpoint Rate Limiting
+		RateLimitRegisterPerHour:   rateLimitRegisterPerHour,
+		RateLimitVerifyOTPPer10Min: rateLimitVerifyOTPPer10Min,
+		RateLimitResendOTPPerHour:  rateLimitResendOTPPerHour,
 	}
 
 	// Validate required fields
@@ -251,6 +351,12 @@ func Load() (*Config, error) {
 		}
 		if frontendURL.Scheme != "https" {
 			return nil, fmt.Errorf("FRONTEND_URL must use HTTPS in production")
+		}
+		if cfg.LogLevel == "debug" {
+			return nil, fmt.Errorf("LOG_LEVEL must not be debug in production")
+		}
+		if cfg.DBSSLMode == "disable" || cfg.DBSSLMode == "allow" {
+			return nil, fmt.Errorf("DB_SSL_MODE must be require, verify-ca, or verify-full in production")
 		}
 	}
 

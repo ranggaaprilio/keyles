@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: keyles
       POSTGRES_USER: keyles
-      POSTGRES_PASSWORD: keyles_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -40,23 +40,22 @@ services:
       - DB_PORT=5432
       - DB_NAME=keyles
       - DB_USER=keyles
-      - DB_PASSWORD=keyles_dev_password
+      - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # Set BREVO_API_KEY in the shell or .env for email delivery.
-      # Any previously committed Brevo key must be rotated in Brevo.
-      - BREVO_API_KEY=${BREVO_API_KEY:-}
-      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
       - SKIP_EMAIL_VERIFICATION=${SKIP_EMAIL_VERIFICATION:-false}
       - GIN_MODE=release
-      - FRONTEND_URL=http://localhost:3000
-      - OAUTH_ISSUER=http://localhost:8080
-      - SECURITY_COOKIE_SECURE=false
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - OAUTH_ISSUER=${OAUTH_ISSUER:-http://localhost:8080}
+      - SECURITY_COOKIE_SECURE=${SECURITY_COOKIE_SECURE:-false}
       - SECURITY_SESSION_TTL=28800
       - OAUTH_AUTH_TRANSACTION_TTL=600
       - RATE_LIMIT_OAUTH_LOGIN_FAILURES=5
       - RATE_LIMIT_OAUTH_LOGIN_WINDOW_SECONDS=900
-      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
       - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
       - CORS_ALLOWED_HEADERS=Origin,Content-Type,Accept,Authorization
     ports:
@@ -88,7 +87,7 @@ services:
       dockerfile: Dockerfile
     container_name: keyles-frontend
     environment:
-      - VITE_API_URL=http://localhost:8080
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
       - VITE_APP_NAME=Keyles SSO
     ports:
       - "3000:3000"
@@ -111,6 +110,23 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2
+    container_name: keyles-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:

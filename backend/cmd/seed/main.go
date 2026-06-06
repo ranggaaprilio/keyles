@@ -7,7 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -87,7 +87,7 @@ type SigningKey struct {
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: .env file not found, using environment variables")
+		slog.Warn(".env file not found, using environment variables")
 	}
 
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -100,12 +100,14 @@ func main() {
 	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Connected to database")
+	slog.Info("Connected to database")
 	if err := seed(context.Background(), db); err != nil {
-		log.Fatalf("Failed to seed database: %v", err)
+		slog.Error("Failed to seed database", "error", err)
+		os.Exit(1)
 	}
 
 	fmt.Println("\n=== Seed Data Summary ===")
