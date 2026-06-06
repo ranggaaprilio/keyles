@@ -104,6 +104,12 @@ export const Navbar = () => {
             >
               Plans
             </Link>
+            <Link
+              to="/docs/oauth"
+              className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
+            >
+              Docs
+            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <button

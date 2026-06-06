@@ -15,6 +15,7 @@ import {
   X,
   ChevronLeft,
   KeyRound,
+  BookOpen,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -46,6 +47,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/users",
     icon: <Users className="w-4 h-4" />,
     matchPaths: ["/dashboard/users"],
+  },
+  {
+    label: "Integration Guide",
+    href: "/dashboard/integration",
+    icon: <BookOpen className="w-4 h-4" />,
+    matchPaths: ["/dashboard/integration"],
   },
 ];
 
@@ -196,6 +203,8 @@ function PageTitle({ pathname }: { pathname: string }) {
   } else if (pathname.match(/^\/dashboard\/users\/[^/]+$/)) {
     title = "User Details";
     backHref = "/dashboard/users";
+  } else if (pathname === "/dashboard/integration") {
+    title = "Integration Guide";
   }
 
   return (

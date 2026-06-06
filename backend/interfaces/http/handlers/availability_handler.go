@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 )
 
@@ -54,18 +57,16 @@ func (h *AvailabilityHandler) CheckAvailability(c *gin.Context) {
 	)
 
 	if err != nil {
-		// Map domain errors to HTTP status codes
 		statusCode := http.StatusInternalServerError
 		errorMessage := "Internal server error"
 
-		// Check for validation errors
 		switch {
-		case err.Error() == "organization name must be between 3 and 100 characters" ||
-			err.Error() == "email must be a valid email address":
+		case errors.Is(err, entities.ErrInvalidOrganizationName),
+			errors.Is(err, entities.ErrInvalidEmail):
 			statusCode = http.StatusBadRequest
 			errorMessage = err.Error()
 		default:
-			// For unexpected errors, log but don't expose details
+			slog.Error("availability check failed", "error", err)
 			errorMessage = "Failed to check availability"
 		}
 

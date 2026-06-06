@@ -38,13 +38,19 @@ export function RegistrationForm() {
 
   const mutation = useTenantRegistration({
     onSuccess: (data) => {
-      navigate("/verify-otp", {
-        state: {
-          tenantId: data.tenant_id,
-          organizationName: data.organization_name,
-          message: data.message,
-        },
-      });
+      if (data.status === "active") {
+        navigate("/login", {
+          state: { message: data.message },
+        });
+      } else {
+        navigate("/verify-otp", {
+          state: {
+            tenantId: data.tenant_id,
+            organizationName: data.organization_name,
+            message: data.message,
+          },
+        });
+      }
     },
     onError: (err: ApiException) => {
       setError("root", { message: err.message });

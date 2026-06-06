@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/usecase/tenant"
 )
 
@@ -52,13 +55,6 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// Get client IP and user agent for audit logging (future enhancement)
-	// ipAddress := c.GetHeader("X-Real-IP")
-	// if ipAddress == "" {
-	// 	ipAddress = c.ClientIP()
-	// }
-	// userAgent := c.GetHeader("User-Agent")
-
 	// Execute use case
 	result, err := h.registerUseCase.Execute(
 		c.Request.Context(),
@@ -69,26 +65,26 @@ func (h *RegistrationHandler) Register(c *gin.Context) {
 	)
 
 	if err != nil {
-		// Map domain errors to HTTP status codes
 		statusCode := http.StatusInternalServerError
 		errorMessage := "Internal server error"
 
-		// Check for specific error types
 		switch {
-		case err.Error() == "organization name already exists":
+		case errors.Is(err, tenant.ErrOrganizationNameExists),
+			errors.Is(err, tenant.ErrEmailExists):
 			statusCode = http.StatusConflict
 			errorMessage = err.Error()
-		case err.Error() == "email already exists":
-			statusCode = http.StatusConflict
-			errorMessage = err.Error()
-		case err.Error() == "organization name must be between 3 and 100 characters" ||
-			err.Error() == "email must be a valid email address" ||
-			err.Error() == "password must be at least 8 characters long" ||
-			err.Error() == "full name must be between 2 and 100 characters":
+		case errors.Is(err, entities.ErrInvalidOrganizationName),
+			errors.Is(err, entities.ErrInvalidEmail),
+			errors.Is(err, entities.ErrPasswordTooShort),
+			errors.Is(err, entities.ErrPasswordMissingUpper),
+			errors.Is(err, entities.ErrPasswordMissingLower),
+			errors.Is(err, entities.ErrPasswordMissingNumber),
+			errors.Is(err, entities.ErrPasswordMissingSpecial),
+			errors.Is(err, entities.ErrInvalidFullName):
 			statusCode = http.StatusBadRequest
 			errorMessage = err.Error()
 		default:
-			// For unexpected errors, log but don't expose details
+			slog.Error("registration failed", "error", err)
 			errorMessage = "Failed to register tenant"
 		}
 

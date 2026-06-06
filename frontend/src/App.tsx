@@ -20,6 +20,7 @@ import { OAuthConsentPage } from './pages/OAuthConsentPage';
 import { OAuthErrorPage } from './pages/OAuthErrorPage';
 import { OAuthLogoutPage } from './pages/OAuthLogoutPage';
 import { DashboardLayout } from "./components/dashboard/DashboardLayout";
+import { IntegrationGuidePage } from "./pages/IntegrationGuidePage";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -74,6 +75,7 @@ export function App() {
             <Route path="/oauth2/consent" element={<OAuthConsentPage />} />
             <Route path="/oauth2/error" element={<OAuthErrorPage />} />
             <Route path="/oauth2/logout" element={<OAuthLogoutPage />} />
+            <Route path="/docs/oauth" element={<IntegrationGuidePage />} />
 
             {/* Protected routes — wrapped in DashboardLayout */}
             <Route
@@ -142,6 +144,16 @@ export function App() {
                 <ProtectedRoute>
                   <DashboardLayout>
                     <UserManagementPage />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/integration"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <IntegrationGuidePage />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
