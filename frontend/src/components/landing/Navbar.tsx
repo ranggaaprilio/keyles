@@ -1,132 +1,108 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowUpRight, Menu, ShieldCheck, X } from "lucide-react";
 import { isAuthenticated } from "@/services/api/auth";
-import { Menu, Search, User } from "lucide-react";
+
+const navigation = [
+  { label: "Platform", href: "/#how-it-works" },
+  { label: "Security", href: "/#about" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Docs", href: "/docs/oauth" },
+];
 
 export const Navbar = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isLoggedIn = isAuthenticated();
 
   return (
-    <header className="sticky left-0 right-0 top-0 z-50 bg-black">
-      {/* Top banner — Dell 1996 style */}
-      <div className="mx-auto max-w-[760px] px-2">
-        <div className="flex items-center justify-between py-3 px-4">
-          {/* Left: Brand */}
-          <Link to="/" className="flex items-center gap-3" aria-label="Keyles">
-            <span className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-xl font-black uppercase text-white">
-              KEYLES
-            </span>
-            <span className="hidden font-['Times_New_Roman',Times,serif] text-sm text-gray-300 sm:inline">
-              .com
-            </span>
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/90 text-white backdrop-blur-xl">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
+        <Link
+          to="/"
+          className="flex items-center gap-3 text-white no-underline"
+          aria-label="Keyles home"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e91d2a] shadow-[0_8px_30px_rgba(233,29,42,0.24)]">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <span className="font-heading text-xl font-bold tracking-[-0.04em]">
+            Keyles
+          </span>
+        </Link>
+
+        <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary">
+          {navigation.map((item) => (
+            <Link
+              key={item.label}
+              to={item.href}
+              className="font-ui text-sm font-medium text-white/65 no-underline transition-colors hover:text-white"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="hidden items-center gap-3 lg:flex">
+          {!isLoggedIn && (
+            <Link
+              to="/login"
+              className="px-4 py-2 font-ui text-sm font-semibold text-white no-underline transition-colors hover:text-white/70"
+            >
+              Sign in
+            </Link>
+          )}
+          <Link
+            to={isLoggedIn ? "/dashboard" : "/register"}
+            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#e91d2a] px-5 font-ui text-sm font-bold text-white no-underline shadow-[0_8px_30px_rgba(233,29,42,0.2)] transition-all hover:-translate-y-0.5 hover:bg-[#cf1723] hover:text-white"
+          >
+            {isLoggedIn ? "Dashboard" : "Get started"}
+            <ArrowUpRight className="h-4 w-4" />
           </Link>
-
-          {/* Center: Headline */}
-          <div className="hidden text-center md:block">
-            <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-white">
-              BUILD YOUR OWN SSO. ONLINE.
-            </p>
-          </div>
-
-          {/* Right: Phone + BUY sticker */}
-          <div className="flex items-center gap-3">
-            {/* Phone callout */}
-            <a
-              href="tel:1-800-213-DELL"
-              className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold text-[#e91d2a]"
-            >
-              1-800-KEYLES
-            </a>
-
-            {/* BUY a DELL sticker */}
-            <div className="border border-black bg-[#fcc20f] px-2 py-0.5">
-              <span className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-black">
-                START
-              </span>
-              <span className="ml-1 inline-block bg-[#6a26a4] px-1 font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold text-white">
-                a
-              </span>
-              <span className="ml-1 font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-black">
-                KEYLES
-              </span>
-            </div>
-
-            {/* Mobile menu */}
-            <button
-              className="inline-flex h-8 w-8 items-center justify-center text-white md:hidden"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
         </div>
 
-        {/* Nav links row */}
-        <div className="flex items-center justify-between border-t border-gray-700 py-1.5 px-4">
-          <nav className="flex items-center gap-4">
-            {isLoggedIn ? (
+        <button
+          type="button"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 text-white lg:hidden"
+          aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((open) => !open)}
+        >
+          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </div>
+
+      {isMenuOpen && (
+        <div className="border-t border-white/10 bg-black px-5 py-5 lg:hidden">
+          <nav className="mx-auto flex max-w-7xl flex-col" aria-label="Mobile">
+            {navigation.map((item) => (
               <Link
-                to="/dashboard"
-                className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
+                key={item.label}
+                to={item.href}
+                onClick={() => setIsMenuOpen(false)}
+                className="border-b border-white/10 py-4 font-ui text-base font-medium text-white no-underline"
               >
-                Dashboard
+                {item.label}
               </Link>
-            ) : (
-              <>
+            ))}
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {!isLoggedIn && (
                 <Link
                   to="/login"
-                  className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
+                  className="inline-flex h-12 items-center justify-center rounded-xl border border-white/20 font-ui font-bold text-white no-underline"
                 >
-                  Login
+                  Sign in
                 </Link>
-                <Link
-                  to="/register"
-                  className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
-                >
-                  Register
-                </Link>
-              </>
-            )}
-            <Link
-              to="/#how-it-works"
-              className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
-            >
-              Platform
-            </Link>
-            <Link
-              to="/#about"
-              className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
-            >
-              Security
-            </Link>
-            <Link
-              to="/#pricing"
-              className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
-            >
-              Plans
-            </Link>
-            <Link
-              to="/docs/oauth"
-              className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline hover:text-[#551a8b]"
-            >
-              Docs
-            </Link>
+              )}
+              <Link
+                to={isLoggedIn ? "/dashboard" : "/register"}
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-[#e91d2a] font-ui font-bold text-white no-underline"
+              >
+                {isLoggedIn ? "Dashboard" : "Get started"}
+              </Link>
+            </div>
           </nav>
-          <div className="flex items-center gap-2">
-            <button
-              className="inline-flex h-6 w-6 items-center justify-center text-gray-400 hover:text-white"
-              aria-label="Search"
-            >
-              <Search className="h-3.5 w-3.5" />
-            </button>
-            <button
-              className="inline-flex h-6 w-6 items-center justify-center text-gray-400 hover:text-white"
-              aria-label="Account"
-            >
-              <User className="h-3.5 w-3.5" />
-            </button>
-          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 };

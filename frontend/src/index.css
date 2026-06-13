@@ -78,6 +78,14 @@
 }
 
 @layer utilities {
+  .landing-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 88%);
+  }
+
   .animate-slide-in {
     animation: slideIn 0.3s ease-out;
   }
@@ -109,6 +117,20 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -132,6 +154,10 @@
   a:visited {
     color: #551a8b;
   }
+}
+
+.landing-page a:visited {
+  color: inherit;
 }
 
 /* Dell 1996 page frame — applied via body wrapper */

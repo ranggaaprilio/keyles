@@ -1,48 +1,65 @@
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
+
+const links = [
+  { label: "Platform", href: "/#how-it-works" },
+  { label: "Security", href: "/#about" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "Documentation", href: "/docs/oauth" },
+];
 
 export const Footer = () => {
   return (
-    <footer className="bg-white">
-      <div className="mx-auto max-w-[760px]">
-        {/* Icon-label nav — Dell 1996 style */}
-        <div className="border-t border-black">
-          <div className="flex items-center justify-between px-4 py-4">
-            {[
-              { label: "PLATFORM", href: "/#how-it-works" },
-              { label: "HOME", href: "/" },
-              { label: "PLANS", href: "/#pricing" },
-              { label: "SERVICE & SUPPORT", href: "/#about" },
-            ].map((item) => (
+    <footer className="bg-black text-white">
+      <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-12">
+        <div className="grid gap-10 border-b border-white/10 pb-12 md:grid-cols-[1fr_auto] md:items-start">
+          <div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-3 text-white no-underline"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e91d2a]">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <span className="font-heading text-xl font-bold tracking-[-0.04em]">
+                Keyles
+              </span>
+            </Link>
+            <p className="mt-5 max-w-sm font-ui text-sm leading-6 text-white/45">
+              Modern identity infrastructure for teams that want secure access
+              without unnecessary complexity.
+            </p>
+          </div>
+
+          <nav
+            className="grid grid-cols-2 gap-x-10 gap-y-4 sm:grid-cols-4"
+            aria-label="Footer"
+          >
+            {links.map((item) => (
               <Link
                 key={item.label}
                 to={item.href}
-                className="flex flex-col items-center gap-1 px-2 text-center"
+                className="inline-flex items-center gap-1 font-ui text-sm font-medium text-white/55 no-underline transition-colors hover:text-white"
               >
-                <span className="font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] text-[#0000ee] underline">
-                  {item.label}
-                </span>
+                {item.label}
+                {item.label === "Documentation" && (
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                )}
               </Link>
             ))}
-          </div>
+          </nav>
         </div>
 
-        {/* Green connecting rule */}
-        <div className="h-[1px] bg-[#8e8a25]" />
-
-        {/* Copyright and legal */}
-        <div className="px-4 py-4 text-center">
-          <p className="font-['Times_New_Roman',Times,serif] text-xs text-gray-600">
-            <a href="#" className="text-[#0000ee] underline">
-              Copyright
-            </a>{" "}
-            &copy; {new Date().getFullYear()} Keyles. All rights reserved.{" "}
-            <a href="#" className="text-[#0000ee] underline">
-              (Terms of Use)
+        <div className="flex flex-col gap-4 pt-7 font-ui text-xs text-white/30 sm:flex-row sm:items-center sm:justify-between">
+          <p>&copy; {new Date().getFullYear()} Keyles. All rights reserved.</p>
+          <div className="flex gap-6">
+            <a href="#" className="text-white/30 no-underline hover:text-white">
+              Privacy
             </a>
-          </p>
-          <p className="mt-2 font-['Times_New_Roman',Times,serif] text-[11px] text-gray-400">
-            This site is best viewed with browser versions 3.0 and higher.
-          </p>
+            <a href="#" className="text-white/30 no-underline hover:text-white">
+              Terms
+            </a>
+          </div>
         </div>
       </div>
     </footer>

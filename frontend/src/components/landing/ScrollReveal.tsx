@@ -19,12 +19,12 @@ export const ScrollReveal = ({
     <div ref={ref} style={{ position: "relative", width, overflow: "hidden" }}>
       <motion.div
         variants={{
-          hidden: { opacity: 0, y: 75 },
+          hidden: { opacity: 0, y: 32 },
           visible: { opacity: 1, y: 0 },
         }}
         initial="hidden"
         animate={isInView ? "visible" : "hidden"}
-        transition={{ duration: 0.5, delay: delay }}
+        transition={{ duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] }}
       >
         {children}
       </motion.div>
