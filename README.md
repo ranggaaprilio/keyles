@@ -113,6 +113,8 @@ cd keyles
 # Copy and configure the Compose environment
 cp .env.example .env
 # Set POSTGRES_PASSWORD, DB_PASSWORD, JWT_SECRET, and other required values
+# VITE_API_URL is baked into the frontend bundle at image build time, so set it
+# before `docker compose build`; changing it later requires a rebuild.
 
 # Start PostgreSQL, Redis, backend, frontend, and Caddy
 docker compose up -d
