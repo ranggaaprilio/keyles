@@ -129,7 +129,6 @@ func (r *Router) Setup() {
 	oauth2 := r.engine.Group("/oauth2")
 	{
 		oauth2.GET("/auth", r.oauthHandler.AuthorizeBrowser)
-		oauth2.POST("/auth", r.oauthHandler.Authorize)
 		// Browser-facing OAuth flow (Phase 3)
 		oauth2.POST("/login", r.oauthHandler.Login)
 		oauth2.GET("/consent/:transactionId", r.oauthHandler.ConsentDetail)
