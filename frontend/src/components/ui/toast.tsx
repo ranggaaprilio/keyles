@@ -28,33 +28,33 @@ export function Toast({ id, type, message, duration = 5000, onClose }: ToastProp
   }, [id, duration, onClose]);
 
   const icons = {
-    success: <CheckCircle className="h-4 w-4 text-green-700" />,
-    error: <XCircle className="h-4 w-4 text-red-700" />,
-    info: <Info className="h-4 w-4 text-blue-700" />,
+    success: <CheckCircle className="h-4 w-4 text-success" />,
+    error: <XCircle className="h-4 w-4 text-destructive" />,
+    info: <Info className="h-4 w-4 text-muted-foreground" />,
   };
 
   const borderColors = {
-    success: 'border-l-4 border-l-green-700',
-    error: 'border-l-4 border-l-red-700',
-    info: 'border-l-4 border-l-blue-700',
+    success: 'border-l-4 border-l-success',
+    error: 'border-l-4 border-l-destructive',
+    info: 'border-l-4 border-l-muted-foreground',
   };
 
   return (
     <div
       className={`
-        flex items-center gap-3 border border-black bg-white px-4 py-3
-        shadow-[2px_2px_0_#000] transition-all duration-300
+        flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3
+        shadow-elevated transition-all duration-slow
         ${borderColors[type]}
         ${isVisible ? 'animate-slide-in' : 'animate-slide-out'}
       `}
     >
       {icons[type]}
-      <p className="flex-1 font-['Times_New_Roman',Times,serif] text-sm text-black">
+      <p className="flex-1 text-sm text-foreground">
         {message}
       </p>
       <button
         onClick={() => onClose(id)}
-        className="text-gray-500 hover:text-black"
+        className="text-muted-foreground hover:text-foreground"
       >
         <X className="h-4 w-4" />
       </button>
