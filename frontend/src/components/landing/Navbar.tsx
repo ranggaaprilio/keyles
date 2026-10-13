@@ -15,19 +15,17 @@ export const Navbar = () => {
   const isLoggedIn = isAuthenticated();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/90 text-white backdrop-blur-xl">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 text-foreground backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
         <Link
           to="/"
-          className="flex items-center gap-3 text-white no-underline"
+          className="flex items-center gap-2.5 text-foreground no-underline"
           aria-label="Keyles home"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e91d2a] shadow-[0_8px_30px_rgba(233,29,42,0.24)]">
-            <ShieldCheck className="h-5 w-5" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <ShieldCheck className="h-4 w-4" />
           </span>
-          <span className="font-heading text-xl font-bold tracking-[-0.04em]">
-            Keyles
-          </span>
+          <span className="text-lg font-medium tracking-tight">Keyles</span>
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary">
@@ -35,25 +33,25 @@ export const Navbar = () => {
             <Link
               key={item.label}
               to={item.href}
-              className="font-ui text-sm font-medium text-white/65 no-underline transition-colors hover:text-white"
+              className="text-sm font-medium text-muted-foreground no-underline transition-colors duration-fast hover:text-foreground"
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-2 lg:flex">
           {!isLoggedIn && (
             <Link
               to="/login"
-              className="px-4 py-2 font-ui text-sm font-semibold text-white no-underline transition-colors hover:text-white/70"
+              className="px-4 py-2 text-sm font-medium text-foreground no-underline transition-colors duration-fast hover:text-muted-foreground"
             >
               Sign in
             </Link>
           )}
           <Link
             to={isLoggedIn ? "/dashboard" : "/register"}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#e91d2a] px-5 font-ui text-sm font-bold text-white no-underline shadow-[0_8px_30px_rgba(233,29,42,0.2)] transition-all hover:-translate-y-0.5 hover:bg-[#cf1723] hover:text-white"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground no-underline transition-colors duration-fast hover:bg-primary/85 hover:text-primary-foreground"
           >
             {isLoggedIn ? "Dashboard" : "Get started"}
             <ArrowUpRight className="h-4 w-4" />
@@ -62,7 +60,7 @@ export const Navbar = () => {
 
         <button
           type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 text-white lg:hidden"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground lg:hidden"
           aria-label={isMenuOpen ? "Close menu" : "Open menu"}
           aria-expanded={isMenuOpen}
           onClick={() => setIsMenuOpen((open) => !open)}
@@ -72,14 +70,14 @@ export const Navbar = () => {
       </div>
 
       {isMenuOpen && (
-        <div className="border-t border-white/10 bg-black px-5 py-5 lg:hidden">
+        <div className="border-t border-border bg-background px-5 py-5 lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col" aria-label="Mobile">
             {navigation.map((item) => (
               <Link
                 key={item.label}
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
-                className="border-b border-white/10 py-4 font-ui text-base font-medium text-white no-underline"
+                className="border-b border-border py-4 text-base font-medium text-foreground no-underline"
               >
                 {item.label}
               </Link>
@@ -88,14 +86,14 @@ export const Navbar = () => {
               {!isLoggedIn && (
                 <Link
                   to="/login"
-                  className="inline-flex h-12 items-center justify-center rounded-xl border border-white/20 font-ui font-bold text-white no-underline"
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-input text-sm font-medium text-foreground no-underline hover:bg-muted"
                 >
                   Sign in
                 </Link>
               )}
               <Link
                 to={isLoggedIn ? "/dashboard" : "/register"}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-[#e91d2a] font-ui font-bold text-white no-underline"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground no-underline hover:bg-primary/85 hover:text-primary-foreground"
               >
                 {isLoggedIn ? "Dashboard" : "Get started"}
               </Link>

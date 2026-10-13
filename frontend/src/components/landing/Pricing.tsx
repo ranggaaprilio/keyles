@@ -43,19 +43,24 @@ const tiers = [
   },
 ];
 
+const primaryCta =
+  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground no-underline transition-colors duration-fast hover:bg-primary/85 hover:text-primary-foreground";
+const outlineCta =
+  "inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-input bg-background text-sm font-medium text-foreground no-underline transition-colors duration-fast hover:bg-muted hover:text-foreground";
+
 export const Pricing = () => {
   return (
-    <section id="pricing" className="bg-[#f7f7f5] py-24 sm:py-32">
+    <section id="pricing" className="bg-muted py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
         <ScrollReveal width="100%">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="font-ui text-xs font-bold uppercase tracking-[0.18em] text-[#e91d2a]">
+            <p className="text-xs font-medium text-muted-foreground">
               Simple pricing
             </p>
-            <h2 className="mt-5 font-heading text-4xl font-bold leading-[1.05] tracking-[-0.045em] sm:text-5xl">
+            <h2 className="mt-5 text-4xl font-normal leading-[1.05] tracking-[-0.03em] text-foreground sm:text-5xl">
               Start small. Scale securely.
             </h2>
-            <p className="mt-5 font-ui text-base leading-7 text-black/50">
+            <p className="mt-5 text-base leading-7 text-muted-foreground">
               Every plan includes the essentials for secure authentication.
               Move up when your team and access policies grow.
             </p>
@@ -66,65 +71,41 @@ export const Pricing = () => {
           {tiers.map((tier, index) => (
             <ScrollReveal key={tier.name} width="100%" delay={index * 0.08}>
               <article
-                className={`relative flex h-full flex-col rounded-2xl border p-7 sm:p-8 ${
-                  tier.popular
-                    ? "border-black bg-black text-white shadow-[0_28px_70px_rgba(0,0,0,0.16)]"
-                    : "border-black/10 bg-white text-black"
+                className={`relative flex h-full flex-col rounded-xl border bg-background p-7 text-foreground shadow-card sm:p-8 ${
+                  tier.popular ? "border-foreground ring-1 ring-foreground" : "border-border"
                 }`}
               >
                 {tier.popular && (
-                  <span className="absolute right-6 top-6 rounded-full bg-[#d77a7a] px-3 py-1.5 font-ui text-[10px] font-bold uppercase tracking-[0.12em] text-black">
+                  <span className="absolute right-6 top-6 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
                     Most popular
                   </span>
                 )}
-                <p
-                  className={`font-ui text-sm font-bold ${
-                    tier.popular ? "text-white/55" : "text-black/45"
-                  }`}
-                >
+                <p className="text-sm font-medium text-muted-foreground">
                   {tier.name}
                 </p>
                 <div className="mt-8 flex items-end gap-2">
-                  <span className="font-heading text-4xl font-bold tracking-[-0.04em]">
+                  <span className="text-4xl font-normal tracking-[-0.03em]">
                     {tier.price}
                   </span>
                   {tier.suffix && (
-                    <span
-                      className={`pb-1 font-ui text-xs ${
-                        tier.popular ? "text-white/35" : "text-black/35"
-                      }`}
-                    >
+                    <span className="pb-1 text-xs text-muted-foreground">
                       {tier.suffix}
                     </span>
                   )}
                 </div>
-                <p
-                  className={`mt-5 min-h-[48px] font-ui text-sm leading-6 ${
-                    tier.popular ? "text-white/50" : "text-black/50"
-                  }`}
-                >
+                <p className="mt-5 min-h-[48px] text-sm leading-6 text-muted-foreground">
                   {tier.description}
                 </p>
 
-                <div
-                  className={`my-7 h-px ${
-                    tier.popular ? "bg-white/10" : "bg-black/10"
-                  }`}
-                />
+                <div className="my-7 h-px bg-border" />
                 <ul className="space-y-4">
                   {tier.features.map((feature) => (
                     <li
                       key={feature}
-                      className={`flex items-center gap-3 font-ui text-sm ${
-                        tier.popular ? "text-white/70" : "text-black/65"
-                      }`}
+                      className="flex items-center gap-3 text-sm text-foreground"
                     >
-                      <span
-                        className={`flex h-5 w-5 items-center justify-center rounded-full ${
-                          tier.popular ? "bg-[#b3bd95]" : "bg-[#b3bd95]/55"
-                        }`}
-                      >
-                        <Check className="h-3 w-3 text-black" />
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/10 text-success">
+                        <Check className="h-3 w-3" />
                       </span>
                       {feature}
                     </li>
@@ -133,21 +114,14 @@ export const Pricing = () => {
 
                 <div className="mt-auto pt-9">
                   {tier.href.startsWith("mailto") ? (
-                    <a
-                      href={tier.href}
-                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-black/15 font-ui text-sm font-bold text-black no-underline transition-colors hover:bg-black hover:text-white"
-                    >
+                    <a href={tier.href} className={outlineCta}>
                       {tier.cta}
                       <ArrowRight className="h-4 w-4" />
                     </a>
                   ) : (
                     <Link
                       to={tier.href}
-                      className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl font-ui text-sm font-bold no-underline transition-all hover:-translate-y-0.5 ${
-                        tier.popular
-                          ? "bg-[#e91d2a] text-white hover:text-white"
-                          : "border border-black/15 text-black hover:bg-black hover:text-white"
-                      }`}
+                      className={tier.popular ? primaryCta : outlineCta}
                     >
                       {tier.cta}
                       <ArrowRight className="h-4 w-4" />
@@ -160,18 +134,18 @@ export const Pricing = () => {
         </div>
 
         <ScrollReveal width="100%" delay={0.15}>
-          <div className="mt-20 overflow-hidden rounded-[1.75rem] bg-[#e91d2a] px-7 py-12 text-white sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16">
+          <div className="mt-20 overflow-hidden rounded-xl bg-primary px-7 py-12 text-primary-foreground sm:px-12 lg:flex lg:items-center lg:justify-between lg:px-16">
             <div>
-              <p className="font-ui text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+              <p className="text-xs font-medium text-primary-foreground/60">
                 Ready when you are
               </p>
-              <h3 className="mt-4 max-w-2xl font-heading text-3xl font-bold leading-tight tracking-[-0.04em] sm:text-4xl">
+              <h3 className="mt-4 max-w-2xl text-3xl font-normal leading-tight tracking-[-0.03em] sm:text-4xl">
                 Give every application one trusted front door.
               </h3>
             </div>
             <Link
               to="/register"
-              className="mt-8 inline-flex h-13 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 py-4 font-ui text-sm font-bold text-black no-underline transition-transform hover:-translate-y-0.5 hover:text-black lg:mt-0"
+              className="mt-8 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-background px-7 text-sm font-medium text-foreground no-underline transition-colors duration-fast hover:bg-background/90 hover:text-foreground lg:mt-0"
             >
               Start your deployment
               <ArrowRight className="h-4 w-4" />
