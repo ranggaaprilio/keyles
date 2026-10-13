@@ -146,17 +146,17 @@ const revokeCode = `curl -X POST ${issuer}/oauth2/revoke \\
 export function IntegrationGuidePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <header className="relative overflow-hidden border-2 border-black bg-[#f6cf3c] p-5 sm:p-7">
+      <header className="relative overflow-hidden rounded-xl bg-muted p-6 sm:p-8">
         <div className="relative z-10 max-w-3xl">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <Badge>OAuth 2.0</Badge>
             <Badge variant="outline">OpenID Connect</Badge>
             <Badge variant="outline">PKCE S256</Badge>
           </div>
-          <h1 className="font-display text-3xl font-black uppercase leading-none sm:text-5xl">
+          <h1 className="text-3xl font-normal leading-[1.1] tracking-[-0.03em] sm:text-5xl">
             Connect your app to Keyles
           </h1>
-          <p className="mt-4 max-w-2xl font-body text-base">
+          <p className="mt-4 max-w-2xl text-base text-muted-foreground">
             A practical guide to registering a client, signing users in, safely
             handling tokens, and preparing your integration for production.
           </p>
@@ -166,7 +166,7 @@ export function IntegrationGuidePage() {
                 Start integrating <ArrowRight />
               </a>
             </Button>
-            <Button asChild variant="secondary">
+            <Button asChild variant="outline">
               <a
                 href={`${issuer}/.well-known/openid-configuration`}
                 target="_blank"
@@ -177,12 +177,11 @@ export function IntegrationGuidePage() {
             </Button>
           </div>
         </div>
-        <KeyRound className="absolute -bottom-10 -right-8 h-48 w-48 rotate-12 text-black/10 sm:h-64 sm:w-64" />
       </header>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="h-fit border border-black bg-white lg:sticky lg:top-16">
-          <p className="border-b border-black bg-black px-3 py-2 font-ui text-xs font-bold uppercase tracking-[1.5px] text-white">
+        <aside className="h-fit overflow-hidden rounded-lg border border-border bg-background lg:sticky lg:top-20">
+          <p className="border-b border-border bg-muted px-3 py-2 text-xs font-medium text-muted-foreground">
             On this page
           </p>
           <nav aria-label="Integration guide sections">
@@ -190,9 +189,9 @@ export function IntegrationGuidePage() {
               <a
                 key={id}
                 href={`#${id}`}
-                className="flex items-center gap-2 border-b border-black px-3 py-2 font-ui text-xs font-bold uppercase tracking-[1px] text-black no-underline last:border-b-0 hover:bg-gray-100"
+                className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm text-foreground no-underline last:border-b-0 hover:bg-muted transition-colors duration-fast"
               >
-                <span className="w-5 font-mono text-gray-500">
+                <span className="w-5 font-mono text-muted-foreground">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 {label}
@@ -235,11 +234,11 @@ export function IntegrationGuidePage() {
               />
             </div>
 
-            <div className="mt-4 border-l-4 border-black bg-gray-100 p-4">
-              <p className="font-ui text-xs font-bold uppercase tracking-[1px]">
+            <div className="mt-4 rounded-md bg-muted p-4">
+              <p className="text-xs font-medium">
                 Choose the correct client type
               </p>
-              <p className="mt-1 font-body text-sm">
+              <p className="mt-1 text-sm">
                 Use a <strong>public client</strong> for SPAs and mobile apps.
                 Use a <strong>confidential client</strong> only when a trusted
                 backend can keep the client secret out of browser code. PKCE is
@@ -254,9 +253,9 @@ export function IntegrationGuidePage() {
             title="Provider endpoints"
             description={`Your configured issuer is ${issuer}. Prefer OIDC discovery instead of hard-coding these URLs.`}
           >
-            <div className="overflow-x-auto border border-black">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full min-w-[680px] border-collapse text-left">
-                <thead className="bg-black font-ui text-xs uppercase tracking-[1px] text-white">
+                <thead className="bg-muted text-xs text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">Endpoint</th>
                     <th className="px-3 py-2">URL</th>
@@ -265,15 +264,15 @@ export function IntegrationGuidePage() {
                 </thead>
                 <tbody>
                   {endpoints.map(([name, path, purpose]) => (
-                    <tr key={path} className="border-t border-black">
-                      <td className="px-3 py-2 font-ui text-xs font-bold uppercase">
+                    <tr key={path} className="border-t border-border">
+                      <td className="px-3 py-2 text-xs font-medium">
                         {name}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">
                         {issuer}
                         {path}
                       </td>
-                      <td className="px-3 py-2 font-body text-sm">{purpose}</td>
+                      <td className="px-3 py-2 text-sm">{purpose}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -382,15 +381,15 @@ export function IntegrationGuidePage() {
                 ["nonce", "Must match when included in your request"],
                 ["auth_time", "Check when your app requires fresh login"],
               ].map(([claim, rule]) => (
-                <div key={claim} className="border border-black p-3">
-                  <code className="bg-black px-2 py-0.5 text-xs text-white">
+                <div key={claim} className="rounded-md border border-border p-3">
+                  <code className="bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                     {claim}
                   </code>
-                  <p className="mt-2 font-body text-sm">{rule}</p>
+                  <p className="mt-2 text-sm">{rule}</p>
                 </div>
               ))}
             </div>
-            <p className="mt-4 border border-black bg-[#d9e5f0] p-4 font-body text-sm">
+            <p className="mt-4 rounded-md bg-muted p-4 text-sm text-muted-foreground">
               Use a maintained OpenID Connect or JWT library in production.
               Never treat an access token as proof of authentication, and never
               trust decoded claims before signature and claim validation.
@@ -446,10 +445,10 @@ export function IntegrationGuidePage() {
               ].map((item) => (
                 <div
                   key={item}
-                  className="flex gap-3 border border-black bg-white p-3"
+                  className="flex gap-3 rounded-md border border-border bg-background p-3"
                 >
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
-                  <p className="font-body text-sm">{item}</p>
+                  <p className="text-sm">{item}</p>
                 </div>
               ))}
             </div>
@@ -475,15 +474,15 @@ function GuideSection({
 }) {
   return (
     <section id={id} className="scroll-mt-20">
-      <div className="mb-4 flex gap-3 border-b-2 border-black pb-3">
-        <span className="font-mono text-lg font-bold text-gray-500">
+      <div className="mb-4 flex gap-3 border-b border-border pb-3">
+        <span className="font-mono text-lg font-medium text-muted-foreground">
           {number}
         </span>
         <div>
-          <h2 className="font-heading text-xl font-bold uppercase tracking-[1px]">
+          <h2 className="text-xl font-medium">
             {title}
           </h2>
-          <p className="mt-1 max-w-3xl font-body text-sm text-gray-600">
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             {description}
           </p>
         </div>
@@ -506,11 +505,11 @@ function QuickStep({
 }) {
   return (
     <Card className="relative overflow-hidden">
-      <span className="absolute right-2 top-1 font-display text-4xl text-gray-200">
+      <span className="absolute right-2 top-1 text-4xl text-border">
         {number}
       </span>
       <CardHeader className="relative pb-2">
-        <div className="mb-2 flex h-9 w-9 items-center justify-center border border-black bg-black text-white">
+        <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
           {icon}
         </div>
         <CardTitle>{title}</CardTitle>
@@ -530,20 +529,20 @@ function FlowDiagram() {
   ] as const;
 
   return (
-    <div className="grid items-center gap-2 bg-black p-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
+    <div className="grid items-center gap-2 bg-primary p-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
       {actors.map(([icon, title, detail], index) => (
         <div key={title} className="contents">
-          <div className="flex items-center gap-3 bg-white p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-black">
+          <div className="flex items-center gap-3 bg-background p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border">
               {icon}
             </div>
             <div>
-              <p className="font-ui text-xs font-bold uppercase">{title}</p>
-              <p className="font-body text-xs text-gray-600">{detail}</p>
+              <p className="text-xs font-medium">{title}</p>
+              <p className="text-xs text-muted-foreground">{detail}</p>
             </div>
           </div>
           {index < actors.length - 1 && (
-            <ArrowRight className="mx-auto hidden text-white sm:block" />
+            <ArrowRight className="mx-auto hidden text-primary-foreground sm:block" />
           )}
         </div>
       ))}
@@ -569,10 +568,10 @@ function CodeBlock({
   };
 
   return (
-    <div className="min-w-0 border border-black">
-      <div className="flex items-center gap-2 border-b border-black bg-gray-100 px-3 py-2">
+    <div className="min-w-0 rounded-lg border border-border">
+      <div className="flex items-center gap-2 border-b border-border bg-muted px-3 py-2">
         <Code2 className="h-4 w-4" />
-        <p className="font-ui text-xs font-bold uppercase tracking-[1px]">
+        <p className="text-xs font-medium">
           {title}
         </p>
         <Badge variant="outline" className="ml-auto hidden sm:inline-flex">
@@ -582,8 +581,8 @@ function CodeBlock({
           type="button"
           onClick={copy}
           className={cn(
-            "ml-1 flex items-center gap-1 font-ui text-[11px] font-bold uppercase",
-            copied ? "text-green-700" : "text-black",
+            "ml-1 flex items-center gap-1 text-xs font-medium",
+            copied ? "text-success" : "text-foreground",
           )}
           aria-label={`Copy ${title}`}
         >
@@ -591,7 +590,7 @@ function CodeBlock({
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="max-h-[420px] overflow-auto bg-[#111] p-4 font-mono text-xs leading-5 text-gray-100">
+      <pre className="max-h-[420px] overflow-auto rounded-lg bg-primary p-4 font-mono text-xs leading-5 text-primary-foreground">
         <code>{code}</code>
       </pre>
     </div>
@@ -600,9 +599,9 @@ function CodeBlock({
 
 function ParameterCard({ name, detail }: { name: string; detail: string }) {
   return (
-    <div className="border border-black p-3">
-      <p className="font-mono text-xs font-bold">{name}</p>
-      <p className="mt-1 font-body text-sm text-gray-600">{detail}</p>
+    <div className="rounded-md border border-border p-3">
+      <p className="font-mono text-xs font-medium">{name}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -640,20 +639,20 @@ function ErrorList({
   errors: ReadonlyArray<readonly [string, string]>;
 }) {
   return (
-    <div className="border border-black">
-      <h3 className="bg-black px-3 py-2 font-ui text-xs font-bold uppercase tracking-[1px] text-white">
+    <div className="border-t border-border">
+      <h3 className="bg-primary px-3 py-2 text-xs font-medium text-primary-foreground">
         {title}
       </h3>
       <dl>
         {errors.map(([code, detail]) => (
           <div
             key={code}
-            className="grid gap-1 border-t border-black px-3 py-2 first:border-t-0 sm:grid-cols-[170px_1fr]"
+            className="grid gap-1 border-t border-border px-3 py-2 first:border-t-0 sm:grid-cols-[170px_1fr]"
           >
             <dt>
-              <code className="text-xs font-bold">{code}</code>
+              <code className="text-xs font-medium">{code}</code>
             </dt>
-            <dd className="font-body text-sm text-gray-600">{detail}</dd>
+            <dd className="text-sm text-muted-foreground">{detail}</dd>
           </div>
         ))}
       </dl>
