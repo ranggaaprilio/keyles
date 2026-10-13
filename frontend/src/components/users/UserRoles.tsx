@@ -91,7 +91,7 @@ export function UserRoles({ userId }: UserRolesProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/5"
+                      className="text-destructive hover:text-destructive/80 hover:bg-destructive/5"
                       disabled={revoking === a.id}
                       onClick={() => handleRevoke(a)}
                     >

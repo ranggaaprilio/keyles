@@ -200,7 +200,7 @@ export function UserDetail({ userId }: UserDetailProps) {
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive/80"
               onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="h-4 w-4 mr-1" />

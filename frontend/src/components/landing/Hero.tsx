@@ -199,7 +199,7 @@ export const Hero = () => {
             {integrations.map((name) => (
               <span
                 key={name}
-                className="text-center text-sm font-medium tracking-[0.14em] text-muted-foreground/60"
+                className="text-center text-sm font-medium tracking-[0.14em] text-muted-foreground/80"
               >
                 {name}
               </span>

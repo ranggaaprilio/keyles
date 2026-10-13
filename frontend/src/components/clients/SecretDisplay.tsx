@@ -69,7 +69,7 @@ export function SecretDisplay({
           <div className="flex items-start gap-3 rounded-md border border-border bg-warning/10 p-3">
             <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
             <div className="text-sm text-warning">
-              <p className="font-medium text-sm ">
+              <p className="font-medium text-sm">
                 Important
               </p>
               {clientSecret ? (

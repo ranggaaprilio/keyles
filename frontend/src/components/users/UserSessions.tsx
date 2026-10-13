@@ -96,7 +96,7 @@ export function UserSessions({ userId }: UserSessionsProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive/80"
                   disabled={revoking === s.id}
                   onClick={() => handleRevoke(s.id)}
                 >

@@ -60,7 +60,7 @@ export function DeleteClientDialog({
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={mutation.isPending}
-            className="bg-destructive text-primary-foreground hover:bg-destructive/90 border border-destructive"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {mutation.isPending && (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

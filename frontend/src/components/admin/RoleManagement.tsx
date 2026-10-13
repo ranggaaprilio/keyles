@@ -334,7 +334,7 @@ export const RoleManagement: React.FC<RoleManagementProps> = () => {
                       <button
                         onClick={() => handleRevokeRole(role)}
                         disabled={loading}
-                        className="text-destructive hover:text-destructive underline disabled:opacity-50"
+                        className="rounded-sm text-destructive underline underline-offset-4 hover:text-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                       >
                         Revoke
                       </button>

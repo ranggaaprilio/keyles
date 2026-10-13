@@ -556,7 +556,7 @@ export function ClientManagement(_props: ClientManagementProps) {
                               size="icon"
                               onClick={() => handleDelete(client.client_id)}
                               disabled={deletingClientId === client.client_id}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/5"
+                              className="text-destructive hover:text-destructive/80 hover:bg-destructive/5"
                               title="Delete client"
                             >
                               {deletingClientId === client.client_id ? (

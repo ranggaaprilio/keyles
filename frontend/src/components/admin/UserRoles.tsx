@@ -147,7 +147,7 @@ export const UserRoles: React.FC<UserRolesProps> = ({
                     <button
                       onClick={() => handleRevokeRole(role)}
                       disabled={loading}
-                      className="ml-4 px-4 py-2 text-sm font-medium border border-destructive bg-destructive text-primary-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+                      className="ml-4 inline-flex h-9 items-center rounded-full bg-destructive px-4 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 transition-colors duration-fast"
                     >
                       Revoke
                     </button>
