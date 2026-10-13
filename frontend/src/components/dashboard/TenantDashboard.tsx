@@ -4,6 +4,8 @@
 
 import { TenantInfo } from './TenantInfo';
 import { LogOut, LayoutDashboard } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 interface TenantDashboardProps {
   tenant: {
@@ -23,32 +25,31 @@ interface TenantDashboardProps {
 }
 
 export function TenantDashboard({ tenant, user, onLogout }: TenantDashboardProps) {
+  const isActive = tenant.status === 'active';
+
   return (
-    <div className="min-h-screen bg-gray-100 font-['Times_New_Roman',Times,serif]">
-      {/* Header - Black bar */}
-      <header className="bg-black border-b border-black">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-background/90 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 border border-white bg-white flex items-center justify-center">
-                <LayoutDashboard className="w-6 h-6 text-black" />
-              </div>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <LayoutDashboard className="w-5 h-5" />
+              </span>
               <div>
-                <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-white text-lg">
+                <h1 className="text-lg font-medium tracking-tight text-foreground">
                   {tenant.organization_name}
                 </h1>
-                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   Keyles Multi-Tenant SSO
                 </p>
               </div>
             </div>
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-2 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1.5px]"
-            >
+            <Button variant="outline" onClick={onLogout}>
               <LogOut className="w-4 h-4" />
               <span>Logout</span>
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -57,10 +58,10 @@ export function TenantDashboard({ tenant, user, onLogout }: TenantDashboardProps
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-2xl text-black mb-2">
+          <h2 className="text-2xl font-medium leading-tight tracking-tight text-foreground mb-1">
             Welcome back, {user.full_name}!
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Here&apos;s an overview of your organization
           </p>
         </div>
@@ -74,68 +75,62 @@ export function TenantDashboard({ tenant, user, onLogout }: TenantDashboardProps
 
           {/* Quick Stats */}
           <div className="space-y-6">
-            {/* Status Card - Ribbon style */}
-            <div className="bg-white border border-black shadow-[2px_2px_0_#000]">
-              <div className="bg-white border-b border-black px-4 py-2">
-                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-500">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   Account Status
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 border border-black ${
-                    tenant.status === 'active' ? 'bg-green-700' : 'bg-yellow-600'
-                  }`} />
-                  <span className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-lg capitalize">
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2.5">
+                  <span className={`h-2.5 w-2.5 rounded-full ${isActive ? 'bg-success' : 'bg-warning'}`} />
+                  <span className="text-lg font-medium capitalize text-foreground">
                     {tenant.status}
                   </span>
                 </div>
-                {tenant.status === 'active' && (
-                  <p className="mt-2 text-xs text-gray-500">
+                {isActive && (
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Your account is fully activated
                   </p>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* User Role Card - Ribbon style */}
-            <div className="bg-white border border-black shadow-[2px_2px_0_#000]">
-              <div className="bg-white border-b border-black px-4 py-2">
-                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-500">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   Your Role
-                </h3>
-              </div>
-              <div className="p-6 bg-[#8c9ae0]/15">
-                <span className="inline-flex items-center px-3 py-1 border border-black bg-[#8c9ae0] text-white text-sm font-bold font-[Helvetica,Arial,system-ui,sans-serif]">
-                  {user.role.toUpperCase()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <span className="inline-flex items-center rounded-full bg-primary px-3 py-1 text-sm font-medium capitalize text-primary-foreground">
+                  {user.role}
                 </span>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Administrator access
                 </p>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Quick Actions - Ribbon style */}
-            <div className="bg-white border border-black shadow-[2px_2px_0_#000]">
-              <div className="bg-white border-b border-black px-4 py-2">
-                <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-gray-500">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
                   Quick Actions
-                </h3>
-              </div>
-              <div className="p-4">
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-1">
-                  <button className="w-full px-4 py-2 text-sm text-left text-black hover:bg-gray-100 border border-transparent hover:border-black transition-colors font-['Times_New_Roman',Times,serif]">
-                    Manage Users
-                  </button>
-                  <button className="w-full px-4 py-2 text-sm text-left text-black hover:bg-gray-100 border border-transparent hover:border-black transition-colors font-['Times_New_Roman',Times,serif]">
-                    Settings
-                  </button>
-                  <button className="w-full px-4 py-2 text-sm text-left text-black hover:bg-gray-100 border border-transparent hover:border-black transition-colors font-['Times_New_Roman',Times,serif]">
-                    API Keys
-                  </button>
+                  {['Manage Users', 'Settings', 'API Keys'].map((label) => (
+                    <button
+                      key={label}
+                      className="w-full rounded-md px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors duration-fast"
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
