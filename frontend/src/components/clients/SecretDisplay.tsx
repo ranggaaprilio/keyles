@@ -66,10 +66,10 @@ export function SecretDisplay({
 
         <div className="space-y-4 py-2">
           {/* Warning */}
-          <div className="flex items-start gap-3 border border-black bg-yellow-100 p-3">
-            <AlertTriangle className="h-5 w-5 text-yellow-700 shrink-0 mt-0.5" />
-            <div className="text-sm text-yellow-900 font-['Times_New_Roman',Times,serif]">
-              <p className="font-bold font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] uppercase tracking-[1px]">
+          <div className="flex items-start gap-3 rounded-md border border-border bg-warning/10 p-3">
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+            <div className="text-sm text-warning">
+              <p className="font-medium text-sm ">
                 Important
               </p>
               {clientSecret ? (
@@ -93,7 +93,7 @@ export function SecretDisplay({
               <Input
                 value={clientId}
                 readOnly
-                className="font-mono text-sm bg-gray-100"
+                className="font-mono text-sm bg-muted"
               />
               <Button
                 variant="outline"
@@ -101,7 +101,7 @@ export function SecretDisplay({
                 onClick={() => copyToClipboard(clientId, "id")}
               >
                 {copiedId ? (
-                  <Check className="h-4 w-4 text-green-700" />
+                  <Check className="h-4 w-4 text-success" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
@@ -117,7 +117,7 @@ export function SecretDisplay({
                 <Input
                   value={clientSecret}
                   readOnly
-                  className="font-mono text-sm bg-gray-100"
+                  className="font-mono text-sm bg-muted"
                 />
                 <Button
                   variant="outline"
@@ -125,7 +125,7 @@ export function SecretDisplay({
                   onClick={() => copyToClipboard(clientSecret, "secret")}
                 >
                   {copiedSecret ? (
-                    <Check className="h-4 w-4 text-green-700" />
+                    <Check className="h-4 w-4 text-success" />
                   ) : (
                     <Copy className="h-4 w-4" />
                   )}
@@ -141,11 +141,11 @@ export function SecretDisplay({
               id="confirm-saved"
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
-              className="h-4 w-4 border border-black"
+              className="h-4 w-4 rounded-sm border border-input"
             />
             <label
               htmlFor="confirm-saved"
-              className="text-sm cursor-pointer font-['Times_New_Roman',Times,serif]"
+              className="text-sm cursor-pointer"
             >
               I have saved{" "}
               {clientSecret ? "the client secret" : "the client ID"} securely

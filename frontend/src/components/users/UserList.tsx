@@ -41,13 +41,13 @@ export function UserList() {
   const currentPage = filters.page ?? 1;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">Users</h1>
-            <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 mt-1">
+            <h1 className="text-sm font-medium text-foreground">Users</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               Manage users, roles, and access
             </p>
           </div>
@@ -73,15 +73,15 @@ export function UserList() {
             </div>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-600">
+              <p className="text-sm text-destructive">
                 Failed to load users. Please try again.
               </p>
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-12">
-              <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">No users found.</p>
+              <p className="text-sm text-muted-foreground">No users found.</p>
               {filters.search || filters.status ? (
-                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Try adjusting your filters.
                 </p>
               ) : (
@@ -98,49 +98,49 @@ export function UserList() {
           ) : (
             <>
               {/* Table */}
-              <div className="bg-white border border-black shadow-[2px_2px_0_#000] overflow-hidden">
-                <table className="min-w-full divide-y divide-black">
-                  <thead className="bg-gray-100 border-b border-black">
+              <div className="rounded-lg border border-border bg-background shadow-card overflow-hidden">
+                <table className="min-w-full divide-y divide-border">
+                  <thead className="bg-muted border-b border-border">
                     <tr>
-                      <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+                      <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                         Name
                       </th>
-                      <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+                      <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                         Email
                       </th>
-                      <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+                      <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                         Status
                       </th>
-                      <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+                      <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                         Last Login
                       </th>
-                      <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+                      <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                         Roles
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-black">
+                  <tbody className="bg-background divide-y divide-border">
                     {users.map((user) => (
                       <tr
                         key={user.id}
-                        className="hover:bg-gray-100 cursor-pointer"
+                        className="hover:bg-muted cursor-pointer"
                         onClick={() => navigate(`/dashboard/users/${user.id}`)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="font-['Times_New_Roman',Times,serif] text-sm font-medium text-[#0000ee] hover:underline">
+                          <span className="text-sm font-medium text-foreground hover:underline underline-offset-4">
                             {user.display_name || user.email.split("@")[0]}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {user.email}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <UserStatusBadge status={user.status} />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {formatRelativeTime(user.last_login_at)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {user.role_count ?? 0}
                         </td>
                       </tr>
@@ -152,7 +152,7 @@ export function UserList() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
-                  <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                  <p className="text-sm text-muted-foreground">
                     Page {currentPage} of {totalPages} ({data?.total ?? 0}{" "}
                     users)
                   </p>

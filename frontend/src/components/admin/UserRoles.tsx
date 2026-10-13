@@ -84,35 +84,32 @@ export const UserRoles: React.FC<UserRolesProps> = ({
   const inactiveRoles = roles.filter((r) => !r.is_active);
 
   return (
-    <div className="bg-white shadow-[2px_2px_0_#000] border border-black p-6">
-      {/* Eyebrow */}
-      <div className="bg-[#8e8a25] px-4 py-2 -mt-6 -mx-6 mb-6 border-b border-black">
-        <h3 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-white text-lg">
-          User Roles
-        </h3>
-      </div>
+    <div className="bg-background rounded-lg shadow-card border border-border p-6">
+      <h3 className="text-lg font-medium tracking-tight text-foreground mb-4">
+        User Roles
+      </h3>
 
       <div className="mb-4">
-        {userEmail && <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600 mt-1">{userEmail}</p>}
-        <p className="font-['Times_New_Roman',Times,serif] text-xs text-gray-500 mt-1">User ID: {userId}</p>
+        {userEmail && <p className="text-sm text-muted-foreground mt-1">{userEmail}</p>}
+        <p className="text-xs text-muted-foreground mt-1">User ID: {userId}</p>
       </div>
 
       {/* Status Messages */}
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-700 text-red-800 font-['Times_New_Roman',Times,serif] text-sm">
+        <div className="mb-4 p-3 bg-destructive/5 border border-destructive text-destructive text-sm">
           {error}
         </div>
       )}
       {success && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-700 text-green-800 font-['Times_New_Roman',Times,serif] text-sm">
+        <div className="mb-4 p-3 bg-success/10 border border-success/30 text-success text-sm">
           {success}
         </div>
       )}
 
       {loading && !roles.length ? (
-        <div className="text-center py-8 text-gray-500 font-['Times_New_Roman',Times,serif] text-sm">Loading roles...</div>
+        <div className="text-center py-8 text-muted-foreground text-sm">Loading roles...</div>
       ) : roles.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 font-['Times_New_Roman',Times,serif] text-sm">
+        <div className="text-center py-8 text-muted-foreground text-sm">
           No roles assigned to this user.
         </div>
       ) : (
@@ -120,28 +117,28 @@ export const UserRoles: React.FC<UserRolesProps> = ({
           {/* Active Roles */}
           {activeRoles.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-sm mb-3">
+              <h4 className="font-medium tracking-tight text-sm mb-3">
                 Active Roles ({activeRoles.length})
               </h4>
               <div className="space-y-3">
                 {activeRoles.map((role) => (
                   <div
                     key={role.id}
-                    className="flex items-center justify-between p-4 border border-black bg-green-50"
+                    className="flex items-center justify-between p-4 rounded-md border border-border bg-success/10"
                   >
-                    <div className="flex-1 font-['Times_New_Roman',Times,serif]">
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-800 text-sm">
+                        <span className="font-semibold text-foreground text-sm">
                           {role.client_name || role.client_id}
                         </span>
-                        <span className="px-2 py-1 text-xs font-bold border border-black bg-[#8c9ae0] text-white">
+                        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
                           {role.role}
                         </span>
                       </div>
-                      <div className="mt-1 text-sm text-gray-600">
+                      <div className="mt-1 text-sm text-muted-foreground">
                         Client ID: {role.client_id}
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">
+                      <div className="mt-1 text-xs text-muted-foreground">
                         Assigned{" "}
                         {new Date(role.assigned_at).toLocaleDateString()} by{" "}
                         {role.assigned_by}
@@ -150,7 +147,7 @@ export const UserRoles: React.FC<UserRolesProps> = ({
                     <button
                       onClick={() => handleRevokeRole(role)}
                       disabled={loading}
-                      className="ml-4 px-4 py-2 text-[12px] font-bold uppercase tracking-[1.5px] font-[Helvetica,Arial,system-ui,sans-serif] border border-red-700 bg-red-700 text-white hover:bg-red-800 disabled:opacity-50 transition-colors"
+                      className="ml-4 px-4 py-2 text-sm font-medium border border-destructive bg-destructive text-primary-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
                     >
                       Revoke
                     </button>
@@ -163,28 +160,28 @@ export const UserRoles: React.FC<UserRolesProps> = ({
           {/* Inactive Roles (History) */}
           {inactiveRoles.length > 0 && (
             <div>
-              <h4 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-sm mb-3">
+              <h4 className="font-medium tracking-tight text-sm mb-3">
                 Revoked Roles ({inactiveRoles.length})
               </h4>
               <div className="space-y-2">
                 {inactiveRoles.map((role) => (
                   <div
                     key={role.id}
-                    className="flex items-center justify-between p-3 border border-black bg-gray-100"
+                    className="flex items-center justify-between p-3 rounded-md border border-border bg-muted"
                   >
-                    <div className="flex-1 font-['Times_New_Roman',Times,serif]">
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-600 text-sm">
+                        <span className="text-muted-foreground text-sm">
                           {role.client_name || role.client_id}
                         </span>
-                        <span className="px-2 py-1 text-xs font-bold border border-black bg-gray-400 text-white">
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
                           {role.role}
                         </span>
-                        <span className="px-2 py-1 text-xs font-bold border border-black bg-red-700 text-white">
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-destructive/10 text-destructive">
                           Revoked
                         </span>
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">
+                      <div className="mt-1 text-xs text-muted-foreground">
                         Assigned{" "}
                         {new Date(role.assigned_at).toLocaleDateString()}
                       </div>
@@ -199,7 +196,7 @@ export const UserRoles: React.FC<UserRolesProps> = ({
 
       {/* Summary */}
       {roles.length > 0 && (
-        <div className="mt-6 pt-4 border-t border-black font-['Times_New_Roman',Times,serif] text-sm text-gray-600">
+        <div className="mt-6 pt-4 border-t border-border text-sm text-muted-foreground">
           <p>
             <strong>Summary:</strong> {activeRoles.length} active role(s) across{" "}
             {new Set(activeRoles.map((r) => r.client_id)).size} client(s)

@@ -116,10 +116,10 @@ export function AssignRoleDialog({
               {...register("role_name")}
             />
             {errors.role_name && (
-              <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-600">{errors.role_name.message}</p>
+              <p className="text-sm text-destructive">{errors.role_name.message}</p>
             )}
           </div>
-          {apiError && <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-600">{apiError}</p>}
+          {apiError && <p className="text-sm text-destructive">{apiError}</p>}
           <DialogFooter>
             <Button
               type="button"

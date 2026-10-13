@@ -13,11 +13,11 @@ interface UserActivityProps {
 }
 
 const eventColors: Record<string, string> = {
-  login_failure: "text-red-600 bg-red-50",
-  session_terminated: "text-orange-600 bg-orange-50",
-  account_disabled: "text-red-600 bg-red-50",
-  role_revoked: "text-orange-600 bg-orange-50",
-  user_deleted: "text-red-600 bg-red-50",
+  login_failure: "text-destructive bg-destructive/5",
+  session_terminated: "text-warning bg-warning/10",
+  account_disabled: "text-destructive bg-destructive/5",
+  role_revoked: "text-warning bg-warning/10",
+  user_deleted: "text-destructive bg-destructive/5",
 };
 
 function eventLabel(type: string): string {
@@ -46,7 +46,7 @@ export function UserActivity({ userId }: UserActivityProps) {
 
   if (events.length === 0 && page === 1) {
     return (
-      <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 py-4">
+      <p className="text-sm text-muted-foreground py-4">
         No activity recorded for this user.
       </p>
     );
@@ -54,46 +54,46 @@ export function UserActivity({ userId }: UserActivityProps) {
 
   return (
     <div>
-      <div className="bg-white border border-black shadow-[2px_2px_0_#000] overflow-hidden">
-        <table className="min-w-full divide-y divide-black">
-          <thead className="bg-gray-100 border-b border-black">
+      <div className="rounded-lg border border-border bg-background shadow-card overflow-hidden">
+        <table className="min-w-full divide-y divide-border">
+          <thead className="bg-muted border-b border-border">
             <tr>
-              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+              <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                 Event
               </th>
-              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+              <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                 Client
               </th>
-              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+              <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                 IP / Location
               </th>
-              <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+              <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
                 Time
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-black">
+          <tbody className="bg-background divide-y divide-border">
             {events.map((e) => {
               const color =
-                eventColors[e.event_type] ?? "text-gray-600 bg-white";
+                eventColors[e.event_type] ?? "text-muted-foreground bg-background";
               return (
                 <tr key={e.id}>
                   <td className="px-6 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 border border-black font-[Helvetica,Arial,system-ui,sans-serif] text-[11px] font-bold uppercase tracking-[1px] ${color}`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md border border-border text-xs font-medium ${color}`}
                     >
                       {eventLabel(e.event_type)}
                     </span>
                   </td>
-                  <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                  <td className="px-6 py-3 text-sm text-muted-foreground">
                     {e.client_name ?? e.client_id ?? "—"}
                   </td>
-                  <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+                  <td className="px-6 py-3 text-sm text-muted-foreground">
                     {e.ip_address ?? "—"}
                     {e.country_code ? ` (${e.country_code})` : ""}
                   </td>
                   <td
-                    className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700"
+                    className="px-6 py-3 text-sm text-muted-foreground"
                     title={new Date(e.occurred_at).toLocaleString()}
                   >
                     {new Date(e.occurred_at).toLocaleString()}
@@ -107,7 +107,7 @@ export function UserActivity({ userId }: UserActivityProps) {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
-          <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+          <p className="text-sm text-muted-foreground">
             Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">

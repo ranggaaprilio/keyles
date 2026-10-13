@@ -51,52 +51,52 @@ export function UserSessions({ userId }: UserSessionsProps) {
 
   if (list.length === 0) {
     return (
-      <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 py-4">
+      <p className="text-sm text-muted-foreground py-4">
         No active sessions for this user.
       </p>
     );
   }
 
   return (
-    <div className="bg-white border border-black shadow-[2px_2px_0_#000] overflow-hidden">
-      <table className="min-w-full divide-y divide-black">
-        <thead className="bg-gray-100 border-b border-black">
+    <div className="rounded-lg border border-border bg-background shadow-card overflow-hidden">
+      <table className="min-w-full divide-y divide-border">
+        <thead className="bg-muted border-b border-border">
           <tr>
-            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+            <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
               Client
             </th>
-            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+            <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
               Created
             </th>
-            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+            <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
               Last Activity
             </th>
-            <th className="px-6 py-3 text-left font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black">
+            <th className="px-6 py-3 text-left text-sm font-medium text-foreground">
               Expires
             </th>
-            <th className="px-6 py-3 text-right font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black" />
+            <th className="px-6 py-3 text-right text-sm font-medium text-foreground" />
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-black">
+        <tbody className="bg-background divide-y divide-border">
           {list.map((s) => (
             <tr key={s.id}>
-              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm">
+              <td className="px-6 py-3 text-sm">
                 {s.client_name ?? s.client_id}
               </td>
-              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+              <td className="px-6 py-3 text-sm text-muted-foreground">
                 {formatRelative(s.created_at)}
               </td>
-              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+              <td className="px-6 py-3 text-sm text-muted-foreground">
                 {formatRelative(s.last_used_at)}
               </td>
-              <td className="px-6 py-3 font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+              <td className="px-6 py-3 text-sm text-muted-foreground">
                 {new Date(s.expires_at).toLocaleDateString()}
               </td>
               <td className="px-6 py-3 text-right">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-red-600 hover:text-red-700"
+                  className="text-destructive hover:text-destructive"
                   disabled={revoking === s.id}
                   onClick={() => handleRevoke(s.id)}
                 >
