@@ -1,5 +1,5 @@
 /**
- * Error Boundary — Dell 1996 retro style
+ * Error Boundary
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';

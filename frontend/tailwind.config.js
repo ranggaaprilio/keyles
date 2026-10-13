@@ -69,11 +69,6 @@ export default {
       },
       fontFamily: {
         sans: ['"Inter Variable"', 'Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
-        // Interim aliases while pages are migrated; removed in the final cleanup phase.
-        display: ['"Inter Variable"', 'Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
-        heading: ['"Inter Variable"', 'Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
-        body: ['"Inter Variable"', 'Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
-        ui: ['"Inter Variable"', 'Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
       },
       boxShadow: {
         card: "var(--shadow-card)",
