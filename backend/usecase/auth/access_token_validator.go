@@ -47,6 +47,12 @@ func (v *AccessTokenValidator) Validate(ctx context.Context, token, expectedClie
 		return nil, ErrInactiveAccessToken
 	}
 
+	// An ID token carries the same claims and signature; only "at+jwt" may
+	// be used as a bearer access token.
+	if claims.TokenType != services.TokenTypeAccess {
+		return nil, ErrInactiveAccessToken
+	}
+
 	now := time.Now()
 	if claims.Issuer != v.issuer || claims.Subject == "" || claims.ClientID == "" || claims.TenantID == "" ||
 		claims.ExpiresAt.IsZero() || claims.IssuedAt.IsZero() || !now.Before(claims.ExpiresAt) ||

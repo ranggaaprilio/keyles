@@ -21,8 +21,19 @@ type JWKS struct {
 	Keys []JWK `json:"keys"`
 }
 
+// JWT "typ" header values. Access tokens are marked per RFC 9068 so that an
+// ID token (which carries the same claims) can never be accepted as a bearer
+// access token by /userinfo or /introspect.
+const (
+	TokenTypeAccess = "at+jwt"
+	TokenTypeID     = "JWT"
+)
+
 // TokenClaims represents JWT claims shared by OAuth access tokens and ID tokens.
 type TokenClaims struct {
+	// TokenType is the JWT "typ" header; populated on parse, ignored on sign.
+	TokenType string `json:"-"`
+
 	Issuer    string    `json:"iss"`
 	Subject   string    `json:"sub"`
 	Audience  []string  `json:"aud"`
@@ -42,7 +53,7 @@ type TokenClaims struct {
 	Scope    string   `json:"scope,omitempty"`
 	Roles    []string `json:"roles"`
 	Nonce    string   `json:"nonce,omitempty"`
-	AuthTime int64   `json:"auth_time,omitempty"`
+	AuthTime int64    `json:"auth_time,omitempty"`
 }
 
 // TokenService defines the interface for JWT token operations

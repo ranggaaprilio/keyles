@@ -41,6 +41,11 @@ func (s *validatorTokenService) GetActiveKeyID(context.Context) (string, error) 
 
 func setupValidator(t *testing.T, userStatus entities.UserStatus, clientRevoked bool) (*auth.AccessTokenValidator, *mocks.MockClientRepository) {
 	t.Helper()
+	return setupValidatorWithTokenType(t, userStatus, clientRevoked, services.TokenTypeAccess)
+}
+
+func setupValidatorWithTokenType(t *testing.T, userStatus entities.UserStatus, clientRevoked bool, tokenType string) (*auth.AccessTokenValidator, *mocks.MockClientRepository) {
+	t.Helper()
 	ctx := context.Background()
 	clientRepo := new(mocks.MockClientRepository)
 	userRepo := new(mocks.MockEndUserRepository)
@@ -56,7 +61,8 @@ func setupValidator(t *testing.T, userStatus entities.UserStatus, clientRevoked 
 	}
 
 	tokenService := &validatorTokenService{claims: &services.TokenClaims{
-		Issuer: "https://issuer.example", Subject: "user", ClientID: "client", TenantID: "tenant",
+		TokenType: tokenType,
+		Issuer:    "https://issuer.example", Subject: "user", ClientID: "client", TenantID: "tenant",
 		Audience: []string{"client"}, IssuedAt: time.Now().Add(-time.Minute), ExpiresAt: time.Now().Add(time.Minute),
 		Roles: []string{"reader"},
 	}}
@@ -67,6 +73,14 @@ func TestAccessTokenValidatorRejectsRevokedClient(t *testing.T) {
 	validator, _ := setupValidator(t, entities.UserStatusActive, true)
 	_, err := validator.Validate(context.Background(), "token", "")
 	require.ErrorIs(t, err, auth.ErrInactiveAccessToken)
+}
+
+func TestAccessTokenValidatorRejectsIDTokenAsBearer(t *testing.T) {
+	for _, typ := range []string{services.TokenTypeID, ""} {
+		validator, _ := setupValidatorWithTokenType(t, entities.UserStatusActive, false, typ)
+		_, err := validator.Validate(context.Background(), "token", "")
+		require.ErrorIs(t, err, auth.ErrInactiveAccessToken, "typ=%q must not be accepted", typ)
+	}
 }
 
 func TestAccessTokenValidatorRejectsDisabledUser(t *testing.T) {
