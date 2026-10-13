@@ -2,7 +2,7 @@
  * Toast Notification Component
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle, XCircle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info';
@@ -95,21 +95,20 @@ export function useToast() {
     message: string;
   }>>([]);
 
-  const addToast = (type: ToastType, message: string) => {
+  // Stable identities: callers put these in effect deps, so a new function
+  // per render would re-run the effect (and add a toast) on every render.
+  const addToast = useCallback((type: ToastType, message: string) => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, message }]);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
-  return {
-    toasts,
-    addToast,
-    removeToast,
-    success: (message: string) => addToast('success', message),
-    error: (message: string) => addToast('error', message),
-    info: (message: string) => addToast('info', message),
-  };
+  const success = useCallback((message: string) => addToast('success', message), [addToast]);
+  const error = useCallback((message: string) => addToast('error', message), [addToast]);
+  const info = useCallback((message: string) => addToast('info', message), [addToast]);
+
+  return { toasts, addToast, removeToast, success, error, info };
 }

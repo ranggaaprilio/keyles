@@ -33,9 +33,11 @@ export function LoginPage() {
     const state = location.state as { message?: string } | null;
     if (state?.message) {
       success(state.message);
-      window.history.replaceState({}, '');
+      // Clear via the router so location.state actually changes; the raw
+      // history API leaves React Router's state intact and re-triggers this.
+      navigate(location.pathname, { replace: true, state: null });
     }
-  }, [location.state, success]);
+  }, [location.state, location.pathname, navigate, success]);
 
   const {
     register,

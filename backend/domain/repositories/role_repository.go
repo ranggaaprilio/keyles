@@ -35,7 +35,8 @@ type RoleRepository interface {
 	Assign(ctx context.Context, assignment *entities.UserRoleAssignment) error
 
 	// Revoke soft-deletes a role assignment by ID, recording revokedBy and revokedAt.
-	Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error
+	// The assignment must belong to tenantID and userID; otherwise it is treated as not found.
+	Revoke(ctx context.Context, assignmentID int64, tenantID, userID, revokedByUserID string) error
 
 	// ListByUser returns all role assignments for a user, including inactive ones.
 	ListByUser(ctx context.Context, userID string) ([]*entities.UserRoleAssignment, error)
@@ -50,4 +51,3 @@ type RoleRepository interface {
 	// Used by issue_token.go and get_userinfo.go for JWT claim injection.
 	GetActiveRoles(ctx context.Context, userID, clientID string) ([]string, error)
 }
-

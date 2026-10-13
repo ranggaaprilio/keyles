@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ClientList } from "../components/clients/ClientList";
 import { ClientDetail } from "../components/clients/ClientDetail";
 import { CreateClientForm } from "../components/clients/CreateClientForm";
@@ -21,13 +21,20 @@ type PageView = "list" | "detail" | "create" | "edit";
 
 export function ClientManagementPage() {
   const navigate = useNavigate();
-  const { clientId } = useParams<{ clientId: string }>();
+  const { pathname } = useLocation();
+  const { clientId: selectedClientId } = useParams<{ clientId: string }>();
   const createClient = useCreateClient();
 
-  const [view, setView] = useState<PageView>(clientId ? "detail" : "list");
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
-    clientId,
-  );
+  // Derive the view from the URL. Every /dashboard/clients* route renders this
+  // same component, so React keeps the instance alive across navigations and
+  // local view state would go stale (e.g. header back link, browser back).
+  const view: PageView = pathname.endsWith("/new")
+    ? "create"
+    : selectedClientId && pathname.endsWith("/edit")
+      ? "edit"
+      : selectedClientId
+        ? "detail"
+        : "list";
 
   // Secret display state
   const [secretDialogOpen, setSecretDialogOpen] = useState(false);
@@ -50,28 +57,21 @@ export function ClientManagementPage() {
   // Navigation handlers
   const handleSelectClient = useCallback(
     (id: string) => {
-      setSelectedClientId(id);
-      setView("detail");
       navigate(`/dashboard/clients/${id}`);
     },
     [navigate],
   );
 
   const handleBackToList = useCallback(() => {
-    setSelectedClientId(undefined);
-    setView("list");
     navigate("/dashboard/clients");
   }, [navigate]);
 
   const handleCreateNew = useCallback(() => {
-    setView("create");
     navigate("/dashboard/clients/new");
   }, [navigate]);
 
   const handleEdit = useCallback(
     (id: string) => {
-      setSelectedClientId(id);
-      setView("edit");
       navigate(`/dashboard/clients/${id}/edit`);
     },
     [navigate],
@@ -170,10 +170,7 @@ export function ClientManagementPage() {
         <EditClientForm
           clientId={selectedClientId}
           onSuccess={handleBackToList}
-          onCancel={() => {
-            setView("detail");
-            navigate(`/dashboard/clients/${selectedClientId}`);
-          }}
+          onCancel={() => navigate(`/dashboard/clients/${selectedClientId}`)}
         />
       )}
 

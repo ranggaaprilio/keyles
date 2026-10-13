@@ -314,7 +314,7 @@ func (s *stubRoleRepo) Assign(_ context.Context, a *entities.UserRoleAssignment)
 	s.assignments = append(s.assignments, a)
 	return nil
 }
-func (s *stubRoleRepo) Revoke(_ context.Context, _ int64, _ string) error { return nil }
+func (s *stubRoleRepo) Revoke(_ context.Context, _ int64, _, _, _ string) error { return nil }
 func (s *stubRoleRepo) ListByUser(_ context.Context, userID string) ([]*entities.UserRoleAssignment, error) {
 	var result []*entities.UserRoleAssignment
 	for _, a := range s.assignments {

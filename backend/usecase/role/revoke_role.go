@@ -1,13 +1,13 @@
 package role
 
 import (
-"context"
-"errors"
-"fmt"
-"time"
+	"context"
+	"errors"
+	"fmt"
+	"time"
 
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/domain/repositories"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
 // RevokeRoleRequest represents a request to revoke a role from a user
@@ -29,10 +29,10 @@ type RevokeRole struct {
 
 // NewRevokeRole creates a new RevokeRole use case
 func NewRevokeRole(
-roleRepo repositories.RoleRepository,
-refreshTokenRepo repositories.RefreshTokenRepository,
-eventRepo repositories.UserEventRepository,
-auditRepo repositories.AuditRepository,
+	roleRepo repositories.RoleRepository,
+	refreshTokenRepo repositories.RefreshTokenRepository,
+	eventRepo repositories.UserEventRepository,
+	auditRepo repositories.AuditRepository,
 ) *RevokeRole {
 	return &RevokeRole{
 		roleRepo:         roleRepo,
@@ -51,12 +51,15 @@ func (uc *RevokeRole) Execute(ctx context.Context, req RevokeRoleRequest) error 
 	if req.UserID == "" {
 		return errors.New("user_id is required")
 	}
+	if req.TenantID == "" {
+		return errors.New("tenant_id is required")
+	}
 	if req.RevokedBy == "" {
 		return errors.New("revoked_by is required")
 	}
 
-	// Revoke the role (soft delete with metadata)
-	if err := uc.roleRepo.Revoke(ctx, req.AssignmentID, req.RevokedBy); err != nil {
+	// Revoke the role (soft delete with metadata), scoped to the caller's tenant and the target user
+	if err := uc.roleRepo.Revoke(ctx, req.AssignmentID, req.TenantID, req.UserID, req.RevokedBy); err != nil {
 		return fmt.Errorf("failed to revoke role: %w", err)
 	}
 

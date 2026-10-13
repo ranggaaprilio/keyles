@@ -76,3 +76,34 @@ func TestRSATokenService_RolesRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, claims.Roles, parsed.Roles)
 }
+
+func TestRSATokenService_TokenTypeHeaderDistinguishesAccessAndIDTokens(t *testing.T) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	key := &entities.SigningKey{
+		KeyID:               "test-key",
+		Algorithm:           "RS256",
+		PublicKey:           string(pem.EncodeToMemory(&pem.Block{Type: "RSA PUBLIC KEY", Bytes: x509.MarshalPKCS1PublicKey(&privateKey.PublicKey)})),
+		PrivateKeyEncrypted: string(pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})),
+		IsActive:            true,
+	}
+	tokenService := NewRSATokenService(&signingKeyRepositoryStub{key: key})
+	now := time.Now().Truncate(time.Second)
+	claims := &services.TokenClaims{
+		Issuer: "https://sso.test.com", Subject: "user-123", Audience: []string{"client-123"},
+		ExpiresAt: now.Add(15 * time.Minute), IssuedAt: now, TenantID: "tenant-123", ClientID: "client-123",
+	}
+
+	accessToken, err := tokenService.SignAccessToken(context.Background(), claims)
+	require.NoError(t, err)
+	parsed, err := tokenService.ValidateTokenSignature(context.Background(), accessToken)
+	require.NoError(t, err)
+	require.Equal(t, services.TokenTypeAccess, parsed.TokenType)
+
+	idToken, err := tokenService.SignIDToken(context.Background(), claims)
+	require.NoError(t, err)
+	parsed, err = tokenService.ValidateTokenSignature(context.Background(), idToken)
+	require.NoError(t, err)
+	require.Equal(t, services.TokenTypeID, parsed.TokenType)
+}

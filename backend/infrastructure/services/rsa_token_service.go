@@ -29,16 +29,16 @@ func NewRSATokenService(keyRepo repositories.SigningKeyRepository) services.Toke
 
 // SignIDToken creates a signed OIDC ID token (JWT)
 func (s *RSATokenService) SignIDToken(ctx context.Context, claims *services.TokenClaims) (string, error) {
-	return s.signToken(ctx, claims)
+	return s.signToken(ctx, claims, services.TokenTypeID)
 }
 
 // SignAccessToken creates a signed OAuth 2.0 access token (JWT)
 func (s *RSATokenService) SignAccessToken(ctx context.Context, claims *services.TokenClaims) (string, error) {
-	return s.signToken(ctx, claims)
+	return s.signToken(ctx, claims, services.TokenTypeAccess)
 }
 
 // signToken signs a JWT token using the active RSA key
-func (s *RSATokenService) signToken(ctx context.Context, claims *services.TokenClaims) (string, error) {
+func (s *RSATokenService) signToken(ctx context.Context, claims *services.TokenClaims, tokenType string) (string, error) {
 	// Get the active signing key
 	key, err := s.keyRepo.GetActive(ctx, "RS256")
 	if err != nil {
@@ -83,8 +83,9 @@ func (s *RSATokenService) signToken(ctx context.Context, claims *services.TokenC
 		token.Claims.(jwt.MapClaims)["auth_time"] = claims.AuthTime
 	}
 
-	// Set the key ID in the header
+	// Set the key ID and token type in the header
 	token.Header["kid"] = key.KeyID
+	token.Header["typ"] = tokenType
 
 	// Sign the token
 	tokenString, err := token.SignedString(privateKey)
@@ -132,7 +133,9 @@ func (s *RSATokenService) ValidateTokenSignature(ctx context.Context, tokenStrin
 		return nil, errors.New("failed to extract claims")
 	}
 	// Convert to TokenClaims
+	tokenType, _ := token.Header["typ"].(string)
 	tokenClaims := &services.TokenClaims{
+		TokenType:     tokenType,
 		Issuer:        getString(claims, "iss"),
 		Subject:       getString(claims, "sub"),
 		Audience:      getStringArray(claims, "aud"),

@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ranggaaprilio/keyles/domain/entities"
 	"github.com/ranggaaprilio/keyles/domain/repositories"
 )
 
@@ -114,6 +115,15 @@ func (uc *AuthenticateAdminUseCase) Execute(ctx context.Context, email, password
 	// Step 5: Check tenant is active
 	if tenant.Status != "active" {
 		return nil, errors.New("tenant not active - please verify your email first")
+	}
+
+	// Step 5b: Only active admin/owner accounts may use the admin console.
+	// End users share the users table and must not receive an admin JWT.
+	if user.Status != string(entities.UserStatusActive) {
+		return nil, errors.New("account is not active")
+	}
+	if !user.CanAccessAdminConsole() {
+		return nil, errors.New("account does not have admin access")
 	}
 
 	// Step 6: Generate JWT token
