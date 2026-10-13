@@ -1,5 +1,5 @@
 /**
- * Registration page component — Dell 1996 retro style
+ * Registration page component
  */
 
 import { useEffect } from 'react';

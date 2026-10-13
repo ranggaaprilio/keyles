@@ -1,5 +1,5 @@
 /**
- * AcceptInvitationForm — Dell 1996 retro style
+ * AcceptInvitationForm
  */
 
 import { useForm } from "react-hook-form";
@@ -15,7 +15,7 @@ const schema = z
       .string()
       .min(8, "Password must be at least 8 characters")
       .regex(/[a-z]/, "Must contain a lowercase letter")
-      .regex(/[A-Z]/, "Must contain an uppercase letter")
+      .regex(/[A-Z]/, "Must contain an letter")
       .regex(/[0-9]/, "Must contain a digit"),
     confirmPassword: z.string(),
   })
@@ -38,10 +38,10 @@ function strengthLevel(pw: string): {
   if (/[0-9]/.test(pw)) score++;
   if (/[^a-zA-Z0-9]/.test(pw)) score++;
 
-  if (score <= 1) return { label: "Weak", color: "bg-red-700", width: "w-1/4" };
-  if (score <= 2) return { label: "Fair", color: "bg-yellow-600", width: "w-1/2" };
-  if (score <= 3) return { label: "Good", color: "bg-blue-700", width: "w-3/4" };
-  return { label: "Strong", color: "bg-green-700", width: "w-full" };
+  if (score <= 1) return { label: "Weak", color: "bg-destructive", width: "w-1/4" };
+  if (score <= 2) return { label: "Fair", color: "bg-warning", width: "w-1/2" };
+  if (score <= 3) return { label: "Good", color: "bg-secondary", width: "w-3/4" };
+  return { label: "Strong", color: "bg-success", width: "w-full" };
 }
 
 interface AcceptInvitationFormProps {
@@ -80,34 +80,34 @@ export function AcceptInvitationForm({
       {/* Read-only email */}
       <div>
         <Label>Email</Label>
-        <Input value={email} disabled className="mt-1 bg-gray-100" />
+        <Input value={email} disabled className="mt-1.5" />
       </div>
 
       {displayName && (
         <div>
           <Label>Name</Label>
-          <Input value={displayName} disabled className="mt-1 bg-gray-100" />
+          <Input value={displayName} disabled className="mt-1.5" />
         </div>
       )}
 
       {/* Password */}
       <div>
         <Label htmlFor="password">Password *</Label>
-        <Input id="password" type="password" {...register("password")} className="mt-1" />
+        <Input id="password" type="password" {...register("password")} className="mt-1.5" />
         {password.length > 0 && (
-          <div className="mt-1 space-y-1">
-            <div className="h-1.5 w-full bg-gray-200 overflow-hidden border border-black">
+          <div className="mt-2 space-y-1">
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div
-                className={`h-full ${strength.color} ${strength.width} transition-all`}
+                className={`h-full rounded-full ${strength.color} ${strength.width} transition-all duration-base`}
               />
             </div>
-            <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-600">
+            <p className="text-xs text-muted-foreground">
               {strength.label}
             </p>
           </div>
         )}
         {errors.password && (
-          <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-700">
+          <p className="mt-1.5 text-sm text-destructive">
             {errors.password.message}
           </p>
         )}
@@ -120,23 +120,23 @@ export function AcceptInvitationForm({
           id="confirmPassword"
           type="password"
           {...register("confirmPassword")}
-          className="mt-1"
+          className="mt-1.5"
         />
         {errors.confirmPassword && (
-          <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-700">
+          <p className="mt-1.5 text-sm text-destructive">
             {errors.confirmPassword.message}
           </p>
         )}
       </div>
 
       {error && (
-        <p className="font-['Times_New_Roman',Times,serif] text-sm text-red-700">
+        <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
           {error}
         </p>
       )}
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
+        {isSubmitting ? "Creating account..." : "Create account"}
       </Button>
     </form>
   );

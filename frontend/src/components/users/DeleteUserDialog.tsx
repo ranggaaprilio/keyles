@@ -46,10 +46,10 @@ export function DeleteUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-red-600">Delete User</DialogTitle>
+          <DialogTitle className="text-destructive">Delete User</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700">
+          <p className="text-sm text-muted-foreground">
             This will permanently delete <strong>{email}</strong> and all their
             role assignments. This action cannot be undone.
           </p>

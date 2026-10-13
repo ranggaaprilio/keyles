@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react';
+
 const ERROR_MESSAGES: Record<string, string> = {
   invalid_client: 'The application is not registered or is currently unavailable.',
   invalid_request: 'This sign-in request is invalid or has expired.',
@@ -15,15 +17,16 @@ export function OAuthErrorPanel({ errorCode }: OAuthErrorPanelProps) {
   const message = ERROR_MESSAGES[errorCode] ?? 'The sign-in request could not be completed.';
 
   return (
-    <div className="w-full max-w-md border border-black bg-white shadow-[2px_2px_0_#000]">
-      <div className="bg-[#d77a7a] px-5 py-4">
-        <h1 className="font-[Helvetica,Arial,system-ui,sans-serif] text-lg font-bold uppercase tracking-[1px]">
+    <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-card sm:p-8">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <AlertTriangle className="h-5 w-5" />
+        </span>
+        <h1 className="text-xl font-medium tracking-tight text-foreground">
           Sign-in Error
         </h1>
       </div>
-      <div className="p-5">
-        <p className="font-['Times_New_Roman',Times,serif] text-sm text-black">{message}</p>
-      </div>
+      <p className="mt-4 text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }

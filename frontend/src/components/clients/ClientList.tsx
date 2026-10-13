@@ -40,7 +40,7 @@ export function ClientList({ onSelectClient, onCreateNew }: ClientListProps) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="font-[Helvetica,Arial,system-ui,sans-serif] text-2xl font-bold uppercase tracking-[1px]">
+        <h1 className="text-2xl font-medium">
           Client Applications
         </h1>
         <Button onClick={onCreateNew}>
@@ -50,7 +50,7 @@ export function ClientList({ onSelectClient, onCreateNew }: ClientListProps) {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-600" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search clients by name..."
           value={search}
@@ -70,14 +70,14 @@ export function ClientList({ onSelectClient, onCreateNew }: ClientListProps) {
 
       {/* Error */}
       {isError && (
-        <div className="text-center py-8 text-red-700 font-['Times_New_Roman',Times,serif]">
+        <div className="text-center py-8 text-destructive">
           Failed to load clients. Please try again.
         </div>
       )}
 
       {/* Empty state */}
       {!isLoading && !isError && data && data.clients.length === 0 && (
-        <div className="text-center py-12 text-gray-600 font-['Times_New_Roman',Times,serif]">
+        <div className="text-center py-12 text-muted-foreground">
           <p className="text-sm">No client applications found.</p>
           <Button variant="outline" className="mt-4" onClick={onCreateNew}>
             Register Your First Client
@@ -101,7 +101,7 @@ export function ClientList({ onSelectClient, onCreateNew }: ClientListProps) {
           {/* Pagination */}
           {data.total_pages > 1 && (
             <div className="flex items-center justify-between pt-2">
-              <p className="text-sm text-gray-600 font-['Times_New_Roman',Times,serif]">
+              <p className="text-sm text-muted-foreground">
                 Page {data.page} of {data.total_pages} ({data.total} total)
               </p>
               <div className="flex gap-2">

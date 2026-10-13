@@ -146,9 +146,9 @@ export function OAuthCallback({
     return (
       <>
         {loadingComponent || (
-          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 font-['Times_New_Roman',Times,serif]">
-            <div className="border-4 border-black w-12 h-12 border-t-transparent animate-spin"></div>
-            <p className="mt-4 text-sm text-gray-600">Completing sign in...</p>
+          <div className="flex flex-col items-center justify-center min-h-screen bg-muted">
+            <div className="h-10 w-10 rounded-full border-4 border-border border-t-foreground animate-spin"></div>
+            <p className="mt-4 text-sm text-muted-foreground">Completing sign in...</p>
           </div>
         )}
       </>
@@ -161,17 +161,17 @@ export function OAuthCallback({
         {errorComponent ? (
           errorComponent(error)
         ) : (
-          <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 font-['Times_New_Roman',Times,serif]">
-            <div className="bg-white border border-black shadow-[2px_2px_0_#000] p-6 max-w-md">
-              <h2 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-lg text-red-800 mb-2">
+          <div className="flex flex-col items-center justify-center min-h-screen bg-muted px-4">
+            <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-card sm:p-8">
+              <h2 className="text-xl font-medium tracking-tight text-foreground mb-4">
                 Authentication Failed
               </h2>
-              <div className="bg-red-50 border border-red-700 p-3 mb-4">
-                <p className="text-sm text-red-800">{error}</p>
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive mb-6">
+                <p>{error}</p>
               </div>
               <button
                 onClick={() => (window.location.href = "/")}
-                className="w-full px-4 py-2 border border-black bg-red-700 text-white text-[12px] font-bold uppercase tracking-[1.5px] font-[Helvetica,Arial,system-ui,sans-serif] hover:bg-red-800 transition-colors"
+                className="inline-flex h-10 w-full items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/85 transition-colors duration-fast"
               >
                 Return Home
               </button>
@@ -184,8 +184,8 @@ export function OAuthCallback({
 
   // Success - component should have navigated away
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 font-['Times_New_Roman',Times,serif]">
-      <div className="text-green-700">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-muted">
+      <div className="text-success">
         <svg
           className="h-12 w-12"
           fill="none"
@@ -200,7 +200,7 @@ export function OAuthCallback({
           />
         </svg>
       </div>
-      <p className="mt-4 text-sm text-gray-600">Sign in successful! Redirecting...</p>
+      <p className="mt-4 text-sm text-muted-foreground">Sign in successful! Redirecting...</p>
     </div>
   );
 }

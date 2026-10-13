@@ -1,5 +1,5 @@
 /**
- * Tenant Info Component — Dell 1996 retro style
+ * Tenant Info Component
  */
 
 import { Building2, Mail, Calendar, CheckCircle, User } from 'lucide-react';
@@ -20,6 +20,26 @@ interface TenantInfoProps {
   };
 }
 
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 text-muted-foreground">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm text-foreground break-words">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 export function TenantInfo({ tenant, user }: TenantInfoProps) {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not verified';
@@ -34,83 +54,63 @@ export function TenantInfo({ tenant, user }: TenantInfoProps) {
   };
 
   return (
-    <div className="bg-white">
-      {/* Header — black banner */}
-      <div className="bg-black px-4 py-4">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-5 h-5 text-white" />
-          <div>
-            <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase tracking-[1px] text-white">
-              {tenant.organization_name}
-            </h2>
-            <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-400">
-              Organization ID: {tenant.id.slice(0, 8)}...
-            </p>
-          </div>
+    <div className="rounded-lg border border-border bg-card shadow-card">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-border px-6 py-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+          <Building2 className="w-5 h-5" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-medium leading-tight tracking-tight text-foreground truncate">
+            {tenant.organization_name}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Organization ID: {tenant.id.slice(0, 8)}...
+          </p>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4 space-y-4">
+      <div className="p-6 space-y-6">
         {/* Tenant Details */}
         <div>
-          <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-3">
+          <h3 className="text-sm font-medium text-foreground mb-3">
             Organization Details
           </h3>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Created</p>
-                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{formatDate(tenant.created_at)}</p>
-              </div>
-            </div>
-
+          <div className="space-y-3">
+            <InfoRow
+              icon={<Calendar className="w-4 h-4" />}
+              label="Created"
+              value={formatDate(tenant.created_at)}
+            />
             {tenant.verified_at && (
-              <div className="flex items-start gap-2">
-                <CheckCircle className="w-4 h-4 text-green-700 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Verified</p>
-                  <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{formatDate(tenant.verified_at)}</p>
-                </div>
-              </div>
+              <InfoRow
+                icon={<CheckCircle className="w-4 h-4 text-success" />}
+                label="Verified"
+                value={formatDate(tenant.verified_at)}
+              />
             )}
           </div>
         </div>
 
         {/* Admin User Details */}
-        <div className="pt-3 border-t border-black">
-          <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-3">
+        <div className="pt-6 border-t border-border">
+          <h3 className="text-sm font-medium text-foreground mb-3">
             Administrator Information
           </h3>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <User className="w-4 h-4 text-gray-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Full Name</p>
-                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{user.full_name}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <Mail className="w-4 h-4 text-gray-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-black">Email</p>
-                <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-600">{user.email}</p>
-              </div>
-            </div>
+          <div className="space-y-3">
+            <InfoRow icon={<User className="w-4 h-4" />} label="Full Name" value={user.full_name} />
+            <InfoRow icon={<Mail className="w-4 h-4" />} label="Email" value={user.email} />
           </div>
         </div>
 
-        {/* Info Banner — Dell red CTA */}
-        <div className="pt-3 border-t border-black">
-          <div className="bg-[#e91d2a] p-3">
-            <p className="font-['Times_New_Roman',Times,serif] text-sm text-[#fffff0]">
-              <strong>Welcome to Keyles SSO!</strong> Your organization is successfully
-              registered and verified. You can now manage users, configure authentication
-              settings, and integrate with your applications.
-            </p>
-          </div>
+        {/* Info Banner */}
+        <div className="rounded-md bg-muted p-4">
+          <p className="text-sm text-muted-foreground">
+            <strong className="font-medium text-foreground">Welcome to Keyles SSO!</strong> Your organization is successfully
+            registered and verified. You can now manage users, configure authentication
+            settings, and integrate with your applications.
+          </p>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 /**
- * Accept Invitation Page — Dell 1996 retro style
+ * Accept Invitation Page
  */
 
 import { useParams, useNavigate } from "react-router-dom";
@@ -9,6 +9,7 @@ import {
 } from "../hooks/useInvitation";
 import { AcceptInvitationForm } from "../components/users/AcceptInvitationForm";
 import { InvitationExpired } from "../components/users/InvitationExpired";
+import { AuthShell } from "../components/layout/AuthShell";
 import axios from "axios";
 
 export function AcceptInvitationPage() {
@@ -19,10 +20,10 @@ export function AcceptInvitationPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-pulse font-['Times_New_Roman',Times,serif] text-sm text-gray-600">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <p className="animate-pulse text-sm text-muted-foreground">
           Validating invitation...
-        </div>
+        </p>
       </div>
     );
   }
@@ -43,40 +44,24 @@ export function AcceptInvitationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Section eyebrow — peach */}
-        <div className="bg-[#e6915d] px-4 py-4 mb-0">
-          <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[28px] font-black uppercase leading-[1.0] text-black">
-            ACCEPT INVITATION
-          </h1>
-        </div>
-
-        {/* Form card */}
-        <div className="border-x border-b border-black">
-          <div className="border-b border-black bg-white px-3 py-1.5">
-            <h3 className="font-[Helvetica,Arial,system-ui,sans-serif] text-sm font-bold uppercase text-black">
-              SET YOUR PASSWORD
-            </h3>
-          </div>
-          <div className="bg-[#e6915d] px-4 py-4">
-            <AcceptInvitationForm
-              email={data.email}
-              displayName={data.display_name}
-              onSubmit={handleAccept}
-              isSubmitting={acceptMutation.isPending}
-              error={
-                acceptMutation.error && axios.isAxiosError(acceptMutation.error)
-                  ? (acceptMutation.error.response?.data?.error ??
-                    "Something went wrong.")
-                  : acceptMutation.error
-                    ? "Something went wrong."
-                    : undefined
-              }
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <AuthShell
+      title="Accept invitation"
+      description="Set a password to finish creating your account."
+    >
+      <AcceptInvitationForm
+        email={data.email}
+        displayName={data.display_name}
+        onSubmit={handleAccept}
+        isSubmitting={acceptMutation.isPending}
+        error={
+          acceptMutation.error && axios.isAxiosError(acceptMutation.error)
+            ? (acceptMutation.error.response?.data?.error ??
+              "Something went wrong.")
+            : acceptMutation.error
+              ? "Something went wrong."
+              : undefined
+        }
+      />
+    </AuthShell>
   );
 }

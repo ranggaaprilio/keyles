@@ -46,7 +46,7 @@ export function ClientDetail({
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Back
         </Button>
-        <div className="text-center py-12 text-red-700 font-['Times_New_Roman',Times,serif]">
+        <div className="text-center py-12 text-destructive">
           Client not found or failed to load.
         </div>
       </div>
@@ -61,7 +61,7 @@ export function ClientDetail({
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
-          <h2 className="font-[Helvetica,Arial,system-ui,sans-serif] text-xl font-bold uppercase tracking-[1px]">
+          <h2 className="text-xl font-medium">
             {client.client_name}
           </h2>
           <Badge
@@ -106,11 +106,11 @@ export function ClientDetail({
         <CardContent className="space-y-4">
           {/* Client ID */}
           <div>
-            <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] text-gray-600 mb-1">
+            <p className="text-sm font-medium text-muted-foreground mb-1">
               Client ID
             </p>
             <div className="flex items-center gap-2">
-              <code className="font-mono text-sm bg-gray-100 px-2 py-1 border border-black">
+              <code className="font-mono text-sm bg-muted px-2 py-1 rounded-sm border border-border">
                 {client.client_id}
               </code>
               <Button
@@ -120,7 +120,7 @@ export function ClientDetail({
                 onClick={copyId}
               >
                 {copiedId ? (
-                  <Check className="h-3 w-3 text-green-700" />
+                  <Check className="h-3 w-3 text-success" />
                 ) : (
                   <Copy className="h-3 w-3" />
                 )}
@@ -131,10 +131,10 @@ export function ClientDetail({
           {/* Description */}
           {client.description && (
             <div>
-              <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] text-gray-600 mb-1">
+              <p className="text-sm font-medium text-muted-foreground mb-1">
                 Description
               </p>
-              <p className="text-sm font-['Times_New_Roman',Times,serif]">
+              <p className="text-sm">
                 {client.description}
               </p>
             </div>
@@ -142,14 +142,14 @@ export function ClientDetail({
 
           {/* Redirect URIs */}
           <div>
-            <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] text-gray-600 mb-1">
+            <p className="text-sm font-medium text-muted-foreground mb-1">
               Redirect URIs
             </p>
             <ul className="space-y-1">
               {client.redirect_uris.map((uri, i) => (
                 <li
                   key={i}
-                  className="font-mono text-sm bg-gray-100 px-2 py-1 border border-black"
+                  className="font-mono text-sm bg-muted px-2 py-1 rounded-md border border-border"
                 >
                   {uri}
                 </li>
@@ -158,20 +158,20 @@ export function ClientDetail({
           </div>
 
           {/* Timestamps */}
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-black">
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
             <div>
-              <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] text-gray-600">
+              <p className="text-sm font-medium text-muted-foreground">
                 Created
               </p>
-              <p className="text-sm font-['Times_New_Roman',Times,serif]">
+              <p className="text-sm">
                 {new Date(client.created_at).toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-[12px] font-bold uppercase tracking-[1px] font-[Helvetica,Arial,system-ui,sans-serif] text-gray-600">
+              <p className="text-sm font-medium text-muted-foreground">
                 Last Updated
               </p>
-              <p className="text-sm font-['Times_New_Roman',Times,serif]">
+              <p className="text-sm">
                 {new Date(client.updated_at).toLocaleString()}
               </p>
             </div>

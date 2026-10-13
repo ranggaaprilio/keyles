@@ -45,7 +45,7 @@ export function UserListFilters({
     <div className="space-y-4">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Search by name or email..."
           value={search}
@@ -55,15 +55,15 @@ export function UserListFilters({
       </div>
 
       {/* Status tabs */}
-      <div className="flex gap-1 border-b border-black">
+      <div className="flex gap-1 border-b border-border">
         {statusTabs.map((tab) => (
           <button
             key={tab.value}
             onClick={() => handleStatusChange(tab.value)}
-            className={`px-4 py-2 font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               (filters.status ?? "") === tab.value
-                ? "border-black text-black"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-border text-foreground"
+                : "border-transparent text-muted-foreground hover:text-muted-foreground"
             }`}
           >
             {tab.label}

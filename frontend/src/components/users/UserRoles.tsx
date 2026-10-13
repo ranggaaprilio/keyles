@@ -55,7 +55,7 @@ export function UserRoles({ userId }: UserRolesProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <div className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black border border-black px-2 py-1 inline-block">
+        <div className="text-sm font-medium text-foreground rounded-md border border-border px-2 py-1 inline-block">
           Role Assignments
         </div>
         <Button size="sm" onClick={() => setAssignOpen(true)}>
@@ -65,7 +65,7 @@ export function UserRoles({ userId }: UserRolesProps) {
       </div>
 
       {activeRoles.length === 0 ? (
-        <p className="font-['Times_New_Roman',Times,serif] text-sm text-gray-700 py-4">
+        <p className="text-sm text-muted-foreground py-4">
           No roles assigned. Assign a role to grant access to a client
           application.
         </p>
@@ -73,25 +73,25 @@ export function UserRoles({ userId }: UserRolesProps) {
         <div className="space-y-6">
           {Object.entries(grouped).map(([clientName, assignments]) => (
             <div key={clientName}>
-              <h4 className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-2">
+              <h4 className="text-sm font-medium text-foreground mb-2">
                 {clientName}
               </h4>
-              <div className="bg-white border border-black divide-y divide-black">
+              <div className="bg-background rounded-md border border-border divide-y divide-border">
                 {assignments.map((a) => (
                   <div
                     key={a.id}
                     className="flex items-center justify-between px-4 py-3"
                   >
                     <div>
-                      <span className="font-['Times_New_Roman',Times,serif] text-sm font-medium">{a.role}</span>
-                      <span className="font-['Times_New_Roman',Times,serif] text-xs text-gray-500 ml-3">
+                      <span className="text-sm font-medium">{a.role}</span>
+                      <span className="text-xs text-muted-foreground ml-3">
                         Granted {new Date(a.granted_at).toLocaleDateString()}
                       </span>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-destructive hover:text-destructive/80 hover:bg-destructive/5"
                       disabled={revoking === a.id}
                       onClick={() => handleRevoke(a)}
                     >

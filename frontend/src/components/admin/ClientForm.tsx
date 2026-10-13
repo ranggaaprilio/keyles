@@ -240,7 +240,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
   };
 
   return (
-    <Card className="shadow-[2px_2px_0_#000]">
+    <Card className="rounded-lg shadow-card">
       <CardHeader>
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onCancel}>
@@ -258,11 +258,11 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="font-['Times_New_Roman',Times,serif]">
+      <CardContent className="">
         <form onSubmit={handleSubmit} className="space-y-6">
           {errors.general && (
-            <div className="p-3 bg-red-50 border border-red-700">
-              <div className="flex items-center gap-2 text-red-800">
+            <div className="p-3 bg-destructive/5 border border-destructive">
+              <div className="flex items-center gap-2 text-destructive">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-sm">{errors.general}</span>
               </div>
@@ -278,12 +278,12 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
               placeholder="My Application"
               value={formData.clientName}
               onChange={handleClientNameChange}
-              className={errors.clientName ? "border-red-700" : ""}
+              className={errors.clientName ? "border-destructive" : ""}
             />
             {errors.clientName && (
-              <p className="text-sm text-red-700">{errors.clientName}</p>
+              <p className="text-sm text-destructive">{errors.clientName}</p>
             )}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               A descriptive name for your client application
             </p>
           </div>
@@ -300,12 +300,12 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                   clientType: e.target.value as ClientType,
                 }))
               }
-              className="flex h-10 w-full border border-black bg-white px-2 py-1 font-['Times_New_Roman',Times,serif] text-sm focus:outline-none focus:ring-2 focus:ring-dell-red focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="confidential">Confidential</option>
               <option value="public">Public</option>
             </select>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Confidential clients can securely store credentials. Public clients
               cannot.
             </p>
@@ -338,11 +338,11 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                         handleRedirectUriChange(index, e.target.value)
                       }
                       className={
-                        errors.redirectUris?.[index] ? "border-red-700" : ""
+                        errors.redirectUris?.[index] ? "border-destructive" : ""
                       }
                     />
                     {errors.redirectUris?.[index] && (
-                      <p className="text-sm text-red-700 mt-1">
+                      <p className="text-sm text-destructive mt-1">
                         {errors.redirectUris[index]}
                       </p>
                     )}
@@ -353,7 +353,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeRedirectUri(index)}
-                      className="text-gray-400 hover:text-red-600"
+                      className="text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -362,7 +362,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
               ))}
             </div>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               URIs where users will be redirected after authentication. Must use
               HTTPS (localhost allowed for development).
             </p>
@@ -376,7 +376,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
                 id="isActive"
                 checked={formData.isActive}
                 onChange={handleIsActiveChange}
-                className="w-4 h-4 border border-black"
+                className="w-4 h-4 rounded-sm border border-input"
               />
               <Label htmlFor="isActive" className="cursor-pointer">
                 Client is active
@@ -385,7 +385,7 @@ export function ClientForm({ client, onSuccess, onCancel }: ClientFormProps) {
           )}
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>

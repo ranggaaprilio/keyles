@@ -18,30 +18,6 @@ export default {
     },
     extend: {
       colors: {
-        // Dell 1996 brand colors
-        "dell-red": "hsl(var(--dell-red))",
-        "dell-yellow": "hsl(var(--dell-yellow))",
-        "dell-purple": "hsl(var(--dell-purple))",
-
-        // Surface
-        "frame-ink": "hsl(var(--frame-ink))",
-        "canvas": "hsl(var(--canvas))",
-
-        // Text
-        ink: "hsl(var(--ink))",
-        link: "hsl(var(--link))",
-
-        // Ribbon-card tint family
-        "tint-olive": "hsl(var(--tint-olive))",
-        "tint-sage": "hsl(var(--tint-sage))",
-        "tint-salmon": "hsl(var(--tint-salmon))",
-        "tint-peach": "hsl(var(--tint-peach))",
-        "tint-lime": "hsl(var(--tint-lime))",
-        "tint-sky": "hsl(var(--tint-sky))",
-        "tint-steel": "hsl(var(--tint-steel))",
-        "tint-periwinkle": "hsl(var(--tint-periwinkle))",
-
-        // Semantic — mapped to Dell 1996 primitives
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -58,6 +34,14 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -77,15 +61,26 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "4px",
+        md: "8px",
+        lg: "16px",
+        xl: "20px",
+        "2xl": "24px",
       },
       fontFamily: {
-        display: ['"Arial Black"', 'Helvetica', 'system-ui', 'sans-serif'],
-        heading: ['Helvetica', 'Arial', 'system-ui', 'sans-serif'],
-        body: ['"Times New Roman"', 'Times', 'serif'],
-        ui: ['Helvetica', 'Arial', 'system-ui', 'sans-serif'],
+        sans: ['"Inter Variable"', 'Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        elevated: "var(--shadow-elevated)",
+      },
+      transitionDuration: {
+        fast: "100ms",
+        base: "200ms",
+        slow: "300ms",
+      },
+      transitionTimingFunction: {
+        DEFAULT: "ease-in-out",
       },
       keyframes: {
         "accordion-down": {
@@ -98,8 +93,8 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down 0.2s ease-in-out",
+        "accordion-up": "accordion-up 0.2s ease-in-out",
       },
     },
   },

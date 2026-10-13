@@ -16,12 +16,12 @@ export function OAuthLogoutPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md border border-black bg-white p-5 shadow-[2px_2px_0_#000]">
-        <h1 className="font-[Helvetica,Arial,system-ui,sans-serif] text-lg font-bold uppercase tracking-[1px]">
+    <div className="min-h-screen bg-muted flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-card sm:p-8">
+        <h1 className="text-xl font-medium tracking-tight text-foreground">
           {complete ? 'Signed Out' : 'Signing Out'}
         </h1>
-        <p className="mt-3 font-['Times_New_Roman',Times,serif] text-sm">
+        <p className="mt-3 text-sm text-muted-foreground">
           {complete ? 'Your Keyles browser session has ended.' : 'Ending your Keyles browser session...'}
         </p>
       </div>

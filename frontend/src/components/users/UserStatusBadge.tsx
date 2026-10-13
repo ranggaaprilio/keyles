@@ -7,15 +7,15 @@ import type { UserStatus } from "../../types/user";
 
 const variants: Record<UserStatus, { className: string; label: string }> = {
   active: {
-    className: "bg-green-700 text-white border border-black hover:bg-green-700",
+    className: "bg-success/10 text-success border-transparent",
     label: "Active",
   },
   pending: {
-    className: "bg-yellow-600 text-white border border-black hover:bg-yellow-600",
+    className: "bg-warning/10 text-warning border-transparent",
     label: "Pending",
   },
   disabled: {
-    className: "bg-red-700 text-white border border-black hover:bg-red-700",
+    className: "bg-destructive/10 text-destructive border-transparent",
     label: "Disabled",
   },
 };

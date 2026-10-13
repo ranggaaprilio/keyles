@@ -1,5 +1,5 @@
 /**
- * Error Boundary — Dell 1996 retro style
+ * Error Boundary
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
@@ -42,58 +42,55 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-white flex items-center justify-center px-4">
-          <div className="w-full max-w-md">
-            {/* Section eyebrow — salmon */}
-            <div className="bg-[#d77a7a] px-4 py-4">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-black" />
-                <h1 className="font-['Arial_Black','Helvetica',system-ui,sans-serif] text-[24px] font-black uppercase leading-[1.0] text-black">
-                  SOMETHING WENT WRONG
-                </h1>
-              </div>
+        <div className="min-h-screen bg-muted flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-8 shadow-card">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+              </span>
+              <h1 className="text-xl font-medium tracking-tight text-foreground">
+                Something went wrong
+              </h1>
             </div>
 
-            <div className="border-x border-b border-black bg-white p-4">
-              <p className="font-['Times_New_Roman',Times,serif] text-sm text-black mb-4">
-                Something unexpected happened. Please try refreshing the page.
-              </p>
+            <p className="mt-4 text-sm text-muted-foreground mb-6">
+              Something unexpected happened. Please try refreshing the page.
+            </p>
 
-              {process.env['NODE_ENV'] === 'development' && this.state.error && (
-                <div className="mb-4 p-3 border border-red-700 bg-red-50">
-                  <p className="font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold text-red-800 mb-1">
-                    Error: {this.state.error.message}
-                  </p>
-                  {this.state.errorInfo && (
-                    <pre className="font-['Times_New_Roman',Times,serif] text-[11px] text-red-700 overflow-auto max-h-32">
-                      {this.state.errorInfo.componentStack}
-                    </pre>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={this.handleReset}
-                  className="px-4 py-2 border border-black bg-black text-white font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] hover:bg-gray-800 transition-colors"
-                >
-                  Try Again
-                </button>
-                <button
-                  onClick={() => window.location.href = '/'}
-                  className="px-4 py-2 border border-black bg-white text-black font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] hover:bg-gray-100 transition-colors"
-                >
-                  Go Home
-                </button>
+            {process.env['NODE_ENV'] === 'development' && this.state.error && (
+              <div className="mb-6 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-xs font-medium text-destructive mb-1">
+                  Error: {this.state.error.message}
+                </p>
+                {this.state.errorInfo && (
+                  <pre className="text-[11px] text-destructive/80 overflow-auto max-h-32">
+                    {this.state.errorInfo.componentStack}
+                  </pre>
+                )}
               </div>
+            )}
 
-              <p className="mt-4 font-['Times_New_Roman',Times,serif] text-[11px] text-gray-500">
-                If this problem persists, please{' '}
-                <a href="mailto:support@keyles.com" className="text-[#0000ee] underline">
-                  contact support
-                </a>
-              </p>
+            <div className="flex gap-2">
+              <button
+                onClick={this.handleReset}
+                className="inline-flex h-10 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/85 transition-colors duration-fast"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={() => window.location.href = '/'}
+                className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-5 text-sm font-medium text-foreground hover:bg-muted transition-colors duration-fast"
+              >
+                Go Home
+              </button>
             </div>
+
+            <p className="mt-6 text-xs text-muted-foreground">
+              If this problem persists, please{' '}
+              <a href="mailto:support@keyles.com" className="text-foreground underline underline-offset-4 hover:text-muted-foreground">
+                contact support
+              </a>
+            </p>
           </div>
         </div>
       );
