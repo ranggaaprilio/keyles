@@ -116,7 +116,7 @@ func (m *MockIntegrationRoleRepository) Assign(ctx context.Context, assignment *
 	return nil
 }
 
-func (m *MockIntegrationRoleRepository) Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error {
+func (m *MockIntegrationRoleRepository) Revoke(ctx context.Context, assignmentID int64, tenantID, userID, revokedByUserID string) error {
 	return nil
 }
 

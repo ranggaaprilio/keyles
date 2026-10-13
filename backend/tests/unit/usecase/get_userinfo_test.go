@@ -1,16 +1,16 @@
 package usecase
 
 import (
-"context"
-"testing"
+	"context"
+	"testing"
 
-"github.com/google/uuid"
-"github.com/ranggaaprilio/keyles/domain/entities"
-"github.com/ranggaaprilio/keyles/domain/repositories"
-"github.com/ranggaaprilio/keyles/usecase/auth"
-"github.com/stretchr/testify/assert"
-"github.com/stretchr/testify/mock"
-"github.com/stretchr/testify/require"
+	"github.com/google/uuid"
+	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/domain/repositories"
+	"github.com/ranggaaprilio/keyles/usecase/auth"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // MockUserRepositoryForUserInfo for testing GetUserInfo
@@ -116,8 +116,8 @@ func (m *MockRoleRepositoryForUserInfo) Assign(ctx context.Context, assignment *
 	return args.Error(0)
 }
 
-func (m *MockRoleRepositoryForUserInfo) Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error {
-	args := m.Called(ctx, assignmentID, revokedByUserID)
+func (m *MockRoleRepositoryForUserInfo) Revoke(ctx context.Context, assignmentID int64, tenantID, userID, revokedByUserID string) error {
+	args := m.Called(ctx, assignmentID, tenantID, userID, revokedByUserID)
 	return args.Error(0)
 }
 

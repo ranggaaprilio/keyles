@@ -146,9 +146,9 @@ func (s *assignableRoleRepo) Assign(_ context.Context, a *entities.UserRoleAssig
 	return nil
 }
 
-func (s *assignableRoleRepo) Revoke(_ context.Context, assignmentID int64, revokedBy string) error {
+func (s *assignableRoleRepo) Revoke(_ context.Context, assignmentID int64, tenantID, userID, revokedBy string) error {
 	for _, a := range s.assignments {
-		if a.ID == assignmentID {
+		if a.ID == assignmentID && a.TenantID == tenantID && a.UserID == userID {
 			now := time.Now()
 			a.IsActive = false
 			a.RevokedAt = &now
@@ -404,6 +404,28 @@ func TestRevokeUserRole_Success(t *testing.T) {
 	// Verify assignment is now inactive
 	assignments, _ := env.roleRepo.ListByUser(context.Background(), userID)
 	assert.False(t, assignments[0].IsActive)
+}
+
+// Regression: an admin must not be able to revoke an assignment that belongs
+// to another tenant, even when guessing its sequential ID.
+func TestRevokeUserRole_OtherTenantAssignmentIsNotFound(t *testing.T) {
+	env := setupRoleHandlerTestEnv(t)
+	userID := uuid.New().String()
+
+	env.roleRepo.Assign(context.Background(), &entities.UserRoleAssignment{
+		UserID:   userID,
+		ClientID: uuid.New().String(),
+		TenantID: "other-tenant",
+		Role:     "editor",
+	})
+
+	req, _ := http.NewRequest("DELETE", "/api/v1/admin/users/"+userID+"/roles/2", nil)
+	w := httptest.NewRecorder()
+	env.router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assignments, _ := env.roleRepo.ListByUser(context.Background(), userID)
+	assert.True(t, assignments[0].IsActive, "other tenant's assignment must stay active")
 }
 
 func TestRevokeUserRole_NotFound(t *testing.T) {

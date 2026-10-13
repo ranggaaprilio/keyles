@@ -238,11 +238,11 @@ func (r *PostgresRoleRepository) Assign(ctx context.Context, assignment *entitie
 }
 
 // Revoke soft-deletes a role assignment by setting is_active=false and recording revocation info.
-func (r *PostgresRoleRepository) Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error {
+func (r *PostgresRoleRepository) Revoke(ctx context.Context, assignmentID int64, tenantID, userID, revokedByUserID string) error {
 	now := time.Now()
 	result := r.db.WithContext(ctx).
 		Model(&UserRoleAssignmentModel{}).
-		Where("id = ? AND is_active = ?", assignmentID, true).
+		Where("id = ? AND tenant_id = ? AND user_id = ? AND is_active = ?", assignmentID, tenantID, userID, true).
 		Updates(map[string]interface{}{
 			"is_active":  false,
 			"revoked_at": now,

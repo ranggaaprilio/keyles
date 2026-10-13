@@ -72,8 +72,8 @@ func (m *MockRoleRepository) Assign(ctx context.Context, assignment *entities.Us
 }
 
 // Revoke soft-deletes a role assignment by ID
-func (m *MockRoleRepository) Revoke(ctx context.Context, assignmentID int64, revokedByUserID string) error {
-	args := m.Called(ctx, assignmentID, revokedByUserID)
+func (m *MockRoleRepository) Revoke(ctx context.Context, assignmentID int64, tenantID, userID, revokedByUserID string) error {
+	args := m.Called(ctx, assignmentID, tenantID, userID, revokedByUserID)
 	return args.Error(0)
 }
 
