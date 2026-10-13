@@ -45,7 +45,7 @@ func TestAuthenticateAdmin_Success(t *testing.T) {
 
 	tenantID := uuid.New()
 	userID := uuid.New()
-	
+
 	hashedPassword := "$2a$10$hashedpassword"
 	tenant := &entities.Tenant{
 		ID:               tenantID,
@@ -62,6 +62,7 @@ func TestAuthenticateAdmin_Success(t *testing.T) {
 		Email:        "john@example.com",
 		PasswordHash: hashedPassword,
 		Role:         "admin",
+		Status:       "active",
 		CreatedAt:    time.Now(),
 	}
 
@@ -118,7 +119,7 @@ func TestAuthenticateAdmin_InvalidPassword(t *testing.T) {
 
 	userID := uuid.New()
 	tenantID := uuid.New()
-	
+
 	hashedPassword := "$2a$10$hashedpassword"
 	user := &entities.AdminUser{
 		ID:           userID,
@@ -152,7 +153,7 @@ func TestAuthenticateAdmin_TenantNotFound(t *testing.T) {
 
 	userID := uuid.New()
 	tenantID := uuid.New()
-	
+
 	hashedPassword := "$2a$10$hashedpassword"
 	user := &entities.AdminUser{
 		ID:           userID,
@@ -177,4 +178,42 @@ func TestAuthenticateAdmin_TenantNotFound(t *testing.T) {
 	mockUserRepo.AssertExpectations(t)
 	mockPasswordService.AssertExpectations(t)
 	mockTenantRepo.AssertExpectations(t)
+}
+
+func TestAuthenticateAdmin_RejectsNonAdminAndInactiveAccounts(t *testing.T) {
+	cases := []struct {
+		name    string
+		role    entities.UserRole
+		status  string
+		wantErr string
+	}{
+		{"member role", entities.UserRoleMember, "active", "account does not have admin access"},
+		{"viewer role", entities.UserRoleViewer, "active", "account does not have admin access"},
+		{"disabled admin", entities.UserRoleAdmin, "disabled", "account is not active"},
+		{"pending admin", entities.UserRoleAdmin, "pending", "account is not active"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockUserRepo := new(mocks.MockUserRepository)
+			mockTenantRepo := new(mocks.MockTenantRepository)
+			mockPasswordService := new(mocks.MockPasswordService)
+			mockJWTService := new(MockJWTService)
+
+			tenantID := uuid.New()
+			user := &entities.AdminUser{
+				ID: uuid.New(), TenantID: tenantID, Email: "someone@example.com",
+				PasswordHash: "hash", Role: tc.role, Status: tc.status,
+			}
+			mockUserRepo.On("FindByEmail", mock.Anything, "someone@example.com").Return(user, nil)
+			mockPasswordService.On("Compare", "hash", "password123").Return(nil)
+			mockTenantRepo.On("FindByID", mock.Anything, tenantID).Return(&entities.Tenant{ID: tenantID, Status: "active"}, nil)
+
+			useCase := auth.NewAuthenticateAdminUseCase(mockUserRepo, mockTenantRepo, mockPasswordService, mockJWTService)
+			result, err := useCase.Execute(context.Background(), "someone@example.com", "password123")
+
+			assert.Nil(t, result)
+			assert.EqualError(t, err, tc.wantErr)
+			mockJWTService.AssertNotCalled(t, "GenerateToken", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		})
+	}
 }

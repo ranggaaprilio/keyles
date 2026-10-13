@@ -20,6 +20,7 @@ type UserModel struct {
 	Email        string    `gorm:"type:varchar(255);not null;uniqueIndex:idx_users_email"`
 	PasswordHash string    `gorm:"type:varchar(255);not null"`
 	Role         string    `gorm:"type:varchar(20);not null;default:'admin'"`
+	Status       string    `gorm:"column:status;type:varchar(20);not null;default:'active'"`
 	CreatedAt    time.Time `gorm:"type:timestamp;not null;default:now()"`
 	UpdatedAt    time.Time `gorm:"type:timestamp;not null;default:now()"`
 }
@@ -47,6 +48,7 @@ func (r *PostgresUserRepository) Create(ctx context.Context, user *entities.Admi
 		Email:        user.Email,
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
+		Status:       user.Status,
 		CreatedAt:    user.CreatedAt,
 		UpdatedAt:    user.UpdatedAt,
 	}
@@ -111,6 +113,7 @@ func (r *PostgresUserRepository) Update(ctx context.Context, user *entities.Admi
 		Email:        user.Email,
 		PasswordHash: user.PasswordHash,
 		Role:         string(user.Role),
+		Status:       user.Status,
 		UpdatedAt:    user.UpdatedAt,
 	}
 
@@ -127,7 +130,7 @@ func (r *PostgresUserRepository) EmailExists(ctx context.Context, email string) 
 		Model(&UserModel{}).
 		Where("LOWER(email) = LOWER(?)", strings.TrimSpace(email)).
 		Count(&count).Error
-	
+
 	return count > 0, err
 }
 
@@ -147,6 +150,7 @@ func (r *PostgresUserRepository) toEntity(model *UserModel) *entities.AdminUser 
 		Email:        model.Email,
 		PasswordHash: model.PasswordHash,
 		Role:         entities.UserRole(model.Role),
+		Status:       model.Status,
 		CreatedAt:    model.CreatedAt,
 		UpdatedAt:    model.UpdatedAt,
 	}

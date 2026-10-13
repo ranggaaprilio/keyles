@@ -27,8 +27,14 @@ type AdminUser struct {
 	Email        string
 	PasswordHash string
 	Role         UserRole
+	Status       string // pending | active | disabled (users.status)
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+}
+
+// CanAccessAdminConsole reports whether this account may sign in to the admin API.
+func (u *AdminUser) CanAccessAdminConsole() bool {
+	return u.Status == string(UserStatusActive) && (u.Role == UserRoleAdmin || u.Role == UserRoleOwner)
 }
 
 // TableName specifies the table name for GORM
@@ -41,11 +47,11 @@ var (
 	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 	// Password complexity validation
-	passwordMinLength       = 8
-	passwordUppercaseRegex  = regexp.MustCompile(`[A-Z]`)
-	passwordLowercaseRegex  = regexp.MustCompile(`[a-z]`)
-	passwordNumberRegex     = regexp.MustCompile(`[0-9]`)
-	passwordSpecialRegex    = regexp.MustCompile(`[@$!%*?&]`)
+	passwordMinLength      = 8
+	passwordUppercaseRegex = regexp.MustCompile(`[A-Z]`)
+	passwordLowercaseRegex = regexp.MustCompile(`[a-z]`)
+	passwordNumberRegex    = regexp.MustCompile(`[0-9]`)
+	passwordSpecialRegex   = regexp.MustCompile(`[@$!%*?&]`)
 
 	// Validation errors
 	ErrInvalidEmail           = errors.New("email must be a valid email address")
@@ -75,6 +81,7 @@ func NewAdminUser(tenantID uuid.UUID, fullName, email, passwordHash string) (*Ad
 		Email:        NormalizeEmail(email),
 		PasswordHash: passwordHash,
 		Role:         UserRoleAdmin,
+		Status:       string(UserStatusActive),
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil

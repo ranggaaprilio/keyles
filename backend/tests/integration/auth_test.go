@@ -162,6 +162,7 @@ func TestLoginHandler_Success(t *testing.T) {
 		Email:        "john@example.com",
 		PasswordHash: string(hashedPassword),
 		Role:         entities.UserRoleAdmin,
+		Status:       "active",
 		CreatedAt:    time.Now(),
 	}
 

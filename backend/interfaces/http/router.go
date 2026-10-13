@@ -186,7 +186,7 @@ func (r *Router) Setup() {
 
 		// Admin routes (require JWT) - Client Management
 		admin := v1.Group("/admin")
-		admin.Use(middleware.AuthMiddleware(r.jwtService), blacklistCheck)
+		admin.Use(middleware.AuthMiddleware(r.jwtService), blacklistCheck, middleware.RequireRole("admin", "owner"))
 		{
 			// Client management routes
 			clients := admin.Group("/clients")
