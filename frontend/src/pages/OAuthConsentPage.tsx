@@ -41,10 +41,10 @@ export function OAuthConsentPage() {
   };
 
   if (error) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4"><OAuthErrorPanel errorCode={error} /></div>;
+    return <div className="min-h-screen bg-muted flex items-center justify-center p-4"><OAuthErrorPanel errorCode={error} /></div>;
   }
   if (loading || !details) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Loading authorization request...</div>;
+    return <div className="min-h-screen bg-muted flex items-center justify-center text-sm text-muted-foreground">Loading authorization request...</div>;
   }
 
   return (

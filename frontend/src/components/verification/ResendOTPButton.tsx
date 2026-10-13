@@ -1,5 +1,5 @@
 /**
- * Resend OTP Button — Dell 1996 retro style
+ * Resend OTP Button
  */
 
 import { useEffect } from 'react';
@@ -47,17 +47,17 @@ export function ResendOTPButton({
         type="button"
         onClick={handleResend}
         disabled={isDisabled}
-        className={`font-['Times_New_Roman',Times,serif] text-sm inline-flex items-center gap-2
+        className={`text-sm inline-flex items-center gap-2 transition-colors duration-fast
           ${isDisabled
-            ? 'text-gray-400 cursor-not-allowed'
-            : 'text-[#0000ee] underline hover:text-[#551a8b]'
-          } transition-colors`}
+            ? 'text-muted-foreground cursor-not-allowed'
+            : 'font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground'
+          }`}
       >
         {isResending && <Loader2 className="w-4 h-4 animate-spin" />}
         {isResending ? 'Sending...' : isActive ? `Resend code in ${countdown}s` : 'Resend code'}
       </button>
       {!isActive && !isResending && (
-        <p className="font-['Times_New_Roman',Times,serif] text-[11px] text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Didn&apos;t receive the code?
         </p>
       )}

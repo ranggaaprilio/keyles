@@ -1,5 +1,5 @@
 /**
- * OTP Verification Form — Dell 1996 retro style
+ * OTP Verification Form
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useOTPVerification } from '../../hooks/useOTPVerification';
 import { Loader2 } from 'lucide-react';
+import { Button } from '../ui/button';
 
 const otpSchema = z.object({
   otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d{6}$/, 'OTP must contain only digits'),
@@ -87,7 +88,7 @@ export function OTPVerificationForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label className="block font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1px] text-black mb-2">
+        <label className="block text-sm font-medium text-foreground mb-3 text-center">
           Enter Verification Code
         </label>
         <div className="flex gap-2 justify-center">
@@ -103,33 +104,29 @@ export function OTPVerificationForm({
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={isVerifying}
-              className={`w-10 h-12 text-center text-xl font-bold border font-['Arial_Black','Helvetica',system-ui,sans-serif]
-                ${errors.otp ? 'border-red-700' : 'border-black'}
-                focus:outline-none focus:ring-2 focus:ring-dell-red focus:ring-offset-0
-                disabled:bg-gray-100 disabled:cursor-not-allowed`}
+              className={`h-12 w-10 rounded-md border bg-background text-center text-xl font-semibold text-foreground transition-colors duration-fast
+                ${errors.otp ? 'border-destructive' : 'border-input'}
+                focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0 focus:border-foreground
+                disabled:bg-muted disabled:cursor-not-allowed`}
               aria-label={`Digit ${index + 1}`}
             />
           ))}
         </div>
         {errors.otp && (
-          <p className="mt-1 font-['Times_New_Roman',Times,serif] text-sm text-red-800 text-center">
+          <p className="mt-2 text-sm text-destructive text-center">
             {errors.otp.message}
           </p>
         )}
       </div>
 
-      <button
+      <Button
         type="submit"
+        className="w-full"
         disabled={isVerifying || otpDigits.some((d) => !d)}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-2 border border-black font-[Helvetica,Arial,system-ui,sans-serif] text-[12px] font-bold uppercase tracking-[1.5px]
-          ${isVerifying || otpDigits.some((d) => !d)
-            ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-            : 'bg-black text-white hover:bg-gray-800'
-          } transition-colors`}
       >
         {isVerifying && <Loader2 className="w-4 h-4 animate-spin" />}
-        {isVerifying ? 'VERIFYING...' : 'VERIFY EMAIL'}
-      </button>
+        {isVerifying ? 'Verifying...' : 'Verify email'}
+      </Button>
     </form>
   );
 }
