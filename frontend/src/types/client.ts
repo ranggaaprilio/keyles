@@ -13,6 +13,8 @@ export interface Client {
   client_type: ClientType;
   redirect_uris: string[];
   is_active: boolean;
+  allow_self_signup?: boolean;
+  self_signup_default_role?: string;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +45,8 @@ export interface UpdateClientRequest {
   description?: string | null;
   redirect_uris?: string[];
   is_active?: boolean;
+  allow_self_signup?: boolean;
+  self_signup_default_role?: string;
 }
 
 // Response for rotating a client secret

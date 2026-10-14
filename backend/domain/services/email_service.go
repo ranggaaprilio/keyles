@@ -12,4 +12,7 @@ type EmailService interface {
 
 	// SendInvitationEmail sends an invitation email with a link for the user to activate their account
 	SendInvitationEmail(ctx context.Context, toEmail, toName, inviteURL, orgName string) error
+
+	// SendSignupOTPEmail sends the verification code for an end-user self sign-up
+	SendSignupOTPEmail(ctx context.Context, toEmail, toName, otpCode, clientName string) error
 }

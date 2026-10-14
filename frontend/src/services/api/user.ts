@@ -23,7 +23,13 @@ export async function listUsers(
   if (filters.page_size) params['page_size'] = filters.page_size;
 
   const { data } = await api.get(BASE, { params });
-  return data;
+  return {
+    data: data.users ?? [],
+    total: data.pagination?.total_count ?? 0,
+    page: data.pagination?.page ?? filters.page ?? 1,
+    page_size: data.pagination?.page_size ?? filters.page_size ?? 25,
+    total_pages: data.pagination?.total_pages ?? 0,
+  };
 }
 
 export async function inviteUser(req: InviteUserRequest): Promise<User> {

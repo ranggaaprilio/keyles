@@ -16,14 +16,16 @@ type GetClientRequest struct {
 
 // GetClientResponse contains the client data (without secret)
 type GetClientResponse struct {
-	ClientID     string
-	ClientName   string
-	Description  string
-	ClientType   string
-	RedirectURIs []string
-	IsActive     bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ClientID              string
+	ClientName            string
+	Description           string
+	ClientType            string
+	RedirectURIs          []string
+	IsActive              bool
+	AllowSelfSignup       bool
+	SelfSignupDefaultRole string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 // GetClientUseCase handles retrieval of OAuth clients
@@ -55,13 +57,15 @@ func (uc *GetClientUseCase) Execute(ctx context.Context, req *GetClientRequest) 
 	}
 
 	return &GetClientResponse{
-		ClientID:     client.ClientID,
-		ClientName:   client.ClientName,
-		Description:  client.Description,
-		ClientType:   client.ClientType,
-		RedirectURIs: client.AllowedRedirectURIs,
-		IsActive:     client.IsActive,
-		CreatedAt:    client.CreatedAt,
-		UpdatedAt:    client.UpdatedAt,
+		ClientID:              client.ClientID,
+		ClientName:            client.ClientName,
+		Description:           client.Description,
+		ClientType:            client.ClientType,
+		RedirectURIs:          client.AllowedRedirectURIs,
+		IsActive:              client.IsActive,
+		AllowSelfSignup:       client.AllowSelfSignup,
+		SelfSignupDefaultRole: client.SelfSignupRole,
+		CreatedAt:             client.CreatedAt,
+		UpdatedAt:             client.UpdatedAt,
 	}, nil
 }

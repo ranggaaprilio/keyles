@@ -38,6 +38,8 @@ const (
 	EventOAuthConsentDenied    EventType = "oauth_consent_denied"
 	EventOAuthLogout           EventType = "oauth_logout"
 	EventOAuthInvalidCallback  EventType = "oauth_invalid_callback"
+	EventOAuthSignupRequested  EventType = "oauth_signup_requested"
+	EventOAuthSignupCompleted  EventType = "oauth_signup_completed"
 )
 
 // AuditLog represents security and activity events for compliance and monitoring

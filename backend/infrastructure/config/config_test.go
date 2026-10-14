@@ -323,4 +323,6 @@ func TestLoadSecurityHardeningDefaults(t *testing.T) {
 	require.Equal(t, 3, cfg.RateLimitRegisterPerHour)
 	require.Equal(t, 5, cfg.RateLimitVerifyOTPPer10Min)
 	require.Equal(t, 3, cfg.RateLimitResendOTPPerHour)
+	require.Equal(t, 10, cfg.RateLimitOAuthSignupPerHour)
+	require.Equal(t, 20, cfg.RateLimitOAuthSignupVerifyPer10Min)
 }

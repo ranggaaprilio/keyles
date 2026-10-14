@@ -471,28 +471,7 @@ func (h *OAuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Set SSO session cookie
-	sessionTTL := h.sessionTTL()
-	httpOnly := true
-	secure := h.config != nil && h.config.SecurityCookieSecure
-	c.SetCookie(
-		"keyles_sso",
-		result.SessionID,
-		sessionTTL,
-		"/",
-		"", // no Domain — host-only cookie
-		secure,
-		httpOnly,
-	)
-	// SameSite=Lax must be set explicitly; gin SetCookie uses SameSiteDefaultMode
-	// which maps to Lax in modern browsers, but let's be explicit.
-	if len(c.Writer.Header()["Set-Cookie"]) > 0 {
-		cookies := c.Writer.Header()["Set-Cookie"]
-		last := cookies[len(cookies)-1]
-		last += "; SameSite=Lax"
-		cookies[len(cookies)-1] = last
-		c.Writer.Header()["Set-Cookie"] = cookies
-	}
+	setSSOCookie(c, h.config, result.SessionID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"redirect_url": result.RedirectURL,
@@ -734,8 +713,36 @@ func (h *OAuthHandler) frontendURL() string {
 
 // sessionTTL returns the configured session TTL in seconds.
 func (h *OAuthHandler) sessionTTL() int {
-	if h.config != nil && h.config.SecuritySessionTTL > 0 {
-		return h.config.SecuritySessionTTL
+	return ssoSessionTTL(h.config)
+}
+
+// ssoSessionTTL returns the SSO session lifetime in seconds.
+func ssoSessionTTL(cfg *config.Config) int {
+	if cfg != nil && cfg.SecuritySessionTTL > 0 {
+		return cfg.SecuritySessionTTL
 	}
 	return 28800 // 8 hours default
+}
+
+// setSSOCookie sets the host-only keyles_sso session cookie (HttpOnly, SameSite=Lax).
+func setSSOCookie(c *gin.Context, cfg *config.Config, sessionID string) {
+	secure := cfg != nil && cfg.SecurityCookieSecure
+	c.SetCookie(
+		"keyles_sso",
+		sessionID,
+		ssoSessionTTL(cfg),
+		"/",
+		"", // no Domain — host-only cookie
+		secure,
+		true,
+	)
+	// SameSite=Lax must be set explicitly; gin SetCookie uses SameSiteDefaultMode
+	// which maps to Lax in modern browsers, but let's be explicit.
+	if len(c.Writer.Header()["Set-Cookie"]) > 0 {
+		cookies := c.Writer.Header()["Set-Cookie"]
+		last := cookies[len(cookies)-1]
+		last += "; SameSite=Lax"
+		cookies[len(cookies)-1] = last
+		c.Writer.Header()["Set-Cookie"] = cookies
+	}
 }

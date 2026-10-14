@@ -2,13 +2,33 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { OAuthLoginPage } from '../pages/OAuthLoginPage';
-import { submitLogin } from '../services/oauthInteractionService';
+import { getSignupContext, submitLogin } from '../services/oauthInteractionService';
 
-vi.mock('../services/oauthInteractionService', () => ({ submitLogin: vi.fn() }));
+vi.mock('../services/oauthInteractionService', () => ({ submitLogin: vi.fn(), getSignupContext: vi.fn() }));
 
 describe('OAuthLoginPage', () => {
   beforeEach(() => {
     vi.mocked(submitLogin).mockReset();
+    vi.mocked(getSignupContext).mockReset();
+    vi.mocked(getSignupContext).mockResolvedValue({ client_name: 'Acme', signup_enabled: false });
+  });
+
+  it('links to sign-up when the client allows it', async () => {
+    vi.mocked(getSignupContext).mockResolvedValue({ client_name: 'Acme', signup_enabled: true });
+    render(<MemoryRouter initialEntries={['/oauth2/login?transaction_id=txn-1']}><OAuthLoginPage /></MemoryRouter>);
+
+    const link = await screen.findByRole('link', { name: 'Create an account' });
+    expect(link).toHaveAttribute('href', '/oauth2/signup?transaction_id=txn-1');
+    expect(getSignupContext).toHaveBeenCalledWith('txn-1');
+  });
+
+  it('hides the sign-up link when disabled or unavailable', async () => {
+    vi.mocked(getSignupContext).mockRejectedValue({ error: 'temporarily_unavailable' });
+    render(<MemoryRouter initialEntries={['/oauth2/login?transaction_id=txn-1']}><OAuthLoginPage /></MemoryRouter>);
+
+    await waitFor(() => expect(getSignupContext).toHaveBeenCalled());
+    expect(screen.queryByRole('link', { name: 'Create an account' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeEnabled();
   });
 
   it('rejects a missing transaction id', () => {

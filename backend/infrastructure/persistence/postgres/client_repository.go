@@ -23,6 +23,8 @@ type ClientModel struct {
 	ClientSecretHash *string        `gorm:"column:client_secret"`
 	RedirectURIs     pq.StringArray `gorm:"column:redirect_uris;type:text[]"`
 	IsActive         bool           `gorm:"column:is_active;not null;default:true"`
+	AllowSelfSignup  bool           `gorm:"column:allow_self_signup;not null;default:false"`
+	SelfSignupRole   *string        `gorm:"column:self_signup_default_role"`
 	CreatedAt        time.Time      `gorm:"column:created_at;not null"`
 	UpdatedAt        time.Time      `gorm:"column:updated_at;not null"`
 }
@@ -188,17 +190,21 @@ func (r *PostgresClientRepository) ListByTenantPaginated(ctx context.Context, te
 // entityToModel converts a domain entity to a GORM model
 func entityToModel(client *entities.Client) *ClientModel {
 	model := &ClientModel{
-		ClientID:     client.ClientID,
-		TenantID:     client.TenantID,
-		ClientName:   client.ClientName,
-		ClientType:   client.ClientType,
-		RedirectURIs: client.AllowedRedirectURIs,
-		IsActive:     client.IsActive,
-		CreatedAt:    client.CreatedAt,
-		UpdatedAt:    client.UpdatedAt,
+		ClientID:        client.ClientID,
+		TenantID:        client.TenantID,
+		ClientName:      client.ClientName,
+		ClientType:      client.ClientType,
+		RedirectURIs:    client.AllowedRedirectURIs,
+		IsActive:        client.IsActive,
+		AllowSelfSignup: client.AllowSelfSignup,
+		CreatedAt:       client.CreatedAt,
+		UpdatedAt:       client.UpdatedAt,
 	}
 	if client.Description != "" {
 		model.Description = &client.Description
+	}
+	if client.SelfSignupRole != "" {
+		model.SelfSignupRole = &client.SelfSignupRole
 	}
 	if client.ClientSecretHash != "" {
 		model.ClientSecretHash = &client.ClientSecretHash
@@ -215,11 +221,15 @@ func modelToEntity(model *ClientModel) *entities.Client {
 		ClientType:          model.ClientType,
 		AllowedRedirectURIs: model.RedirectURIs,
 		IsActive:            model.IsActive,
+		AllowSelfSignup:     model.AllowSelfSignup,
 		CreatedAt:           model.CreatedAt,
 		UpdatedAt:           model.UpdatedAt,
 	}
 	if model.Description != nil {
 		entity.Description = *model.Description
+	}
+	if model.SelfSignupRole != nil {
+		entity.SelfSignupRole = *model.SelfSignupRole
 	}
 	if model.ClientSecretHash != nil {
 		entity.ClientSecretHash = *model.ClientSecretHash

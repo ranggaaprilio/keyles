@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { submitLogin } from '../services/oauthInteractionService';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { getSignupContext, submitLogin } from '../services/oauthInteractionService';
 import type { OAuthInteractionError } from '../types/oauth';
 import { AuthShell } from '../components/layout/AuthShell';
 import { Button } from '../components/ui/button';
@@ -18,6 +18,22 @@ export function OAuthLoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signupEnabled, setSignupEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!transactionId) return;
+    let cancelled = false;
+    getSignupContext(transactionId)
+      .then((ctx) => {
+        if (!cancelled) setSignupEnabled(ctx.signup_enabled);
+      })
+      .catch(() => {
+        // Sign-up is optional; login keeps working without it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [transactionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +109,17 @@ export function OAuthLoginPage() {
           {loading ? 'Signing in...' : 'Sign In'}
         </Button>
       </form>
+      {signupEnabled && (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{' '}
+          <Link
+            to={`/oauth2/signup?transaction_id=${encodeURIComponent(transactionId)}`}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Create an account
+          </Link>
+        </p>
+      )}
     </AuthShell>
   );
 }

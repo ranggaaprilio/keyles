@@ -163,3 +163,38 @@ func (h *OAuthAuditHelper) LogInvalidCallback(ctx context.Context, clientID, sou
 	}
 	h.persist(ctx, entry)
 }
+
+// LogSignupRequested records an end-user self sign-up request. The email is
+// deliberately omitted so the audit trail does not reveal registration attempts
+// against existing accounts.
+func (h *OAuthAuditHelper) LogSignupRequested(ctx context.Context, tenantID, clientID, sourceIP string) {
+	entry := entities.NewAuditLog(entities.EventOAuthSignupRequested, sourceIP, "")
+	if tenantID != "" {
+		if id, err := uuid.Parse(tenantID); err == nil {
+			entry.WithTenant(id)
+		}
+	}
+	if clientID != "" {
+		entry.WithData("client_id", clientID)
+	}
+	h.persist(ctx, entry)
+}
+
+// LogSignupCompleted records a verified end-user self sign-up.
+func (h *OAuthAuditHelper) LogSignupCompleted(ctx context.Context, tenantID, clientID, userID, sourceIP string) {
+	entry := entities.NewAuditLog(entities.EventOAuthSignupCompleted, sourceIP, "")
+	if tenantID != "" {
+		if id, err := uuid.Parse(tenantID); err == nil {
+			entry.WithTenant(id)
+		}
+	}
+	if userID != "" {
+		if id, err := uuid.Parse(userID); err == nil {
+			entry.WithUser(id)
+		}
+	}
+	if clientID != "" {
+		entry.WithData("client_id", clientID)
+	}
+	h.persist(ctx, entry)
+}

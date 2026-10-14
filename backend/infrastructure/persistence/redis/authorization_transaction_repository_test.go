@@ -309,3 +309,49 @@ func TestReplayRejection_SecondCompleteFails(t *testing.T) {
 	require.NotNil(t, got)
 	assert.Equal(t, repositories.TransactionStageCompleted, got.Stage)
 }
+
+func TestExtendTTL_ExtendsPendingButRespectsMaxLifetime(t *testing.T) {
+	client := newTxTestClient(t)
+	repo := NewRedisAuthorizationTransactionRepository(client)
+	ctx := context.Background()
+	id := uniqueID()
+	defer cleanupKey(t, client, id)
+
+	txn := sampleTransaction(id)
+	txn.Stage = repositories.TransactionStagePendingLogin
+	txn.CreatedAt = time.Now()
+	txn.ExpiresAt = txn.CreatedAt.Add(time.Minute)
+	require.NoError(t, repo.Create(ctx, txn, time.Minute))
+
+	require.NoError(t, repo.ExtendTTL(ctx, id, 15*time.Minute, 5*time.Minute))
+
+	ttl, err := client.TTL(ctx, "oauth:transaction:"+id).Result()
+	require.NoError(t, err)
+	assert.Greater(t, ttl, 4*time.Minute)
+	assert.LessOrEqual(t, ttl, 5*time.Minute, "must be capped at CreatedAt+maxLifetime")
+
+	got, err := repo.Get(ctx, id)
+	require.NoError(t, err)
+	assert.WithinDuration(t, txn.CreatedAt.Add(5*time.Minute), got.ExpiresAt, time.Second)
+}
+
+func TestExtendTTL_IgnoresCompletedAndMissing(t *testing.T) {
+	client := newTxTestClient(t)
+	repo := NewRedisAuthorizationTransactionRepository(client)
+	ctx := context.Background()
+	id := uniqueID()
+	defer cleanupKey(t, client, id)
+
+	txn := sampleTransaction(id)
+	txn.Stage = repositories.TransactionStageCompleted
+	txn.CreatedAt = time.Now()
+	txn.ExpiresAt = txn.CreatedAt.Add(time.Minute)
+	require.NoError(t, repo.Create(ctx, txn, time.Minute))
+
+	require.NoError(t, repo.ExtendTTL(ctx, id, 15*time.Minute, 30*time.Minute))
+	ttl, err := client.TTL(ctx, "oauth:transaction:"+id).Result()
+	require.NoError(t, err)
+	assert.LessOrEqual(t, ttl, time.Minute)
+
+	require.NoError(t, repo.ExtendTTL(ctx, "missing-"+id, time.Minute, time.Minute))
+}

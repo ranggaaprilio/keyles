@@ -157,6 +157,18 @@ export function ClientDetail({
             </ul>
           </div>
 
+          {/* Self sign-up */}
+          <div>
+            <p className="text-sm font-medium text-muted-foreground mb-1">
+              Self sign-up
+            </p>
+            <p className="text-sm">
+              {client.allow_self_signup
+                ? `Enabled — new users get the "${client.self_signup_default_role}" role`
+                : "Disabled"}
+            </p>
+          </div>
+
           {/* Timestamps */}
           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
             <div>

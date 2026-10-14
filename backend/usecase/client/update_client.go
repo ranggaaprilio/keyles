@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,26 +14,30 @@ import (
 
 // UpdateClientRequest contains the data for updating an OAuth client
 type UpdateClientRequest struct {
-	ClientID     string
-	TenantID     string
-	ClientName   *string  // Optional - only update if provided
-	Description  *string  // Optional - only update if provided
-	RedirectURIs []string // Optional - only update if provided (non-nil)
-	IsActive     *bool    // Optional - only update if provided
-	IPAddress    string
-	UserAgent    string
+	ClientID              string
+	TenantID              string
+	ClientName            *string  // Optional - only update if provided
+	Description           *string  // Optional - only update if provided
+	RedirectURIs          []string // Optional - only update if provided (non-nil)
+	IsActive              *bool    // Optional - only update if provided
+	AllowSelfSignup       *bool    // Optional - only update if provided
+	SelfSignupDefaultRole *string  // Optional - only update if provided
+	IPAddress             string
+	UserAgent             string
 }
 
 // UpdateClientResponse contains the updated client data
 type UpdateClientResponse struct {
-	ClientID     string
-	ClientName   string
-	Description  string
-	ClientType   string
-	RedirectURIs []string
-	IsActive     bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ClientID              string
+	ClientName            string
+	Description           string
+	ClientType            string
+	RedirectURIs          []string
+	IsActive              bool
+	AllowSelfSignup       bool
+	SelfSignupDefaultRole string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 // UpdateClientUseCase handles updating OAuth clients
@@ -109,6 +114,26 @@ func (uc *UpdateClientUseCase) Execute(ctx context.Context, req *UpdateClientReq
 	if req.IsActive != nil {
 		client.IsActive = *req.IsActive
 	}
+	if req.SelfSignupDefaultRole != nil {
+		role := strings.TrimSpace(*req.SelfSignupDefaultRole)
+		if role != client.SelfSignupRole {
+			changedFields["self_signup_default_role"] = map[string]string{
+				"old": client.SelfSignupRole,
+				"new": role,
+			}
+			client.SelfSignupRole = role
+		}
+	}
+	if req.AllowSelfSignup != nil && *req.AllowSelfSignup != client.AllowSelfSignup {
+		changedFields["allow_self_signup"] = map[string]bool{
+			"old": client.AllowSelfSignup,
+			"new": *req.AllowSelfSignup,
+		}
+		client.AllowSelfSignup = *req.AllowSelfSignup
+	}
+	if err := client.ValidateSelfSignup(); err != nil {
+		return nil, err
+	}
 
 	// Update timestamp
 	client.UpdatedAt = time.Now()
@@ -132,13 +157,15 @@ func (uc *UpdateClientUseCase) Execute(ctx context.Context, req *UpdateClientReq
 	}
 
 	return &UpdateClientResponse{
-		ClientID:     client.ClientID,
-		ClientName:   client.ClientName,
-		Description:  client.Description,
-		ClientType:   client.ClientType,
-		RedirectURIs: client.AllowedRedirectURIs,
-		IsActive:     client.IsActive,
-		CreatedAt:    client.CreatedAt,
-		UpdatedAt:    client.UpdatedAt,
+		ClientID:              client.ClientID,
+		ClientName:            client.ClientName,
+		Description:           client.Description,
+		ClientType:            client.ClientType,
+		RedirectURIs:          client.AllowedRedirectURIs,
+		IsActive:              client.IsActive,
+		AllowSelfSignup:       client.AllowSelfSignup,
+		SelfSignupDefaultRole: client.SelfSignupRole,
+		CreatedAt:             client.CreatedAt,
+		UpdatedAt:             client.UpdatedAt,
 	}, nil
 }
