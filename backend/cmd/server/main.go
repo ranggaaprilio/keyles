@@ -121,6 +121,14 @@ func main() {
 	authJWTService := infraServices.NewAuthJWTServiceAdapter(jwtService)
 
 	// Initialize OAuth token service
+	keyCreated, err := infraServices.EnsureSigningKey(context.Background(), signingKeyRepo)
+	if err != nil {
+		logger.Error("Failed to ensure signing key", "error", err)
+		os.Exit(1)
+	}
+	if keyCreated {
+		logger.Info("Generated new RS256 signing key")
+	}
 	tokenService := infraServices.NewRSATokenService(signingKeyRepo)
 	// Initialize OAuth audit helper
 	oauthAuditHelper := auth.NewOAuthAuditHelper(auditRepo)
