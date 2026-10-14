@@ -28,3 +28,9 @@ func (m *MockEmailService) SendInvitationEmail(ctx context.Context, toEmail, toN
 	args := m.Called(ctx, toEmail, toName, inviteURL, orgName)
 	return args.Error(0)
 }
+
+// SendSignupOTPEmail sends a self sign-up verification code
+func (m *MockEmailService) SendSignupOTPEmail(ctx context.Context, toEmail, toName, otpCode, clientName string) error {
+	args := m.Called(ctx, toEmail, toName, otpCode, clientName)
+	return args.Error(0)
+}

@@ -100,6 +100,21 @@ func (r *browserTransactionRepository) Complete(_ context.Context, transactionID
 	return txn, nil
 }
 
+func (r *browserTransactionRepository) ExtendTTL(_ context.Context, transactionID string, ttl, maxLifetime time.Duration) error {
+	txn := r.transactions[transactionID]
+	if txn == nil || txn.Stage == repositories.TransactionStageCompleted {
+		return nil
+	}
+	expiresAt := time.Now().Add(ttl)
+	if limit := txn.CreatedAt.Add(maxLifetime); expiresAt.After(limit) {
+		expiresAt = limit
+	}
+	if expiresAt.After(txn.ExpiresAt) {
+		txn.ExpiresAt = expiresAt
+	}
+	return nil
+}
+
 type browserSessionRepository struct {
 	sessions  map[string]*repositories.Session
 	createErr error

@@ -27,6 +27,8 @@ type Client struct {
 	ClientSecretHash    string // Empty for public clients
 	AllowedRedirectURIs []string
 	IsActive            bool
+	AllowSelfSignup     bool   // End-users may self-register from the OAuth login page
+	SelfSignupRole      string // Role assigned to self-registered users; required when AllowSelfSignup
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -57,6 +59,10 @@ func (c *Client) Validate() error {
 	// Confidential clients must have a secret hash
 	if c.ClientType == ClientTypeConfidential && c.ClientSecretHash == "" {
 		return errors.New("client_secret_hash cannot be empty for confidential clients")
+	}
+
+	if err := c.ValidateSelfSignup(); err != nil {
+		return err
 	}
 
 	if len(c.AllowedRedirectURIs) == 0 {
@@ -137,6 +143,17 @@ func (c *Client) IsURIAllowed(redirectURI string) bool {
 		}
 	}
 	return false
+}
+
+// ValidateSelfSignup ensures a default role is configured when self sign-up is enabled
+func (c *Client) ValidateSelfSignup() error {
+	if len(c.SelfSignupRole) > MaxRoleNameLength {
+		return errors.New("self_signup_default_role must not exceed 100 characters")
+	}
+	if c.AllowSelfSignup && strings.TrimSpace(c.SelfSignupRole) == "" {
+		return errors.New("self_signup_default_role is required when self sign-up is enabled")
+	}
+	return nil
 }
 
 // IsEnabled checks if the client is active

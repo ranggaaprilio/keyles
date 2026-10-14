@@ -163,6 +163,12 @@ func main() {
 	getConsentDetails := auth.NewGetConsentDetails(txnRepo, sessionRepo, clientRepo, endUserRepo)
 	consentDecision := auth.NewConsentDecision(txnRepo, sessionRepo, clientRepo, endUserRepo, roleRepo, authCodeRepo, oauthAuditHelper)
 	logoutEndUser := auth.NewLogoutEndUser(sessionRepo, oauthAuditHelper)
+	selfSignup := auth.NewSelfSignup(
+		txnRepo, clientRepo, endUserRepo, userRepo, roleRepo,
+		redisRepo.NewRedisPendingSignupStore(redisClient),
+		passwordService, otpService, emailService, userCountCache, oauthAuditHelper,
+		auth.NewLoginCompleter(txnRepo, sessionRepo, endUserRepo, loginThrottler, oauthAuditHelper, sessionTTL, cfg.FrontendURL),
+	)
 
 	// Initialize user management use cases
 	inviteUserUseCase := user.NewInviteUser(endUserRepo, invitationRepo, userEventRepo, emailService, userCountCache, tenantRepo)
@@ -195,6 +201,7 @@ func main() {
 		rotateSecretUseCase,
 	)
 	oauthHandler := handlers.NewOAuthHandlerFullBrowser(authorizeClientUseCase, issueTokenUseCase, clientRepo, refreshTokenUseCase, revokeTokenUseCase, introspectTokenUseCase, oauthInteraction, authenticateEndUser, getConsentDetails, consentDecision, logoutEndUser, sessionRepo, loginThrottler, oauthAuditHelper, cfg)
+	oauthSignupHandler := handlers.NewOAuthSignupHandler(selfSignup, cfg)
 	discoveryHandler := handlers.NewDiscoveryHandler(tokenService, cfg.OAuthIssuer)
 	roleHandler := handlers.NewRoleHandler(assignRoleUseCase, revokeRoleUseCase, listUserRolesUseCase)
 	userHandler := handlers.NewUserHandler(
@@ -236,6 +243,7 @@ func main() {
 		healthHandler,
 		clientHandler,
 		oauthHandler,
+		oauthSignupHandler,
 		discoveryHandler,
 		roleHandler,
 		sessionHandler,

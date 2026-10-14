@@ -58,6 +58,10 @@ type AuthorizationTransactionRepository interface {
 	// ErrTransactionAlreadyCompleted if the transaction is missing, expired, or
 	// already consumed. This is the one-time-use gate that prevents replay.
 	Complete(ctx context.Context, transactionID string) (*AuthorizationTransaction, error)
+
+	// ExtendTTL extends a pending transaction's lifetime to now+ttl, never beyond
+	// CreatedAt+maxLifetime. Missing or completed transactions are left untouched.
+	ExtendTTL(ctx context.Context, transactionID string, ttl, maxLifetime time.Duration) error
 }
 
 // Transaction errors

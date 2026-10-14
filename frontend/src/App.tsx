@@ -16,6 +16,7 @@ import { ClientManagementPage } from "./pages/ClientManagementPage";
 import { UserManagementPage } from "./pages/UserManagementPage";
 import { AcceptInvitationPage } from "./pages/AcceptInvitationPage";
 import { OAuthLoginPage } from './pages/OAuthLoginPage';
+import { OAuthSignupPage } from './pages/OAuthSignupPage';
 import { OAuthConsentPage } from './pages/OAuthConsentPage';
 import { OAuthErrorPage } from './pages/OAuthErrorPage';
 import { OAuthLogoutPage } from './pages/OAuthLogoutPage';
@@ -68,6 +69,7 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/invite/:token" element={<AcceptInvitationPage />} />
             <Route path="/oauth2/login" element={<OAuthLoginPage />} />
+            <Route path="/oauth2/signup" element={<OAuthSignupPage />} />
             <Route path="/oauth2/consent" element={<OAuthConsentPage />} />
             <Route path="/oauth2/error" element={<OAuthErrorPage />} />
             <Route path="/oauth2/logout" element={<OAuthLogoutPage />} />

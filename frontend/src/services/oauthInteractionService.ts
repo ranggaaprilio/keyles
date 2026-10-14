@@ -6,6 +6,11 @@ import type {
   OAuthInteractionRedirect,
   OAuthLoginRequest,
   OAuthLoginResponse,
+  OAuthSignupAccepted,
+  OAuthSignupContext,
+  OAuthSignupRequest,
+  OAuthSignupResendRequest,
+  OAuthSignupVerifyRequest,
 } from '../types/oauth';
 import { CSRF_HEADER_NAME, getCsrfToken } from './csrfService';
 
@@ -78,6 +83,30 @@ function postWithCsrf(path: string, body?: unknown): Promise<Response> {
     init.body = JSON.stringify(body);
   }
   return fetch(`${API_BASE_URL}${path}`, init);
+}
+
+/** Load whether self sign-up is available for a pending browser interaction. */
+export async function getSignupContext(transactionId: string): Promise<OAuthSignupContext> {
+  const response = await fetch(
+    `${API_BASE_URL}/oauth2/signup/context?transaction_id=${encodeURIComponent(transactionId)}`,
+    { credentials: 'include' },
+  );
+  return parseResponse<OAuthSignupContext>(response);
+}
+
+/** Start a self sign-up; the backend emails a verification code. */
+export async function submitSignup(req: OAuthSignupRequest): Promise<OAuthSignupAccepted> {
+  return parseResponse<OAuthSignupAccepted>(await postWithCsrf('/oauth2/signup', req));
+}
+
+/** Request a fresh verification code for a pending sign-up. */
+export async function resendSignupCode(req: OAuthSignupResendRequest): Promise<OAuthSignupAccepted> {
+  return parseResponse<OAuthSignupAccepted>(await postWithCsrf('/oauth2/signup/resend', req));
+}
+
+/** Verify the emailed code; on success the session cookie is set and consent follows. */
+export async function verifySignup(req: OAuthSignupVerifyRequest): Promise<OAuthInteractionRedirect> {
+  return parseResponse<OAuthInteractionRedirect>(await postWithCsrf('/oauth2/signup/verify', req));
 }
 
 /** Parse interaction error from URL search params */

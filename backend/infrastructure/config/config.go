@@ -100,6 +100,10 @@ type Config struct {
 	RateLimitRegisterPerHour   int
 	RateLimitVerifyOTPPer10Min int
 	RateLimitResendOTPPerHour  int
+
+	// OAuth end-user self sign-up rate limiting (per IP)
+	RateLimitOAuthSignupPerHour        int
+	RateLimitOAuthSignupVerifyPer10Min int
 }
 
 // Load loads configuration from environment variables
@@ -210,6 +214,14 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	rateLimitOAuthSignupPerHour, err := getEnvAsInt("RATE_LIMIT_OAUTH_SIGNUP_PER_HOUR", 10)
+	if err != nil {
+		return nil, err
+	}
+	rateLimitOAuthSignupVerifyPer10Min, err := getEnvAsInt("RATE_LIMIT_OAUTH_SIGNUP_VERIFY_PER_10MIN", 20)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		// Database
@@ -302,6 +314,9 @@ func Load() (*Config, error) {
 		RateLimitRegisterPerHour:   rateLimitRegisterPerHour,
 		RateLimitVerifyOTPPer10Min: rateLimitVerifyOTPPer10Min,
 		RateLimitResendOTPPerHour:  rateLimitResendOTPPerHour,
+
+		RateLimitOAuthSignupPerHour:        rateLimitOAuthSignupPerHour,
+		RateLimitOAuthSignupVerifyPer10Min: rateLimitOAuthSignupVerifyPer10Min,
 	}
 
 	// Validate required fields

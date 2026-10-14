@@ -19,14 +19,16 @@ type ListClientsRequest struct {
 
 // ClientListItem represents a single client in the list
 type ClientListItem struct {
-	ClientID     string
-	ClientName   string
-	Description  string
-	ClientType   string
-	RedirectURIs []string
-	IsActive     bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ClientID              string
+	ClientName            string
+	Description           string
+	ClientType            string
+	RedirectURIs          []string
+	IsActive              bool
+	AllowSelfSignup       bool
+	SelfSignupDefaultRole string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 // ListClientsResponse contains the paginated list of clients
@@ -80,14 +82,16 @@ func (uc *ListClientsUseCase) Execute(ctx context.Context, req *ListClientsReque
 	items := make([]ClientListItem, len(clients))
 	for i, c := range clients {
 		items[i] = ClientListItem{
-			ClientID:     c.ClientID,
-			ClientName:   c.ClientName,
-			Description:  c.Description,
-			ClientType:   c.ClientType,
-			RedirectURIs: c.AllowedRedirectURIs,
-			IsActive:     c.IsActive,
-			CreatedAt:    c.CreatedAt,
-			UpdatedAt:    c.UpdatedAt,
+			ClientID:              c.ClientID,
+			ClientName:            c.ClientName,
+			Description:           c.Description,
+			ClientType:            c.ClientType,
+			RedirectURIs:          c.AllowedRedirectURIs,
+			IsActive:              c.IsActive,
+			AllowSelfSignup:       c.AllowSelfSignup,
+			SelfSignupDefaultRole: c.SelfSignupRole,
+			CreatedAt:             c.CreatedAt,
+			UpdatedAt:             c.UpdatedAt,
 		}
 	}
 

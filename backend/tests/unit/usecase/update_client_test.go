@@ -3,6 +3,7 @@ package usecase_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -272,4 +273,67 @@ func strPtr(s string) *string {
 
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+func TestUpdateClient_SelfSignupSettings(t *testing.T) {
+	newClient := func() *entities.Client {
+		return &entities.Client{
+			ClientID:            "client-123",
+			TenantID:            "tenant-456",
+			ClientName:          "Test Application",
+			ClientType:          entities.ClientTypePublic,
+			AllowedRedirectURIs: []string{"https://app.example.com/callback"},
+			IsActive:            true,
+		}
+	}
+	enabled := boolPtr(true)
+
+	t.Run("enable with role", func(t *testing.T) {
+		repo, audit := new(mocks.MockClientRepository), new(mocks.MockAuditRepository)
+		repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").Return(newClient(), nil)
+		repo.On("Update", mock.Anything, mock.AnythingOfType("*entities.Client")).Return(nil)
+		audit.On("Create", mock.Anything, mock.AnythingOfType("*entities.AuditLog")).Return(nil)
+
+		resp, err := client.NewUpdateClientUseCase(repo, audit).Execute(context.Background(), &client.UpdateClientRequest{
+			ClientID: "client-123", TenantID: "tenant-456",
+			AllowSelfSignup: enabled, SelfSignupDefaultRole: strPtr("  member "),
+		})
+
+		require.NoError(t, err)
+		assert.True(t, resp.AllowSelfSignup)
+		assert.Equal(t, "member", resp.SelfSignupDefaultRole)
+		saved := repo.Calls[1].Arguments.Get(1).(*entities.Client)
+		assert.True(t, saved.AllowSelfSignup)
+		assert.Equal(t, "member", saved.SelfSignupRole)
+		logged := audit.Calls[0].Arguments.Get(1).(*entities.AuditLog)
+		changed := logged.EventData["changed_fields"].(map[string]interface{})
+		assert.Contains(t, changed, "allow_self_signup")
+		assert.Contains(t, changed, "self_signup_default_role")
+	})
+
+	t.Run("enable without role is rejected", func(t *testing.T) {
+		repo, audit := new(mocks.MockClientRepository), new(mocks.MockAuditRepository)
+		repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").Return(newClient(), nil)
+
+		_, err := client.NewUpdateClientUseCase(repo, audit).Execute(context.Background(), &client.UpdateClientRequest{
+			ClientID: "client-123", TenantID: "tenant-456", AllowSelfSignup: enabled,
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "self_signup_default_role is required")
+		repo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	})
+
+	t.Run("role over 100 characters is rejected", func(t *testing.T) {
+		repo, audit := new(mocks.MockClientRepository), new(mocks.MockAuditRepository)
+		repo.On("GetByClientID", mock.Anything, "client-123", "tenant-456").Return(newClient(), nil)
+		role := strings.Repeat("r", 101)
+
+		_, err := client.NewUpdateClientUseCase(repo, audit).Execute(context.Background(), &client.UpdateClientRequest{
+			ClientID: "client-123", TenantID: "tenant-456", SelfSignupDefaultRole: &role,
+		})
+
+		require.Error(t, err)
+		repo.AssertNotCalled(t, "Update", mock.Anything, mock.Anything)
+	})
 }

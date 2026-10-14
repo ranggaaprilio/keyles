@@ -12,19 +12,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { X, Plus, Loader2, ArrowLeft } from "lucide-react";
 import { useClient, useUpdateClient } from "@/hooks/useClients";
 
-const editClientSchema = z.object({
-  client_name: z
-    .string()
-    .min(3, "Name must be at least 3 characters")
-    .max(100, "Name must not exceed 100 characters"),
-  description: z
-    .string()
-    .max(500, "Description must not exceed 500 characters")
-    .optional(),
-  redirect_uris: z
-    .array(z.string().url("Must be a valid URL"))
-    .min(1, "At least one redirect URI is required"),
-});
+const editClientSchema = z
+  .object({
+    client_name: z
+      .string()
+      .min(3, "Name must be at least 3 characters")
+      .max(100, "Name must not exceed 100 characters"),
+    description: z
+      .string()
+      .max(500, "Description must not exceed 500 characters")
+      .optional(),
+    redirect_uris: z
+      .array(z.string().url("Must be a valid URL"))
+      .min(1, "At least one redirect URI is required"),
+    allow_self_signup: z.boolean(),
+    self_signup_default_role: z
+      .string()
+      .trim()
+      .max(100, "Role must not exceed 100 characters"),
+  })
+  .refine((d) => !d.allow_self_signup || d.self_signup_default_role.length > 0, {
+    message: "A default role is required when self sign-up is enabled",
+    path: ["self_signup_default_role"],
+  });
 
 type EditClientFormData = z.infer<typeof editClientSchema>;
 
@@ -49,6 +59,7 @@ export function EditClientForm({
     handleSubmit,
     setValue,
     reset,
+    watch,
     formState: { errors },
   } = useForm<EditClientFormData>({
     resolver: zodResolver(editClientSchema),
@@ -61,6 +72,8 @@ export function EditClientForm({
         client_name: client.client_name,
         description: client.description || "",
         redirect_uris: client.redirect_uris,
+        allow_self_signup: client.allow_self_signup ?? false,
+        self_signup_default_role: client.self_signup_default_role ?? "",
       });
       setRedirectURIs(client.redirect_uris);
     }
@@ -125,6 +138,8 @@ export function EditClientForm({
     if (value) validateURI(value, index);
   };
 
+  const allowSelfSignup = watch("allow_self_signup");
+
   const onSubmit = (data: EditClientFormData) => {
     let allValid = true;
     data.redirect_uris.forEach((uri, i) => {
@@ -139,6 +154,8 @@ export function EditClientForm({
           client_name: data.client_name,
           description: data.description || null,
           redirect_uris: data.redirect_uris,
+          allow_self_signup: data.allow_self_signup,
+          self_signup_default_role: data.self_signup_default_role,
         },
       },
       { onSuccess },
@@ -245,6 +262,43 @@ export function EditClientForm({
             >
               <Plus className="h-4 w-4 mr-1" /> Add Redirect URI
             </Button>
+          </div>
+
+          {/* Self sign-up */}
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <div className="flex items-start gap-3">
+              <input
+                id="allow_self_signup"
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border accent-primary"
+                {...register("allow_self_signup")}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="allow_self_signup">Allow self sign-up</Label>
+                <p className="text-sm text-muted-foreground">
+                  Let new users create their own account from this application&apos;s sign-in page.
+                  Their email is verified with a one-time code.
+                </p>
+              </div>
+            </div>
+            {allowSelfSignup && (
+              <div className="space-y-2 pl-7">
+                <Label htmlFor="self_signup_default_role">Default role *</Label>
+                <Input
+                  id="self_signup_default_role"
+                  placeholder="member"
+                  {...register("self_signup_default_role")}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Assigned to every user who signs up through this application.
+                </p>
+                {errors.self_signup_default_role && (
+                  <p className="text-sm text-destructive">
+                    {errors.self_signup_default_role.message}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Actions */}

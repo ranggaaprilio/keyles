@@ -29,6 +29,7 @@ type Router struct {
 	healthHandler       *handlers.HealthHandler
 	clientHandler       *handlers.ClientHandler
 	oauthHandler        *handlers.OAuthHandler
+	oauthSignupHandler  *handlers.OAuthSignupHandler
 	discoveryHandler    *handlers.DiscoveryHandler
 	roleHandler         *handlers.RoleHandler
 	sessionHandler      *handlers.SessionHandler
@@ -55,6 +56,7 @@ func NewRouter(
 	healthHandler *handlers.HealthHandler,
 	clientHandler *handlers.ClientHandler,
 	oauthHandler *handlers.OAuthHandler,
+	oauthSignupHandler *handlers.OAuthSignupHandler,
 	discoveryHandler *handlers.DiscoveryHandler,
 	roleHandler *handlers.RoleHandler,
 	sessionHandler *handlers.SessionHandler,
@@ -91,6 +93,7 @@ func NewRouter(
 		healthHandler:       healthHandler,
 		clientHandler:       clientHandler,
 		oauthHandler:        oauthHandler,
+		oauthSignupHandler:  oauthSignupHandler,
 		discoveryHandler:    discoveryHandler,
 		roleHandler:         roleHandler,
 		sessionHandler:      sessionHandler,
@@ -134,6 +137,19 @@ func (r *Router) Setup() {
 		oauth2.GET("/consent/:transactionId", r.oauthHandler.ConsentDetail)
 		oauth2.POST("/consent", r.oauthHandler.ConsentDecision)
 		oauth2.POST("/logout", r.oauthHandler.Logout)
+		// End-user self sign-up (per-client opt-in)
+		if r.oauthSignupHandler != nil {
+			oauth2.GET("/signup/context", r.oauthSignupHandler.Context)
+			if r.slidingRateLimiter != nil {
+				oauth2.POST("/signup", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitOAuthSignupPerHour, 60*time.Minute), r.oauthSignupHandler.Signup)
+				oauth2.POST("/signup/resend", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitOAuthSignupPerHour, 60*time.Minute), r.oauthSignupHandler.Resend)
+				oauth2.POST("/signup/verify", r.slidingRateLimiter.IPBasedLimit(r.config.RateLimitOAuthSignupVerifyPer10Min, 10*time.Minute), r.oauthSignupHandler.Verify)
+			} else {
+				oauth2.POST("/signup", r.oauthSignupHandler.Signup)
+				oauth2.POST("/signup/resend", r.oauthSignupHandler.Resend)
+				oauth2.POST("/signup/verify", r.oauthSignupHandler.Verify)
+			}
+		}
 		// Token endpoint with rate limiting (FR-057: 10 req/min per client_id)
 		if r.rateLimiter != nil {
 			oauth2.POST("/token", middleware.RateLimiterMiddleware(r.rateLimiter), r.oauthHandler.Token)

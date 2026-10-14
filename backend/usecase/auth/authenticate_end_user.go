@@ -48,15 +48,13 @@ type AuthenticateEndUserResponse struct {
 // binds the transaction to the authenticated user.
 type AuthenticateEndUser struct {
 	txnRepo     repositories.AuthorizationTransactionRepository
-	sessionRepo repositories.SessionRepository
 	clientRepo  repositories.ClientRepository
 	endUserRepo repositories.EndUserRepository
 	roleRepo    repositories.RoleRepository
 	throttler   services.LoginThrottler
 	passwordSvc services.PasswordService
 	auditHelper *OAuthAuditHelper
-	sessionTTL  time.Duration
-	frontendURL string
+	completer   *LoginCompleter
 }
 
 // NewAuthenticateEndUser constructs the use case with all required
@@ -74,20 +72,15 @@ func NewAuthenticateEndUser(
 	sessionTTL time.Duration,
 	frontendURL string,
 ) *AuthenticateEndUser {
-	if sessionTTL == 0 {
-		sessionTTL = 8 * time.Hour
-	}
 	return &AuthenticateEndUser{
 		txnRepo:     txnRepo,
-		sessionRepo: sessionRepo,
 		clientRepo:  clientRepo,
 		endUserRepo: endUserRepo,
 		roleRepo:    roleRepo,
 		throttler:   throttler,
 		passwordSvc: passwordSvc,
 		auditHelper: auditHelper,
-		sessionTTL:  sessionTTL,
-		frontendURL: strings.TrimRight(frontendURL, "/"),
+		completer:   NewLoginCompleter(txnRepo, sessionRepo, endUserRepo, throttler, auditHelper, sessionTTL, frontendURL),
 	}
 }
 
@@ -157,10 +150,64 @@ func (uc *AuthenticateEndUser) Execute(ctx context.Context, req AuthenticateEndU
 		return credentialFailure()
 	}
 
-	// ── 8. Create client-agnostic Session with crypto/rand SessionID ──────
+	// ── 8–12. Create session, bind transaction, record login ─────────────
+	resp, err := uc.completer.Complete(ctx, req.TransactionID, user, tenantID, clientID, req.SourceIP)
+	if errors.Is(err, errSessionIDGeneration) {
+		return credentialFailure()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// errSessionIDGeneration signals that crypto/rand failed while creating a session ID.
+var errSessionIDGeneration = errors.New("failed to generate session id")
+
+// LoginCompleter finishes a successful end-user authentication: it creates a
+// client-agnostic session, binds the authorization transaction to the user
+// (pending_consent), records the login, and builds the consent redirect.
+// Shared by password login and self sign-up verification.
+type LoginCompleter struct {
+	txnRepo     repositories.AuthorizationTransactionRepository
+	sessionRepo repositories.SessionRepository
+	endUserRepo repositories.EndUserRepository
+	throttler   services.LoginThrottler
+	auditHelper *OAuthAuditHelper
+	sessionTTL  time.Duration
+	frontendURL string
+}
+
+// NewLoginCompleter constructs a LoginCompleter. sessionTTL defaults to 8 hours if zero.
+func NewLoginCompleter(
+	txnRepo repositories.AuthorizationTransactionRepository,
+	sessionRepo repositories.SessionRepository,
+	endUserRepo repositories.EndUserRepository,
+	throttler services.LoginThrottler,
+	auditHelper *OAuthAuditHelper,
+	sessionTTL time.Duration,
+	frontendURL string,
+) *LoginCompleter {
+	if sessionTTL == 0 {
+		sessionTTL = 8 * time.Hour
+	}
+	return &LoginCompleter{
+		txnRepo:     txnRepo,
+		sessionRepo: sessionRepo,
+		endUserRepo: endUserRepo,
+		throttler:   throttler,
+		auditHelper: auditHelper,
+		sessionTTL:  sessionTTL,
+		frontendURL: strings.TrimRight(frontendURL, "/"),
+	}
+}
+
+// Complete creates the session and advances the transaction to pending_consent.
+func (lc *LoginCompleter) Complete(ctx context.Context, transactionID string, user *entities.User, tenantID, clientID, sourceIP string) (*AuthenticateEndUserResponse, error) {
+	// ── Create client-agnostic Session with crypto/rand SessionID ─────────
 	sessionID, err := GenerateSessionID()
 	if err != nil {
-		return credentialFailure()
+		return nil, errSessionIDGeneration
 	}
 
 	now := time.Now()
@@ -170,34 +217,34 @@ func (uc *AuthenticateEndUser) Execute(ctx context.Context, req AuthenticateEndU
 		TenantID:        tenantID,
 		AuthenticatedAt: now,
 		CreatedAt:       now,
-		ExpiresAt:       now.Add(uc.sessionTTL),
+		ExpiresAt:       now.Add(lc.sessionTTL),
 		Metadata:        map[string]interface{}{},
 	}
 
-	if err := uc.sessionRepo.Create(ctx, session, uc.sessionTTL); err != nil {
+	if err := lc.sessionRepo.Create(ctx, session, lc.sessionTTL); err != nil {
 		return nil, ErrTemporarilyUnavailable
 	}
 
-	// ── 9. Clear email throttle bucket on success ─────────────────────────
-	if err := uc.throttler.ClearEmailBucket(ctx, tenantID, normalizedEmail); err != nil {
-		_ = uc.sessionRepo.Delete(ctx, sessionID)
+	// ── Clear email throttle bucket on success ────────────────────────────
+	if err := lc.throttler.ClearEmailBucket(ctx, tenantID, user.Email); err != nil {
+		_ = lc.sessionRepo.Delete(ctx, sessionID)
 		return nil, ErrTemporarilyUnavailable
 	}
 
-	// ── 10. Bind transaction (UpdateStage → pending_consent) ──────────────
-	if err := uc.txnRepo.UpdateStage(ctx, req.TransactionID, repositories.TransactionStagePendingConsent, user.ID, sessionID); err != nil {
-		_ = uc.sessionRepo.Delete(ctx, sessionID)
+	// ── Bind transaction (UpdateStage → pending_consent) ──────────────────
+	if err := lc.txnRepo.UpdateStage(ctx, transactionID, repositories.TransactionStagePendingConsent, user.ID, sessionID); err != nil {
+		_ = lc.sessionRepo.Delete(ctx, sessionID)
 		return nil, ErrTemporarilyUnavailable
 	}
 
-	// ── 11. Record last login ─────────────────────────────────────────────
-	_ = uc.endUserRepo.UpdateLastLogin(ctx, user.ID, now)
+	// ── Record last login ─────────────────────────────────────────────────
+	_ = lc.endUserRepo.UpdateLastLogin(ctx, user.ID, now)
 
-	// ── 12. Emit success audit event ─────────────────────────────────────
-	uc.auditHelper.LogLoginSucceeded(ctx, tenantID, clientID, user.ID, req.SourceIP)
+	// ── Emit success audit event ──────────────────────────────────────────
+	lc.auditHelper.LogLoginSucceeded(ctx, tenantID, clientID, user.ID, sourceIP)
 
 	// ── Build response ────────────────────────────────────────────────────
-	redirectURL := fmt.Sprintf("%s/oauth2/consent?transaction_id=%s", uc.frontendURL, req.TransactionID)
+	redirectURL := fmt.Sprintf("%s/oauth2/consent?transaction_id=%s", lc.frontendURL, transactionID)
 	return &AuthenticateEndUserResponse{
 		RedirectURL: redirectURL,
 		SessionID:   sessionID,

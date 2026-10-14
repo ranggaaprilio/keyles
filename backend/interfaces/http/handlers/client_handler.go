@@ -15,12 +15,12 @@ import (
 
 // ClientHandler handles OAuth client management requests
 type ClientHandler struct {
-	createClientUC  *client.CreateClientUseCase
-	getClientUC     *client.GetClientUseCase
-	updateClientUC  *client.UpdateClientUseCase
-	deleteClientUC  *client.DeleteClientUseCase
-	listClientsUC   *client.ListClientsUseCase
-	rotateSecretUC  *client.RotateSecretUseCase
+	createClientUC *client.CreateClientUseCase
+	getClientUC    *client.GetClientUseCase
+	updateClientUC *client.UpdateClientUseCase
+	deleteClientUC *client.DeleteClientUseCase
+	listClientsUC  *client.ListClientsUseCase
+	rotateSecretUC *client.RotateSecretUseCase
 }
 
 // NewClientHandler creates a new client handler
@@ -33,12 +33,12 @@ func NewClientHandler(
 	rotateSecretUC *client.RotateSecretUseCase,
 ) *ClientHandler {
 	return &ClientHandler{
-		createClientUC:  createClientUC,
-		getClientUC:     getClientUC,
-		updateClientUC:  updateClientUC,
-		deleteClientUC:  deleteClientUC,
-		listClientsUC:   listClientsUC,
-		rotateSecretUC:  rotateSecretUC,
+		createClientUC: createClientUC,
+		getClientUC:    getClientUC,
+		updateClientUC: updateClientUC,
+		deleteClientUC: deleteClientUC,
+		listClientsUC:  listClientsUC,
+		rotateSecretUC: rotateSecretUC,
 	}
 }
 
@@ -122,14 +122,16 @@ func (h *ClientHandler) Create(c *gin.Context) {
 
 // ClientResponse represents a client in API responses
 type ClientResponse struct {
-	ClientID     string   `json:"client_id"`
-	ClientName   string   `json:"client_name"`
-	Description  string   `json:"description"`
-	ClientType   string   `json:"client_type"`
-	RedirectURIs []string `json:"redirect_uris"`
-	IsActive     bool     `json:"is_active"`
-	CreatedAt    string   `json:"created_at"`
-	UpdatedAt    string   `json:"updated_at"`
+	ClientID              string   `json:"client_id"`
+	ClientName            string   `json:"client_name"`
+	Description           string   `json:"description"`
+	ClientType            string   `json:"client_type"`
+	RedirectURIs          []string `json:"redirect_uris"`
+	IsActive              bool     `json:"is_active"`
+	AllowSelfSignup       bool     `json:"allow_self_signup"`
+	SelfSignupDefaultRole string   `json:"self_signup_default_role"`
+	CreatedAt             string   `json:"created_at"`
+	UpdatedAt             string   `json:"updated_at"`
 }
 
 // Get handles GET /api/v1/admin/clients/:clientId
@@ -168,23 +170,27 @@ func (h *ClientHandler) Get(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, ClientResponse{
-		ClientID:     resp.ClientID,
-		ClientName:   resp.ClientName,
-		Description:  resp.Description,
-		ClientType:   resp.ClientType,
-		RedirectURIs: resp.RedirectURIs,
-		IsActive:     resp.IsActive,
-		CreatedAt:    resp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:    resp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ClientID:              resp.ClientID,
+		ClientName:            resp.ClientName,
+		Description:           resp.Description,
+		ClientType:            resp.ClientType,
+		RedirectURIs:          resp.RedirectURIs,
+		IsActive:              resp.IsActive,
+		AllowSelfSignup:       resp.AllowSelfSignup,
+		SelfSignupDefaultRole: resp.SelfSignupDefaultRole,
+		CreatedAt:             resp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:             resp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	})
 }
 
 // UpdateClientRequest represents the request body for updating a client
 type UpdateClientRequest struct {
-	ClientName   *string  `json:"client_name,omitempty"`
-	Description  *string  `json:"description,omitempty"`
-	RedirectURIs []string `json:"redirect_uris,omitempty"`
-	IsActive     *bool    `json:"is_active,omitempty"`
+	ClientName            *string  `json:"client_name,omitempty"`
+	Description           *string  `json:"description,omitempty"`
+	RedirectURIs          []string `json:"redirect_uris,omitempty"`
+	IsActive              *bool    `json:"is_active,omitempty"`
+	AllowSelfSignup       *bool    `json:"allow_self_signup,omitempty"`
+	SelfSignupDefaultRole *string  `json:"self_signup_default_role,omitempty"`
 }
 
 // Update handles PUT /api/v1/admin/clients/:clientId
@@ -214,14 +220,16 @@ func (h *ClientHandler) Update(c *gin.Context) {
 	}
 
 	resp, err := h.updateClientUC.Execute(c.Request.Context(), &client.UpdateClientRequest{
-		ClientID:     clientID,
-		TenantID:     tenantID.(string),
-		ClientName:   req.ClientName,
-		Description:  req.Description,
-		RedirectURIs: req.RedirectURIs,
-		IsActive:     req.IsActive,
-		IPAddress:    c.ClientIP(),
-		UserAgent:    c.Request.UserAgent(),
+		ClientID:              clientID,
+		TenantID:              tenantID.(string),
+		ClientName:            req.ClientName,
+		Description:           req.Description,
+		RedirectURIs:          req.RedirectURIs,
+		IsActive:              req.IsActive,
+		AllowSelfSignup:       req.AllowSelfSignup,
+		SelfSignupDefaultRole: req.SelfSignupDefaultRole,
+		IPAddress:             c.ClientIP(),
+		UserAgent:             c.Request.UserAgent(),
 	})
 	if err != nil {
 		if err.Error() == "client not found" {
@@ -237,14 +245,16 @@ func (h *ClientHandler) Update(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, ClientResponse{
-		ClientID:     resp.ClientID,
-		ClientName:   resp.ClientName,
-		Description:  resp.Description,
-		ClientType:   resp.ClientType,
-		RedirectURIs: resp.RedirectURIs,
-		IsActive:     resp.IsActive,
-		CreatedAt:    resp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:    resp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ClientID:              resp.ClientID,
+		ClientName:            resp.ClientName,
+		Description:           resp.Description,
+		ClientType:            resp.ClientType,
+		RedirectURIs:          resp.RedirectURIs,
+		IsActive:              resp.IsActive,
+		AllowSelfSignup:       resp.AllowSelfSignup,
+		SelfSignupDefaultRole: resp.SelfSignupDefaultRole,
+		CreatedAt:             resp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:             resp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	})
 }
 
@@ -328,14 +338,16 @@ func (h *ClientHandler) List(c *gin.Context) {
 	clients := make([]ClientResponse, len(resp.Clients))
 	for i, cl := range resp.Clients {
 		clients[i] = ClientResponse{
-			ClientID:     cl.ClientID,
-			ClientName:   cl.ClientName,
-			Description:  cl.Description,
-			ClientType:   cl.ClientType,
-			RedirectURIs: cl.RedirectURIs,
-			IsActive:     cl.IsActive,
-			CreatedAt:    cl.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt:    cl.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			ClientID:              cl.ClientID,
+			ClientName:            cl.ClientName,
+			Description:           cl.Description,
+			ClientType:            cl.ClientType,
+			RedirectURIs:          cl.RedirectURIs,
+			IsActive:              cl.IsActive,
+			AllowSelfSignup:       cl.AllowSelfSignup,
+			SelfSignupDefaultRole: cl.SelfSignupDefaultRole,
+			CreatedAt:             cl.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:             cl.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		}
 	}
 

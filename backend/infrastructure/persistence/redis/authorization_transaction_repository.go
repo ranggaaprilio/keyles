@@ -259,3 +259,43 @@ func sliceToMap(flat []interface{}) map[string]string {
 	}
 	return m
 }
+
+// extendTTLScript moves a pending transaction's expiry to ARGV[2] (unix ms)
+// and records it in expires_at (ARGV[1]). Completed transactions are ignored.
+var extendTTLScript = redis.NewScript(`
+local key = KEYS[1]
+local stage = redis.call("HGET", key, "stage")
+if stage ~= "pending_login" and stage ~= "pending_consent" then
+	return 0
+end
+redis.call("HSET", key, "expires_at", ARGV[1])
+redis.call("PEXPIREAT", key, ARGV[2])
+return 1
+`)
+
+// ExtendTTL extends a pending transaction's lifetime to now+ttl, capped at
+// CreatedAt+maxLifetime. It never shortens the current expiry.
+func (r *RedisAuthorizationTransactionRepository) ExtendTTL(ctx context.Context, transactionID string, ttl, maxLifetime time.Duration) error {
+	txn, err := r.Get(ctx, transactionID)
+	if err != nil {
+		return err
+	}
+	if txn == nil {
+		return nil
+	}
+
+	expiresAt := time.Now().Add(ttl)
+	if limit := txn.CreatedAt.Add(maxLifetime); expiresAt.After(limit) {
+		expiresAt = limit
+	}
+	if !expiresAt.After(txn.ExpiresAt) {
+		return nil
+	}
+
+	key := r.transactionKey(transactionID)
+	if err := extendTTLScript.Run(ctx, r.client, []string{key},
+		expiresAt.UTC().Format(time.RFC3339Nano), expiresAt.UnixMilli()).Err(); err != nil {
+		return fmt.Errorf("failed to extend transaction TTL: %w", err)
+	}
+	return nil
+}

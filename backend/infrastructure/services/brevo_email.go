@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"html"
 
 	brevo "github.com/getbrevo/brevo-go/lib"
 	"github.com/ranggaaprilio/keyles/domain/services"
@@ -210,6 +211,59 @@ func (s *BrevoEmailService) SendInvitationEmail(ctx context.Context, toEmail, to
 	_, _, err := s.client.TransactionalEmailsApi.SendTransacEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("failed to send invitation email: %w", err)
+	}
+
+	return nil
+}
+
+// SendSignupOTPEmail sends the verification code for an end-user self sign-up.
+// Names are user-supplied, so they are HTML-escaped before interpolation.
+func (s *BrevoEmailService) SendSignupOTPEmail(ctx context.Context, toEmail, toName, otpCode, clientName string) error {
+	subject := fmt.Sprintf("Your %s verification code", clientName)
+
+	htmlContent := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		</head>
+		<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+			<div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px;">
+				<p>Hello %s,</p>
+
+				<p>Use the following code to finish creating your <strong>%s</strong> account:</p>
+
+				<div style="background-color: #fff; border: 2px solid #2563eb; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
+					<h2 style="color: #2563eb; font-size: 36px; margin: 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">%s</h2>
+				</div>
+
+				<p><strong>Important:</strong> This code will expire in <strong>10 minutes</strong>.</p>
+
+				<p>If you didn't request this, you can safely ignore this email.</p>
+			</div>
+		</body>
+		</html>
+	`, html.EscapeString(toName), html.EscapeString(clientName), otpCode)
+
+	email := brevo.SendSmtpEmail{
+		Sender: &brevo.SendSmtpEmailSender{
+			Name:  s.senderName,
+			Email: s.senderEmail,
+		},
+		To: []brevo.SendSmtpEmailTo{
+			{
+				Email: toEmail,
+				Name:  toName,
+			},
+		},
+		Subject:     subject,
+		HtmlContent: htmlContent,
+	}
+
+	_, _, err := s.client.TransactionalEmailsApi.SendTransacEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("failed to send signup OTP email: %w", err)
 	}
 
 	return nil

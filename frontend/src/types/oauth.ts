@@ -344,6 +344,34 @@ export interface OAuthInteractionRedirect {
   redirect_url: string;
 }
 
+export interface OAuthSignupContext {
+  client_name: string;
+  signup_enabled: boolean;
+}
+
+export interface OAuthSignupRequest {
+  transaction_id: string;
+  email: string;
+  password: string;
+  display_name: string;
+}
+
+export interface OAuthSignupResendRequest {
+  transaction_id: string;
+  email: string;
+}
+
+export interface OAuthSignupVerifyRequest {
+  transaction_id: string;
+  email: string;
+  code: string;
+}
+
+export interface OAuthSignupAccepted {
+  status: 'verification_sent';
+  resend_after_seconds: number;
+}
+
 export interface OAuthInteractionError {
   error: string;
   error_description: string;

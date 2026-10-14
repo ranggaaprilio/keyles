@@ -248,6 +248,10 @@ func (s *stubEmailService) SendInvitationEmail(_ context.Context, toEmail, _, in
 	return nil
 }
 
+func (s *stubEmailService) SendSignupOTPEmail(_ context.Context, _, _, _, _ string) error {
+	return nil
+}
+
 // --- Stub UserCountCache ---
 
 type stubUserCountCache struct {

@@ -42,3 +42,9 @@ func (m *MockAuthorizationTransactionRepository) Complete(ctx context.Context, t
 	}
 	return args.Get(0).(*repositories.AuthorizationTransaction), args.Error(1)
 }
+
+// ExtendTTL extends a pending transaction's lifetime
+func (m *MockAuthorizationTransactionRepository) ExtendTTL(ctx context.Context, transactionID string, ttl, maxLifetime time.Duration) error {
+	args := m.Called(ctx, transactionID, ttl, maxLifetime)
+	return args.Error(0)
+}
