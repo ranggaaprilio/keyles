@@ -142,6 +142,8 @@ func (uc *InviteUser) Execute(ctx context.Context, input InviteUserInput) (*Invi
 	}
 
 	if err := uc.invitationRepo.Create(ctx, invitation); err != nil {
+		// Roll back the pending user so a retry is not blocked by "already exists"
+		_ = uc.endUserRepo.Delete(ctx, user.ID)
 		return nil, fmt.Errorf("failed to create invitation: %w", err)
 	}
 

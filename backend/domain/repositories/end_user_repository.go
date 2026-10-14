@@ -2,10 +2,15 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
 )
+
+// ErrDuplicateEmail is returned by Create when the email is already registered
+// (emails are unique across all tenants).
+var ErrDuplicateEmail = errors.New("a user with this email already exists")
 
 // EndUserRepository defines the interface for end-user persistence operations.
 // This is separate from UserRepository (which serves AdminUser for admin authentication)

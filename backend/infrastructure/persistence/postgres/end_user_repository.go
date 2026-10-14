@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
@@ -22,7 +23,7 @@ type EndUserModel struct {
 	DisplayName  string     `gorm:"column:display_name;type:varchar(255)"`
 	PasswordHash string     `gorm:"column:password_hash;type:varchar(255);not null"`
 	Status       string     `gorm:"column:status;type:varchar(20);not null;default:'pending'"`
-	Role         string     `gorm:"column:role;type:varchar(20);not null;default:'user'"`
+	Role         string     `gorm:"column:role;type:varchar(20);not null;default:'member'"`
 	LastLoginAt  *time.Time `gorm:"column:last_login_at"`
 	CreatedAt    time.Time  `gorm:"column:created_at;not null;default:now()"`
 	UpdatedAt    time.Time  `gorm:"column:updated_at;not null;default:now()"`
@@ -57,7 +58,7 @@ func fromEndUserEntity(e *entities.User) *EndUserModel {
 		DisplayName:  e.DisplayName,
 		PasswordHash: e.PasswordHash,
 		Status:       string(e.Status),
-		Role:         "user", // end-users always get the 'user' base role
+		Role:         string(entities.UserRoleMember), // end-users get the non-admin 'member' base role (must match user_role enum)
 		LastLoginAt:  e.LastLoginAt,
 		CreatedAt:    e.CreatedAt,
 		UpdatedAt:    e.UpdatedAt,
@@ -104,6 +105,10 @@ func (r *PostgresEndUserRepository) Create(ctx context.Context, user *entities.U
 	model := fromEndUserEntity(user)
 	result := r.db.WithContext(ctx).Create(model)
 	if result.Error != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(result.Error, &pgErr) && pgErr.Code == "23505" {
+			return repositories.ErrDuplicateEmail
+		}
 		return result.Error
 	}
 	user.ID = model.ID

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ranggaaprilio/keyles/domain/entities"
+	"github.com/ranggaaprilio/keyles/domain/repositories"
 	"github.com/ranggaaprilio/keyles/tests/mocks"
 	"github.com/ranggaaprilio/keyles/usecase/user"
 	"github.com/stretchr/testify/assert"
@@ -182,4 +183,61 @@ func TestInviteUser_MissingFields(t *testing.T) {
 
 	_, err = uc.Execute(ctx, user.InviteUserInput{TenantID: "t1", Email: "a@b.com", InvitedBy: ""})
 	assert.Contains(t, err.Error(), "invited_by is required")
+}
+
+func TestInviteUser_DuplicateEmailOnCreate_ReturnsConflictError(t *testing.T) {
+	ctx := context.Background()
+	endUserRepo := new(mocks.MockEndUserRepository)
+	invitationRepo := new(mocks.MockInvitationRepository)
+	eventRepo := new(mocks.MockUserEventRepository)
+	emailService := new(mocks.MockEmailService)
+	countCache := new(mocks.MockUserCountCache)
+
+	// Email is free in this tenant but taken in another (global unique index)
+	countCache.On("Get", ctx, "tenant-1").Return(5, true, nil)
+	endUserRepo.On("GetByEmail", ctx, "tenant-1", "taken@example.com").Return(nil, nil)
+	invitationRepo.On("GetPendingByEmail", ctx, "tenant-1", "taken@example.com").Return(nil, nil)
+	endUserRepo.On("Create", ctx, mock.Anything).Return(repositories.ErrDuplicateEmail)
+
+	uc := user.NewInviteUser(endUserRepo, invitationRepo, eventRepo, emailService, countCache)
+	_, err := uc.Execute(ctx, user.InviteUserInput{
+		TenantID:  "tenant-1",
+		Email:     "taken@example.com",
+		InvitedBy: "admin-1",
+	})
+
+	assert.ErrorIs(t, err, repositories.ErrDuplicateEmail)
+	assert.Contains(t, err.Error(), "already exists") // mapped to 409 by the handler
+	invitationRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything)
+}
+
+func TestInviteUser_InvitationCreateFails_DeletesPendingUser(t *testing.T) {
+	ctx := context.Background()
+	endUserRepo := new(mocks.MockEndUserRepository)
+	invitationRepo := new(mocks.MockInvitationRepository)
+	eventRepo := new(mocks.MockUserEventRepository)
+	emailService := new(mocks.MockEmailService)
+	countCache := new(mocks.MockUserCountCache)
+
+	countCache.On("Get", ctx, "tenant-1").Return(5, true, nil)
+	endUserRepo.On("GetByEmail", ctx, "tenant-1", "new@example.com").Return(nil, nil)
+	invitationRepo.On("GetPendingByEmail", ctx, "tenant-1", "new@example.com").Return(nil, nil)
+
+	var createdID string
+	endUserRepo.On("Create", ctx, mock.Anything).Run(func(args mock.Arguments) {
+		createdID = args.Get(1).(*entities.User).ID
+	}).Return(nil)
+	invitationRepo.On("Create", ctx, mock.Anything).Return(errors.New("db down"))
+	endUserRepo.On("Delete", ctx, mock.MatchedBy(func(id string) bool { return id == createdID })).Return(nil)
+
+	uc := user.NewInviteUser(endUserRepo, invitationRepo, eventRepo, emailService, countCache)
+	_, err := uc.Execute(ctx, user.InviteUserInput{
+		TenantID:  "tenant-1",
+		Email:     "new@example.com",
+		InvitedBy: "admin-1",
+	})
+
+	assert.ErrorContains(t, err, "failed to create invitation")
+	endUserRepo.AssertCalled(t, "Delete", ctx, createdID)
+	emailService.AssertNotCalled(t, "SendInvitationEmail", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
