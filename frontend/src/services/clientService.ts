@@ -3,6 +3,7 @@
  */
 
 import axios from 'axios';
+import { getCsrfToken } from './csrfService';
 import type {
   Client,
   CreateClientRequest,
@@ -22,12 +23,21 @@ const api = axios.create({
   },
 });
 
-// Add auth token interceptor
+// Add auth token and CSRF token interceptor
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const method = config.method?.toUpperCase();
+  if (method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH') {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+  }
+
   return config;
 });
 
