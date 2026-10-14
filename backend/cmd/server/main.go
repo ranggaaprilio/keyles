@@ -165,9 +165,9 @@ func main() {
 	logoutEndUser := auth.NewLogoutEndUser(sessionRepo, oauthAuditHelper)
 
 	// Initialize user management use cases
-	inviteUserUseCase := user.NewInviteUser(endUserRepo, invitationRepo, userEventRepo, emailService, userCountCache)
+	inviteUserUseCase := user.NewInviteUser(endUserRepo, invitationRepo, userEventRepo, emailService, userCountCache, tenantRepo)
 	acceptInvitationUseCase := user.NewAcceptInvitation(endUserRepo, invitationRepo, userEventRepo, passwordService)
-	resendUserInvitationUseCase := user.NewResendInvitation(endUserRepo, invitationRepo, userEventRepo, emailService)
+	resendUserInvitationUseCase := user.NewResendInvitation(endUserRepo, invitationRepo, userEventRepo, emailService, tenantRepo)
 	listUsersUseCase := user.NewListUsers(endUserRepo)
 	getUserUseCase := user.NewGetUser(endUserRepo, roleRepo)
 	updateUserUseCase := user.NewUpdateUser(endUserRepo, auditRepo)

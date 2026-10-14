@@ -42,13 +42,13 @@ func TestResendInvitation_HappyPath(t *testing.T) {
 return inv.TenantID == "tenant-1" && inv.Email == "user@example.com" && inv.Status == entities.InvitationStatusPending && inv.TokenHash != ""
 	})).Return(nil)
 
-	emailService.On("SendInvitationEmail", ctx, "user@example.com", "Test User", mock.AnythingOfType("string"), "tenant-1").Return(nil)
+	emailService.On("SendInvitationEmail", ctx, "user@example.com", "Test User", mock.AnythingOfType("string"), "Keyles").Return(nil)
 
 	eventRepo.On("Record", ctx, mock.MatchedBy(func(e *entities.UserEvent) bool {
 return e.EventType == entities.EventTypeInvitationResent && e.UserID == "user-1"
 	})).Return(nil)
 
-	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService)
+	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService, new(mocks.MockTenantRepository))
 	err := uc.Execute(ctx, user.ResendInvitationInput{
 UserID:        "user-1",
 TenantID:      "tenant-1",
@@ -78,7 +78,7 @@ func TestResendInvitation_UserNotPending(t *testing.T) {
 
 	endUserRepo.On("GetByID", ctx, "user-1").Return(activeUser, nil)
 
-	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService)
+	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService, new(mocks.MockTenantRepository))
 	err := uc.Execute(ctx, user.ResendInvitationInput{
 UserID:   "user-1",
 TenantID: "tenant-1",
@@ -96,7 +96,7 @@ func TestResendInvitation_UserNotFound(t *testing.T) {
 
 	endUserRepo.On("GetByID", ctx, "nonexistent").Return(nil, errors.New("not found"))
 
-	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService)
+	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService, new(mocks.MockTenantRepository))
 	err := uc.Execute(ctx, user.ResendInvitationInput{
 UserID:   "nonexistent",
 TenantID: "tenant-1",
@@ -122,7 +122,7 @@ func TestResendInvitation_CrossTenantRejected(t *testing.T) {
 
 	endUserRepo.On("GetByID", ctx, "user-1").Return(otherTenantUser, nil)
 
-	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService)
+	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService, new(mocks.MockTenantRepository))
 	err := uc.Execute(ctx, user.ResendInvitationInput{
 UserID:   "user-1",
 TenantID: "tenant-1",
@@ -139,7 +139,7 @@ func TestResendInvitation_MissingFields(t *testing.T) {
 	eventRepo := new(mocks.MockUserEventRepository)
 	emailService := new(mocks.MockEmailService)
 
-	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService)
+	uc := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailService, new(mocks.MockTenantRepository))
 
 	err := uc.Execute(ctx, user.ResendInvitationInput{UserID: "", TenantID: "t1"})
 	assert.Contains(t, err.Error(), "user_id is required")

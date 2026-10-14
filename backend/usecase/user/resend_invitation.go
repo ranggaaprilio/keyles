@@ -32,6 +32,7 @@ type ResendInvitation struct {
 	invitationRepo repositories.InvitationRepository
 	eventRepo      repositories.UserEventRepository
 	emailService   services.EmailService
+	tenantRepo     repositories.TenantRepository
 }
 
 // NewResendInvitation creates a new ResendInvitation use case
@@ -40,12 +41,14 @@ func NewResendInvitation(
 	invitationRepo repositories.InvitationRepository,
 	eventRepo repositories.UserEventRepository,
 	emailService services.EmailService,
+	tenantRepo repositories.TenantRepository,
 ) *ResendInvitation {
 	return &ResendInvitation{
 		endUserRepo:    endUserRepo,
 		invitationRepo: invitationRepo,
 		eventRepo:      eventRepo,
 		emailService:   emailService,
+		tenantRepo:     tenantRepo,
 	}
 }
 
@@ -111,8 +114,7 @@ func (uc *ResendInvitation) Execute(ctx context.Context, input ResendInvitationI
 	}
 
 	// Send invitation email
-	inviteURL := fmt.Sprintf("%s/%s/accept", input.InviteBaseURL, plainToken)
-	_ = uc.emailService.SendInvitationEmail(ctx, user.Email, user.DisplayName, inviteURL, input.TenantID)
+	sendInvitationEmail(ctx, uc.emailService, uc.tenantRepo, input.TenantID, user.Email, user.DisplayName, buildInviteURL(input.InviteBaseURL, plainToken))
 
 	// Record invitation_resent event
 	event := &entities.UserEvent{

@@ -237,12 +237,14 @@ func (s *stubUserEventRepo) DeleteOlderThan(_ context.Context, before time.Time)
 
 type stubEmailService struct {
 	sentInvitations []string
+	sentInviteURLs  []string
 }
 
 func (s *stubEmailService) SendOTPEmail(_ context.Context, _, _, _, _ string) error  { return nil }
 func (s *stubEmailService) SendWelcomeEmail(_ context.Context, _, _, _ string) error { return nil }
-func (s *stubEmailService) SendInvitationEmail(_ context.Context, toEmail, _, _, _ string) error {
+func (s *stubEmailService) SendInvitationEmail(_ context.Context, toEmail, _, inviteURL, _ string) error {
 	s.sentInvitations = append(s.sentInvitations, toEmail)
+	s.sentInviteURLs = append(s.sentInviteURLs, inviteURL)
 	return nil
 }
 
@@ -565,14 +567,14 @@ func setupUserHandlerTestEnv(t *testing.T) *userHandlerTestEnv {
 	auditRepo := &stubAuditRepo{}
 	adminUserRepo := newStubAdminUserRepo()
 
-	inviteUserUC := user.NewInviteUser(endUserRepo, invitationRepo, eventRepo, emailSvc, countCache)
+	inviteUserUC := user.NewInviteUser(endUserRepo, invitationRepo, eventRepo, emailSvc, countCache, &MockTenantRepository{})
 	getUserUC := user.NewGetUser(endUserRepo, roleRepo)
 	listUsersUC := user.NewListUsers(endUserRepo)
 	updateUserUC := user.NewUpdateUser(endUserRepo, auditRepo)
 	disableUserUC := user.NewDisableUser(endUserRepo, adminUserRepo, refreshTokenRepo, blacklist, eventRepo, auditRepo)
 	enableUserUC := user.NewEnableUser(endUserRepo, eventRepo, auditRepo)
 	deleteUserUC := user.NewDeleteUser(endUserRepo, roleRepo, refreshTokenRepo, blacklist, auditRepo)
-	resendInvitationUC := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailSvc)
+	resendInvitationUC := user.NewResendInvitation(endUserRepo, invitationRepo, eventRepo, emailSvc, &MockTenantRepository{})
 
 	handler := handlers.NewUserHandler(
 		inviteUserUC, getUserUC, listUsersUC, updateUserUC,
@@ -648,6 +650,21 @@ func TestInviteUser_Success(t *testing.T) {
 	assert.NotEmpty(t, resp["user_id"])
 	assert.NotEmpty(t, resp["invitation_id"])
 	assert.Len(t, env.emailService.sentInvitations, 1)
+}
+
+func TestInviteUser_LinkPointsAtFrontendInviteRoute(t *testing.T) {
+	env := setupUserHandlerTestEnv(t)
+
+	body, _ := json.Marshal(map[string]string{"email": "bob@example.com"})
+	req, _ := http.NewRequest("POST", "/api/v1/admin/users/invite", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://keyles.example.com")
+	w := httptest.NewRecorder()
+	env.router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	require.Len(t, env.emailService.sentInviteURLs, 1)
+	assert.Regexp(t, `^https://keyles\.example\.com/invite/[A-Za-z0-9_=-]+$`, env.emailService.sentInviteURLs[0])
 }
 
 func TestInviteUser_DuplicateEmail(t *testing.T) {

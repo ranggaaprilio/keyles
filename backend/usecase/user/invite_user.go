@@ -47,6 +47,7 @@ type InviteUser struct {
 	eventRepo      repositories.UserEventRepository
 	emailService   services.EmailService
 	countCache     services.UserCountCache
+	tenantRepo     repositories.TenantRepository
 }
 
 // NewInviteUser creates a new InviteUser use case
@@ -56,6 +57,7 @@ invitationRepo repositories.InvitationRepository,
 eventRepo repositories.UserEventRepository,
 emailService services.EmailService,
 countCache services.UserCountCache,
+tenantRepo repositories.TenantRepository,
 ) *InviteUser {
 	return &InviteUser{
 		endUserRepo:    endUserRepo,
@@ -63,6 +65,7 @@ countCache services.UserCountCache,
 		eventRepo:      eventRepo,
 		emailService:   emailService,
 		countCache:     countCache,
+		tenantRepo:     tenantRepo,
 	}
 }
 
@@ -148,8 +151,7 @@ func (uc *InviteUser) Execute(ctx context.Context, input InviteUserInput) (*Invi
 	}
 
 	// Send invitation email
-	inviteURL := fmt.Sprintf("%s/%s/accept", input.InviteBaseURL, plainToken)
-	_ = uc.emailService.SendInvitationEmail(ctx, input.Email, input.DisplayName, inviteURL, input.TenantID)
+	sendInvitationEmail(ctx, uc.emailService, uc.tenantRepo, input.TenantID, input.Email, input.DisplayName, buildInviteURL(input.InviteBaseURL, plainToken))
 
 	// Record user_invited event (fire-and-forget)
 	event := &entities.UserEvent{

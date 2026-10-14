@@ -67,11 +67,7 @@ func (h *UserHandler) InviteUser(c *gin.Context) {
 		return
 	}
 
-	// Use the frontend base URL from the X-Invite-Base-URL header, or fall back to origin
-	inviteBaseURL := c.GetHeader("X-Invite-Base-URL")
-	if inviteBaseURL == "" {
-		inviteBaseURL = c.GetHeader("Origin")
-	}
+	inviteBaseURL := getInviteBaseURL(c)
 
 	output, err := h.inviteUserUC.Execute(c.Request.Context(), user.InviteUserInput{
 		TenantID:      tenantID,
@@ -363,10 +359,7 @@ func (h *UserHandler) ResendInvitation(c *gin.Context) {
 		return
 	}
 
-	inviteBaseURL := c.GetHeader("X-Invite-Base-URL")
-	if inviteBaseURL == "" {
-		inviteBaseURL = c.GetHeader("Origin")
-	}
+	inviteBaseURL := getInviteBaseURL(c)
 
 	err := h.resendInvitationUC.Execute(c.Request.Context(), user.ResendInvitationInput{
 		UserID:        userID,
@@ -381,6 +374,16 @@ func (h *UserHandler) ResendInvitation(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Invitation resent successfully.",
 	})
+}
+
+// getInviteBaseURL returns the frontend invite route used to build invitation links:
+// the X-Invite-Base-URL header if set, otherwise the request Origin + "/invite"
+// (matching the frontend route /invite/:token).
+func getInviteBaseURL(c *gin.Context) string {
+	if base := c.GetHeader("X-Invite-Base-URL"); base != "" {
+		return strings.TrimRight(base, "/")
+	}
+	return strings.TrimRight(c.GetHeader("Origin"), "/") + "/invite"
 }
 
 // getAdminContext extracts tenant_id and user_id from the JWT-authenticated context.
