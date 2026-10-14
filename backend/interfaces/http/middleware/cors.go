@@ -30,7 +30,10 @@ func CORS(allowedOrigins, allowedMethods, allowedHeaders string) gin.HandlerFunc
 		}
 
 		// Set CORS headers
-		if allowedOrigin != "" {
+		if isPublicOIDCPath(c.Request.URL.Path) {
+			// Any relying party may call these; they never rely on cookies, so no credentials.
+			c.Header("Access-Control-Allow-Origin", "*")
+		} else if allowedOrigin != "" {
 			c.Header("Access-Control-Allow-Origin", allowedOrigin)
 			c.Header("Access-Control-Allow-Credentials", "true")
 		}
@@ -47,4 +50,14 @@ func CORS(allowedOrigins, allowedMethods, allowedHeaders string) gin.HandlerFunc
 
 		c.Next()
 	}
+}
+
+// isPublicOIDCPath reports whether a path is an OIDC endpoint that relying parties
+// call cross-origin with bearer tokens or client credentials rather than cookies.
+func isPublicOIDCPath(path string) bool {
+	switch path {
+	case "/oauth2/token", "/oauth2/userinfo", "/oauth2/revoke":
+		return true
+	}
+	return strings.HasPrefix(path, "/.well-known/")
 }
